@@ -1,0 +1,97 @@
+# M0: does the CVDP harness run here, and what is the floor?
+#   golden   - the harness's own example problems with their solutions; must score 100%
+#   null     - the null agent on the free agentic split; the pass rate any real agent must beat
+# No API key is needed. Run from the Actions tab (Run workflow) or `gh workflow run m0_harness.yml`.
+name: M0 harness
+
+on:
+  workflow_dispatch:
+    inputs:
+      split:
+        description: "Dataset split for the null-agent run"
+        type: choice
+        options: [agentic, heavy]
+        default: agentic
+
+env:
+  CVDP_SHA: 8e894cf74414ab1eaea1e2b4e80a02f123df07b6     # NVlabs/cvdp_benchmark, 8 June 2026
+  DATASET_REV: 5b807d945f6a99aa645f7e43a64a2115e281b4bf  # nvidia/cvdp-benchmark-dataset, 21 July 2026
+
+jobs:
+  m0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h /
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Fetch the harness at a pinned commit
+        run: |
+          git clone -q https://github.com/NVlabs/cvdp_benchmark.git cvdp
+          git -C cvdp checkout -q "$CVDP_SHA"
+          pip install -q -r cvdp/requirements.txt
+          cp cvdp/.env.example cvdp/.env
+          echo "OSS_SIM_IMAGE=nvidia/cvdp-sim:v1.0.0" >> cvdp/.env
+
+      - name: Build the simulation image
+        run: docker build -q -f cvdp/docker/Dockerfile.sim -t nvidia/cvdp-sim:v1.0.0 cvdp
+
+      - name: Fetch the dataset at a pinned revision
+        run: |
+          mkdir -p data
+          base="https://huggingface.co/datasets/nvidia/cvdp-benchmark-dataset/resolve/$DATASET_REV"
+          for f in agentic_code_generation_no_commercial agentic_heavy_code_generation_no_commercial; do
+            curl -sSfL -o "data/$f.jsonl" "$base/cvdp_v1.1.0_$f.jsonl"
+          done
+          if [ "${{ inputs.split }}" = heavy ]; then
+            mkdir -p data/heavy
+            tree="https://huggingface.co/api/datasets/nvidia/cvdp-benchmark-dataset/tree/$DATASET_REV/cvdp_v1.1.0_agentic_heavy_code_generation_public"
+            for b in $(curl -sSf "$tree" | python3 -c "import json,sys;[print(x['path'].rsplit('/',1)[1]) for x in json.load(sys.stdin) if x['path'].endswith('.bundle')]"); do
+              curl -sSfL -o "data/heavy/$b" "$base/cvdp_v1.1.0_agentic_heavy_code_generation_public/$b"
+            done
+            echo "CVDP_HEAVY_REPOS_PATH=$PWD/data/heavy" >> cvdp/.env
+          fi
+
+      - name: Inventory (frozen problem list)
+        run: |
+          python3 tools/inventory.py data/*.jsonl | tee inventory.md
+          cat inventory.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Golden check on the harness's example problems
+        working-directory: cvdp
+        run: |
+          ./run_benchmark.py -f example_dataset/cvdp_v1.1.0_example_agentic_code_generation_no_commercial_with_solutions.jsonl -p ../work_golden
+          python3 -c "import json;r=json.load(open('../work_golden/report.json'));print(json.dumps(r,indent=1)[:4000])" | tee -a ../golden.txt
+
+      - name: Null agent on the ${{ inputs.split }} split
+        run: |
+          docker build -q -t cvdp-null-agent agents/null
+          f=data/agentic_code_generation_no_commercial.jsonl
+          [ "${{ inputs.split }}" = heavy ] && f=data/agentic_heavy_code_generation_no_commercial.jsonl
+          cd cvdp && ./run_benchmark.py -f "../$f" -l -g cvdp-null-agent -p ../work_null
+
+      - name: Summary
+        if: always()
+        run: |
+          for d in work_golden work_null; do
+            [ -f "$d/report.json" ] && { echo "### $d"; echo '```'; head -c 6000 "$d/report.json"; echo; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          done
+          df -h / >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m0-${{ inputs.split }}
+          path: |
+            inventory.md
+            work_golden/report.json
+            work_golden/raw_result.json
+            work_null/report.json
+            work_null/raw_result.json
+          if-no-files-found: warn
