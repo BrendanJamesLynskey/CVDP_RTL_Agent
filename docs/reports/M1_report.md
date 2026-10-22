@@ -26,7 +26,7 @@
   (`sk-or-…`, `Bearer …`, `Authorization…`, and the literal key value). Request headers are never traced.
   **Confirmed:** `rundir/` is kept by the harness, so these land in
   `work/<cvdp_agentic_name>/harness/<n>/rundir/agent_out/` after the harness has run its tests (checked in local
-  runs and in the sweep artifacts).
+  runs; in Actions the sweep's upload step found them, 15 files for 2 problems).
 - **Images** (`.github/workflows/images.yml`): `ghcr.io/brendanjameslynskey/cvdp-sim:8e894cf` built from the
   pinned harness's `docker/Dockerfile.sim`, and `ghcr.io/brendanjameslynskey/cvdp-rtl-agent:<sha>` on top of it
   (`<sha>` is the last commit that changed `agent/` or `docker/`). Each is built natively on `ubuntu-24.04` and
@@ -82,7 +82,8 @@ Local, in this session (Docker 29.9 with the daemon started by hand):
 - The real-tool test (Icarus compile, a self-checking testbench passing and then catching a bug) inside the agent
   image.
 
-**The M0 gap: are null-agent failures genuine test failures?** Yes, on both splits.
+**The M0 gap: are null-agent failures genuine test failures?** On the agentic split, yes, all of them. On the
+heavy split, yes for 72 of 75 problems; 3 are not shown to be (below).
 
 `tools/log_check.py` now reads every per-test log the harness writes and sorts it into `tests_failed` (pytest
 ran the hidden tests and they failed), `build_failed` (the tests ran but the design did not compile; the compiler's
@@ -95,7 +96,8 @@ and dataset):
 | agentic (92 problems) | 97 | 36 | 61 | 0 | 0 |
 | heavy (75 problems) | 81 | 54 | 19 | 8 | 0 |
 
-- **Agentic split: every null failure is the tests running and failing.** An example `tests_failed` log
+- **Agentic split: every null failure comes from the hidden tests run against the unedited tree**; no missing
+  file, no harness error. An example `tests_failed` log
   (`AES_encryption_decryption/reports/12.txt`): cocotb runs `test_aes_decrypt`, `TESTS=1 PASS=0 FAIL=1`,
   `ERROR: Failed 1 of 1 tests.` The `build_failed` logs are what an unedited tree should give: the most common
   compiler messages are `Unable to find the root module "<name>"` for the module the task asks the agent to write
@@ -114,9 +116,9 @@ and dataset):
   - 5 (`enso` 3, 45, 54, 60 and `verilog_axi` 1, all named `*_tb_test.txt`) come from a second, non-pytest test
     step ("Compiling… Executing…") that the classifier does not parse; they ran.
   - **3 cannot be confirmed: `i2c` problems 7, 46 and 49.** Each log is about 100 bytes: the harness started the
-    test container and cleaned up, with no test output at all. That is not a missing bundle (the repository was
-    cloned for the other `i2c` problems in the same run), but it is not a test failure either. These three should
-    be treated as suspect in the heavy split until an agent run shows them producing test output.
+    test container and cleaned up, with no test output at all. The log does not say why (a missing bundle, a
+    harness error, or a test step that prints nothing); it is not shown to be a test failure. These three should
+    be treated as suspect in the heavy split until a run shows them producing test output.
 
 The per-test logs are in the artifacts of those runs (the artifact store was not reachable from this session, so
 the reading above is from the classifier's job summary, not from downloaded files).
@@ -185,8 +187,9 @@ What the traces show:
 - **Self-check was used less than hoped.** Haiku ran a testbench (its own or one under `verif/`) in 3 of 10
   problems; DeepSeek in 7 of 10. Haiku often submitted on compile and lint alone. Whether the testbench
   step pays for itself is the M3 ablation; this run is not evidence either way.
-- **DeepSeek spent whole replies on reasoning.** 8 of its 49 calls returned an empty reply after using the full
-  `max_tokens` (4,000 for plan, 32,000 for edit) on reasoning tokens, which are billed. On
+- **DeepSeek spent whole replies on reasoning.** 8 of its 49 calls (6 plans, 2 edits) returned an empty reply
+  after using the full `max_tokens` (4,000 for plan, 32,000 for edit) on reasoning tokens, which are billed:
+  $0.0594 together, 22% of its spend. On
   `dynamic_equalizer_0004` the only edit call came back empty after 112 s and $0.017, so the agent changed
   nothing and that problem was lost to the null result.
 - **One reflect reply was raw tool-call markup** (DeepSeek), not JSON; the parser fell back to `submit`.
@@ -198,8 +201,8 @@ What the traces show:
 
 **Total spend: $0.3937**, all provider-reported: $0.1172 (Haiku, 10 problems), $0.2704 (DeepSeek, 10 problems),
 $0.0060 for one trial problem (Haiku, `lfsr_0001`, before the prompt fix in `e030868`; it passed), and $0.0000147
-for the two one-word key-check calls. Plus $0.0093 for the 2-problem Actions sweep (run 39864754142). **Grand total for M1: $0.4030**, of a
-$5 allowance.
+for the two one-word key-check calls. Plus $0.0093 for the 2-problem Actions sweep (run 39864754142). **Grand total for M1: $0.4030**, of
+a $5 allowance.
 
 ## Known gaps
 
@@ -237,8 +240,8 @@ $5 allowance.
   patch) is not passed to agents, so the agent's own system prompt is all the model sees.
 - **The harness passes an env var only if it is non-empty**, so `CVDP_SELF_CHECK=0` works (it is `"0"`), but an
   empty input would silently fall back to the default.
-- **`workflow_dispatch` on a branch works** from the API with `ref: m1-agent` once the PR exists, so sweeps can be
-  run before merging.
+- **`workflow_dispatch` on a branch works** from the API with `ref: m1-agent` (used for every dispatch listed
+  above), so sweeps can be run before merging.
 - The verif testbenches in some problems dump VCDs into the working directory; the agent deletes waveform files
   under `agent_tb/` after each run, so the harness's 50 MB directory monitor is not tripped.
 
