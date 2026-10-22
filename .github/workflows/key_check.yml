@@ -1,0 +1,21 @@
+# Checks the OPENROUTER_API_KEY secret works. Prints only its length class, spend limit and usage; never the key
+# or its label (the label holds part of the key).
+name: Key check
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: OpenRouter key
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          if [ -z "$OPENROUTER_API_KEY" ]; then echo "::error::secret is empty"; exit 1; fi
+          code=$(curl -s -o key.json -w '%{http_code}' -H "Authorization: Bearer $OPENROUTER_API_KEY" https://openrouter.ai/api/v1/key)
+          echo "HTTP $code"
+          python3 -c "import json;d=json.load(open('key.json')).get('data',{});print({k:d.get(k) for k in ('limit','limit_remaining','usage','is_free_tier')})"
+          rm -f key.json
+          [ "$code" = 200 ]
