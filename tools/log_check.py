@@ -33,6 +33,19 @@ def classify(text):
     return "harness_error"
 
 
+def build_errors(log_path, n=6):
+    """For a build failure, the compiler's own messages: they go to rundir/{sim,build}.log, not to the report."""
+    pdir = os.path.dirname(os.path.dirname(log_path))
+    num = os.path.basename(log_path).split(".")[0].split("_")[0]
+    out = []
+    for name in ("build.log", "sim.log"):
+        f = os.path.join(pdir, "harness", num, "rundir", name)
+        if os.path.exists(f):
+            out += [ln.strip()[:200] for ln in open(f, errors="replace")
+                    if re.search(r"(?i)error|unknown|not found|unable|give up", ln)]
+    return out[:n]
+
+
 def excerpt(text, n=12):
     lines = [ln for ln in text.splitlines() if re.search(r"(?i)assert|fail|error|passed", ln)]
     return "\n".join(ln[:200] for ln in lines[:n])
@@ -51,6 +64,18 @@ def main(work, show):
             print(f"\n**{k}**, e.g. `{os.path.relpath(f, work)}`:\n```")
             print(excerpt(open(f, errors="replace").read()) or "(empty)")
             print("```")
+        msgs = collections.Counter()
+        for f in kinds.get("build_failed", []):
+            for m in build_errors(f)[:1] or ["(no build.log/sim.log in rundir)"]:
+                msgs[re.sub(r"\S*/", "", re.sub(r":\d+", "", m))[:110]] += 1
+        if msgs:
+            print("\n**build_failed**, first compiler message per log (paths and line numbers stripped):\n")
+            for m, c in msgs.most_common(15):
+                print(f"- {c} × `{m}`")
+        for f in kinds.get("harness_error", []):
+            text = open(f, errors="replace").read()
+            first = " | ".join(ln.strip()[:120] for ln in text.splitlines()[:3]) or "(empty)"
+            print(f"- harness_error `{os.path.relpath(f, work)}` ({len(text)} bytes): {first}")
 
 
 if __name__ == "__main__":
