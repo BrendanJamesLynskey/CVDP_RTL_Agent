@@ -5,7 +5,19 @@ problems. It writes and fixes SystemVerilog, **checks its own work in simulation
 Verilator and cocotb), and records what every problem cost. Results are reported as pass rate, **cost per solved
 problem** and wall time, by category, against a null agent and against published leaderboard rows.
 
-**Status:** milestone 0 (harness running in GitHub Actions). No results yet.
+**Status:** milestone 0 done (22 October 2026). No agent results yet.
+
+| M0 check | x86-64 (`ubuntu-24.04`) | Arm64 (`ubuntu-24.04-arm`) |
+|---|---|---|
+| Golden: harness example problems with their solutions | 1/1 | 1/1 |
+| Null agent, agentic split (92) | 0/92 | 0/92 |
+| Null agent, heavy split (75) | 0/75 | not run |
+| Whole job, including building the simulation image | 23 min | 18 min |
+
+Runs: [39847610657](https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent/actions/runs/39847610657),
+[39851112062](https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent/actions/runs/39851112062) (Arm64),
+[39851116748](https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent/actions/runs/39851116748) (heavy). No problem
+passes without edits, so every pass an agent gets is its own.
 
 ## What it is tested on
 
