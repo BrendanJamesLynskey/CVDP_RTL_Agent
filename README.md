@@ -17,8 +17,20 @@ The free (open-source tools only) agentic splits of CVDP 1.1.0, frozen by hash:
 | `agentic_heavy_code_generation_no_commercial` | `809916fa3248a4b2` | 75 | cid003 6; cid004 6; cid005 7; bug fixing in large real repositories (cid016) 56 |
 
 The verification-writing categories (testbench stimulus, checkers and assertions; cid012–014) are all in the
-commercial split, which needs Cadence Xcelium, so they are out of scope. Verification here means the agent's own
-check-before-submit loop, and whether it pays for itself is one of the ablations.
+commercial split, which needs Cadence Xcelium. Two things stand in for them:
+
+- **The agent's own check-before-submit loop.** Whether it pays for itself is the main ablation.
+- **An open verification track on AMBA IP (M5).** Permissively licensed AXI4-Lite, AXI-Stream and APB blocks with
+  seeded bugs. The agent writes a test plan, a cocotb testbench with functional coverage, and SVA properties
+  checked formally with SymbiYosys. It is scored by how many seeded bugs it catches (mutant kill rate) and by false
+  alarms on the clean RTL, never by its own report.
+
+**AMBA slice.** 20 of the free problems involve AMBA interfaces (AXI4-Lite, AXI-Stream, APB): 10 in each split,
+mostly spec-to-RTL in the first and bug fixing in real repositories (verilog-axi, verilog-ethernet, axis) in the
+second. Results are reported for this slice on its own as well as overall.
+
+**Arm64.** Every workflow runs on GitHub's Arm64 runners as well as x86-64, and the sweep tables give wall time on
+both.
 
 ## Rules
 
@@ -31,7 +43,8 @@ check-before-submit loop, and whether it pays for itself is one of the ablations
 ## Layout
 
 - [`.github/workflows/m0_harness.yml`](.github/workflows/m0_harness.yml): M0. Builds the harness's simulation
-  image, checks the harness's example problems score 100% with their solutions, and runs the null agent.
+  image, checks the harness's example problems score 100% with their solutions, and runs the null agent; on an
+  x86-64 or an Arm64 runner.
 - [`agents/null/Dockerfile`](agents/null/Dockerfile): the null agent (changes nothing), the floor.
 - [`tools/inventory.py`](tools/inventory.py): hashes the dataset files and counts problems per category.
 
@@ -44,6 +57,7 @@ check-before-submit loop, and whether it pays for itself is one of the ablations
 | M2 | Sweep the free agentic split with two cheap models and one open-weights model |
 | M3 | Ablations: self-check on and off, lint on and off, turn and budget caps; failure taxonomy |
 | M4 | Write-up, logs packed for the Si2 LBC-bench leaderboard |
+| M5 | Open AMBA verification track: test plan, cocotb testbench with coverage, SVA with SymbiYosys; scored by seeded-bug kill rate and false alarms |
 
 ## Licence
 

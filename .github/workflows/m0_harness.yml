@@ -12,6 +12,11 @@ on:
         type: choice
         options: [agentic, heavy]
         default: agentic
+      runner:
+        description: "Runner: x86-64 or Arm64 (both free for public repos)"
+        type: choice
+        options: [ubuntu-24.04, ubuntu-24.04-arm]
+        default: ubuntu-24.04
 
 env:
   CVDP_SHA: 8e894cf74414ab1eaea1e2b4e80a02f123df07b6     # NVlabs/cvdp_benchmark, 8 June 2026
@@ -19,7 +24,7 @@ env:
 
 jobs:
   m0:
-    runs-on: ubuntu-24.04
+    runs-on: ${{ inputs.runner }}
     timeout-minutes: 300
     steps:
       - uses: actions/checkout@v4
@@ -87,7 +92,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: m0-${{ inputs.split }}
+          name: m0-${{ inputs.split }}-${{ inputs.runner }}
           path: |
             inventory.md
             work_golden/report.json
