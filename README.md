@@ -5,8 +5,11 @@ problems. It writes and fixes SystemVerilog, **checks its own work in simulation
 Verilator and cocotb), and records what every problem cost. Results are reported as pass rate, **cost per solved
 problem** and wall time, by category, against a null agent and against published leaderboard rows.
 
-**Status:** milestone 1 in review (the agent image, the sweep workflow and a 10-problem live check; see
-[`docs/reports/M1_report.md`](docs/reports/M1_report.md)). Milestone 0 done (22 October 2026).
+**Status:** milestone 1 in review: the agent image, the sweep workflow and a 10-problem live check
+([`docs/reports/M1_report.md`](docs/reports/M1_report.md)). On 10 seeded problems from the agentic split,
+`anthropic/claude-haiku-5.5` passed 6/10 (Wilson 95% [31, 83]%) for $0.117 in all, and the open-weights
+`deepseek/deepseek-v4.1-flash-1017` 5/10 ([24, 76]%) for $0.270; ten problems cannot separate the two. The null
+agent passes none. Milestone 0 done (22 October 2026).
 
 | M0 check | x86-64 (`ubuntu-24.04`) | Arm64 (`ubuntu-24.04-arm`) |
 |---|---|---|

@@ -48,7 +48,7 @@
 - **Whole-run spend guard**: each agent writes its cost to a ledger directory shared through
   `CVDP_AGENT_MOUNTS`; an agent that starts after the ledger has passed `budget_usd × problems × 1.2` stops before
   its first LLM call (`stop_reason: run_budget_exhausted`; the problem is scored as the harness finds it).
-- **Tests** (`tests/`, 40, run on every push and pull request by `.github/workflows/tests.yml`): each stop rule,
+- **Tests** (`tests/`, 41, run on every push and pull request by `.github/workflows/tests.yml`): each stop rule,
   path refusal, the budget cap, the best-edit-kept rule, each switch, unreported cost staying `null`, the ledger
   guard, the exit-0 rule; trace redaction (a fake key printed by a real tool never reaches the trace); `collect.py`
   and `table.py` on a fixture work directory shaped like a real `raw_result.json`; one test that runs real Icarus;
@@ -61,7 +61,81 @@ prints):
 
 | Run | Workflow | What it shows | status, conclusion |
 |---|---|---|---|
-RUNS_#### anthropic/claude-haiku-5.5
+| [39861781904](https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent/actions/runs/39861781904) | Images | `81a591b` push: sim image built natively on x86-64 and Arm64 and pushed (about 19 min), joined; agent image built on both and joined | completed, success |
+| [39864535195](https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent/actions/runs/39864535195) | Images | `e030868` push: sim image found in GHCR and skipped on both arches; agent image rebuilt and joined (2 min) | completed, success |
+| [39867108886](https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent/actions/runs/39867108886) | Tests | `11168e9` push: pytest (the Icarus test runs here: the workflow installs Icarus) | completed, success |
+| [39862078105](https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent/actions/runs/39862078105) | Sweep (PR smoke) | `81a591b`: `fake` provider on 2 problems, end to end; the sim image was not in GHCR yet, so it built from source (12 min) | completed, success |
+| [39867112972](https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent/actions/runs/39867112972) | Sweep (PR smoke) | `11168e9`: the same, pulling the sim image from GHCR (1 min) | completed, success |
+| [39864345025](https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent/actions/runs/39864345025) | Sweep (dispatch) | `fake` model on 1 problem, both images pulled from GHCR | completed, success |
+| [39864754142](https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent/actions/runs/39864754142) | Sweep (dispatch) | **real model in Actions**: `anthropic/claude-haiku-5.5` on 2 problems (`lfsr_0001`, `axis_to_uart_0001`), Arm64 runner: 2/2 passed, $0.0093; the key reached the agent only through `CVDP_AGENT_ENV`, and the pre-upload check found no key in the work dir | completed, success |
+| [39867112437](https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent/actions/runs/39867112437) | M0 harness | agentic split, x86-64, sim image pulled from GHCR: golden 1/1, null agent, per-test logs uploaded and classified (10 min, against 23 min when it built the image) | completed, success |
+| [39867109124](https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent/actions/runs/39867109124) | M0 harness | heavy split, x86-64, the same (10 min) | completed, success |
+| [39864341750](https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent/actions/runs/39864341750) | M0 harness | agentic split on Arm64 with the GHCR multi-arch image (6 min, against 18 min at M0) | completed, success |
+
+Local, in this session (Docker 29.9 with the daemon started by hand):
+
+- The simulation image built from the pinned harness, and the agent image on it.
+- The null agent through the harness on 2 problems, to get a real `raw_result.json` for the test fixture.
+- The `fake` agent through the harness on the 2 smoke problems with `tools/sweep.sh`: both scored, both
+  `agent_out/` present in the work dir after the tests ran, `tools/smoke_check.py` passes.
+- The generated `docker-compose-agent.yml` lists the forwarded variables by name only (no values).
+- The real-tool test (Icarus compile, a self-checking testbench passing and then catching a bug) inside the agent
+  image.
+
+**The M0 gap: are null-agent failures genuine test failures?** Yes, on both splits.
+
+`tools/log_check.py` now reads every per-test log the harness writes and sorts it into `tests_failed` (pytest
+ran the hidden tests and they failed), `build_failed` (the tests ran but the design did not compile; the compiler's
+own message is taken from `rundir/sim.log` or `build.log`), `harness_error` (no pytest session) or `passed`. The
+M0 workflow prints this into its job summary. From runs 39867112437 and 39867109124 (null agent, pinned harness
+and dataset):
+
+| Split | Per-test logs | tests_failed | build_failed | harness_error | passed |
+|---|---|---|---|---|---|
+| agentic (92 problems) | 97 | 36 | 61 | 0 | 0 |
+| heavy (75 problems) | 81 | 54 | 19 | 8 | 0 |
+
+- **Agentic split: every null failure is the tests running and failing.** An example `tests_failed` log
+  (`AES_encryption_decryption/reports/12.txt`): cocotb runs `test_aes_decrypt`, `TESTS=1 PASS=0 FAIL=1`,
+  `ERROR: Failed 1 of 1 tests.` The `build_failed` logs are what an unedited tree should give: the most common
+  compiler messages are `Unable to find the root module "<name>"` for the module the task asks the agent to write
+  (`axis_to_uart_tx`, `des3_enc`, `async_fifo`, …), plus 11 × `Preprocessor failed with 1 errors` (an include the
+  problem's files do not yet provide, by all appearances; the summary does not show which file, so this is not
+  confirmed one by one). In 8 logs Icarus segfaulted after failing to find the root module; the failure is the
+  same, the segfault is a tool quirk. No log shows a missing bundle or a harness error. Locally, the null agent on
+  `lfsr_0001` and `barrel_shifter_0002` gives the same picture (RTL compiles, cocotb assertions fail:
+  `LFSR did not initialize correctly, got 00000001, expected 170`).
+- **Heavy split: 73 of 81 logs are genuine; 8 are not shown to be.** 54 are test failures (e.g.
+  `2dconv-FPGA/reports/9.txt`: `AssertionError: [MAIN C003] DUT=0 != Exp=-4096`). 19 are build failures with real
+  compiler messages: a missing root module the task asks for (`xcvr_ctrl`, `usb`, `uart_tx`, `rvx`, …), the
+  seeded bug itself (`syntax error` in `in_fifo.v`, `phy_rx.v`, `cv32e40p_load_store_unit.sv`; `can not select
+  part of scalar` in `rvx.v`), or a port or parameter the task adds (`DMA_IMM_ENABLE`, `enable_rr`), plus 5 ×
+  `Preprocessor failed`. The 8 `harness_error` logs split in two:
+  - 5 (`enso` 3, 45, 54, 60 and `verilog_axi` 1, all named `*_tb_test.txt`) come from a second, non-pytest test
+    step ("Compiling… Executing…") that the classifier does not parse; they ran.
+  - **3 cannot be confirmed: `i2c` problems 7, 46 and 49.** Each log is about 100 bytes: the harness started the
+    test container and cleaned up, with no test output at all. That is not a missing bundle (the repository was
+    cloned for the other `i2c` problems in the same run), but it is not a test failure either. These three should
+    be treated as suspect in the heavy split until an agent run shows them producing test output.
+
+The per-test logs are in the artifacts of those runs (the artifact store was not reachable from this session, so
+the reading above is from the classifier's job summary, not from downloaded files).
+
+## Results of the live check
+
+10 problems from the 92-problem agentic split, picked in code (`python3 tools/pick_ids.py <split> --seed 1`:
+cid003 3, cid004 3, cid005 2, cid016 2, exactly 2 from the AMBA slice), listed in `tools/m1_ids.txt`. Two models,
+both checked against `https://openrouter.ai/api/v1/models` on the day:
+
+- `anthropic/claude-haiku-5.5` (cheap frontier model; $0.10 / $0.50 per M input / output tokens at the time);
+- `deepseek/deepseek-v4.1-flash-1017` (open weights; $0.15 / $0.60 per M).
+
+Budget $0.10 per problem, 10 turns, self-check and lint on, 2 threads, wall cap 480 s. Run locally on x86-64 with
+`tools/sweep.sh` and the agent image built from commit `e030868` (the only later change to `agent/` removes an
+unused constant). Pass/fail is the CVDP harness's; cost and tokens are OpenRouter's reported usage. The CSVs are
+in [`docs/reports/m1/`](m1/), the table below is `tools/table.py` on them, unedited.
+
+#### anthropic/claude-haiku-5.5
 
 | Slice | pass@1 [Wilson 95%] | Cost | $/problem | $/solved | Median wall | Tokens |
 |---|---|---|---|---|---|---|
@@ -86,36 +160,6 @@ Stop reasons: give_up 1, submit 9
 | **All** | 5/10 = 50.0% [23.7, 76.3] | $0.2704 | $0.0270 | $0.0541 | 144 s | 542,459 |
 
 Stop reasons: submit 9, wall_time 1
-
-Local, in this session (Docker 29.9 with the daemon started by hand):
-
-- The simulation image built from the pinned harness, and the agent image on it.
-- The null agent through the harness on 2 problems, to get a real `raw_result.json` for the test fixture.
-- The `fake` agent through the harness on the 2 smoke problems with `tools/sweep.sh`: both scored, both
-  `agent_out/` present in the work dir after the tests ran, `tools/smoke_check.py` passes.
-- The generated `docker-compose-agent.yml` lists the forwarded variables by name only (no values).
-- The real-tool test (Icarus compile, a self-checking testbench passing and then catching a bug) inside the agent
-  image.
-
-**The M0 gap: are null-agent failures genuine test failures?** Yes, on both splits.
-
-M0_LOGS
-
-## Results of the live check
-
-10 problems from the 92-problem agentic split, picked in code (`python3 tools/pick_ids.py <split> --seed 1`:
-cid003 3, cid004 3, cid005 2, cid016 2, exactly 2 from the AMBA slice), listed in `tools/m1_ids.txt`. Two models,
-both checked against `https://openrouter.ai/api/v1/models` on the day:
-
-- `anthropic/claude-haiku-5.5` (cheap frontier model; $0.10 / $0.50 per M input / output tokens at the time);
-- `deepseek/deepseek-v4.1-flash-1017` (open weights; $0.15 / $0.60 per M).
-
-Budget $0.10 per problem, 10 turns, self-check and lint on, 2 threads, wall cap 480 s. Run locally on x86-64 with
-`tools/sweep.sh` and the agent image built from commit `e030868` (the only later change to `agent/` removes an
-unused constant). Pass/fail is the CVDP harness's; cost and tokens are OpenRouter's reported usage. The CSVs are
-in [`docs/reports/m1/`](m1/), the table below is `tools/table.py` on them, unedited.
-
-TABLE
 
 Per problem (pass from the harness; cost from the provider):
 
@@ -154,13 +198,16 @@ What the traces show:
 
 **Total spend: $0.3937**, all provider-reported: $0.1172 (Haiku, 10 problems), $0.2704 (DeepSeek, 10 problems),
 $0.0060 for one trial problem (Haiku, `lfsr_0001`, before the prompt fix in `e030868`; it passed), and $0.0000147
-for the two one-word key-check calls. CI_SPEND
+for the two one-word key-check calls. Plus $0.0093 for the 2-problem Actions sweep (run 39864754142). **Grand total for M1: $0.4030**, of a
+$5 allowance.
 
 ## Known gaps
 
 - **GHCR packages are private until you flip them.** `GITHUB_TOKEN` can push packages but cannot change their
   visibility. Once: GitHub → your profile → Packages → `cvdp-sim` and `cvdp-rtl-agent` → Package settings →
   Change visibility → Public. The workflows log in to GHCR, so they work either way.
+- **Three heavy-split problems may not be scorable**: `i2c` 7, 46 and 49 produced no test output under the null
+  agent (see above). Check them before trusting a heavy-split number.
 - **The heavy split is untested with the agent.** Heavy problems use git workspace volumes, not bind mounts, for
   the design tree; `rundir/` is still a bind mount, so `agent_out/` should land as on the agentic split, but no
   agent run on the heavy split has been made yet.
