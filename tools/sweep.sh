@@ -61,4 +61,5 @@ import glob, json
 total = sum(float(json.load(open(f)).get('cost_usd') or 0) for f in glob.glob('$ledger/*.json'))
 print(f'Run spend (sum of provider-reported cost): \${total:.4f}; guard \$$CVDP_RUN_BUDGET_USD')
 " >> "$WORK/table.md"
+python3 "$repo/tools/log_check.py" "$WORK" >> "$WORK/table.md"
 cat "$WORK/table.md"

@@ -62,3 +62,14 @@ def test_table_markdown():
     assert "| AMBA slice | 1/1" in md
     assert "| **All** | 2/4 = 50.0% [15.0, 85.0] | $0.0620 (1 unreported) | $0.0155 | $0.0310 | 40 s |" in md
     assert "Stop reasons: budget 1, give_up 1, max_turns 1, submit 1" in md
+
+
+def test_log_check_classifies():
+    import log_check
+
+    ran = "============================= test session starts ==============================\n"
+    assert log_check.classify("") == "harness_error"
+    assert log_check.classify("fatal: bundle not found\n") == "harness_error"
+    assert log_check.classify(ran + "AssertionError: bad\nERROR: Failed 2 of 2 tests.\nFAILED\n") == "tests_failed"
+    assert log_check.classify(ran + "subprocess.CalledProcessError: iverilog\n1 failed in 0.5s\n") == "build_failed"
+    assert log_check.classify(ran + "============================== 1 passed in 4.50s ======\n") == "passed"

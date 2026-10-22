@@ -146,7 +146,7 @@ Locally, with the harness in `cvdp/`, the dataset in `data/` and both images in 
 - [`agents/null/Dockerfile`](agents/null/Dockerfile): the null agent (changes nothing), the floor.
 - [`tools/`](tools/): `collect.py` (raw_result.json + summary.json → one CSV row per problem), `table.py` (pass@1
   with a Wilson 95% interval, $/problem, $/solved problem, median wall time, by category and AMBA slice),
-  `sweep.sh`, `subset.py`, `pick_ids.py` (the seeded M1 sample, `m1_ids.txt`), `amba_scan.py` and `amba_ids.txt`,
+  `sweep.sh`, `subset.py`, `log_check.py` (classifies per-test logs: tests failed, build failed or harness error), `pick_ids.py` (the seeded M1 sample, `m1_ids.txt`), `amba_scan.py` and `amba_ids.txt`,
   `inventory.py`.
 - [`tests/`](tests/): the graph with the fake provider (stop rules, path refusal, budget, best edit kept, switches),
   trace redaction, the results tools on a fixture, and the README graph drift test.

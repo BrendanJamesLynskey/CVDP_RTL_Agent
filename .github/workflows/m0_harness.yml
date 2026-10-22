@@ -108,6 +108,9 @@ jobs:
           for d in work_golden work_null; do
             [ -f "$d/report.json" ] && { echo "### $d"; echo '```'; head -c 6000 "$d/report.json"; echo; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           done
+          for d in work_golden work_null; do
+            [ -d "$d" ] && python3 tools/log_check.py "$d" --excerpt | tee -a "$GITHUB_STEP_SUMMARY"
+          done
           df -h / >> "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/upload-artifact@v4

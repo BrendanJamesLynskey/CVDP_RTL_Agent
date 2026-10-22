@@ -1,0 +1,11 @@
+id,cid,difficulty,pass,tests,tests_passed,amba,model,provider,cost_usd,cost_unreported_calls,prompt_tokens,completion_tokens,llm_calls,tool_calls,turns,wall_time_s,harness_agent_s,stop_reason,kept,agent_status,self_check,lint,max_turns,budget_usd,runner,summary_found
+cvdp_agentic_DES_0003,cid004,medium,0,1,0,0,deepseek/deepseek-v4.1-flash-1017,openrouter,0.01796469,0,38296,21936,3,1,1,59.1,63.96,submit,last,completed,1,1,10,0.1,local,1
+cvdp_agentic_axis_to_uart_0001,cid003,medium,1,1,1,1,deepseek/deepseek-v4.1-flash-1017,openrouter,0.02441347,0,10704,18578,5,5,2,44.11,48.94,submit,last,completed,1,1,10,0.1,local,1
+cvdp_agentic_barrel_shifter_0002,cid004,easy,1,1,1,0,deepseek/deepseek-v4.1-flash-1017,openrouter,0.01891325,0,18016,22470,9,16,4,137.46,141.85,submit,last,completed,1,1,10,0.1,local,1
+cvdp_agentic_csr_using_apb_interface_0001,cid003,medium,0,1,0,1,deepseek/deepseek-v4.1-flash-1017,openrouter,0.05014188,0,5094,68368,5,2,2,429.01,433.2,submit,last,completed,1,1,10,0.1,local,1
+cvdp_agentic_dual_port_memory_0001,cid016,easy,1,1,1,0,deepseek/deepseek-v4.1-flash-1017,openrouter,0.01326418,0,9371,24749,7,10,3,220.14,225.26,submit,last,completed,1,1,10,0.1,local,1
+cvdp_agentic_dynamic_equalizer_0004,cid004,hard,0,1,0,0,deepseek/deepseek-v4.1-flash-1017,openrouter,0.01947056,0,10717,36064,3,2,1,151.2,155.6,submit,none,completed_no_patch,1,1,10,0.1,local,1
+cvdp_agentic_lfsr_0001,cid016,easy,1,1,1,0,deepseek/deepseek-v4.1-flash-1017,openrouter,0.00048776,0,4117,1284,3,3,1,13.29,17.85,submit,last,completed,1,1,10,0.1,local,1
+cvdp_agentic_phase_rotation_0010,cid005,medium,0,1,0,0,deepseek/deepseek-v4.1-flash-1017,openrouter,0.04531452,0,49826,30118,3,5,1,70.13,74.68,submit,last,completed,1,1,10,0.1,local,1
+cvdp_agentic_phase_rotation_0028,cid005,hard,0,1,0,0,deepseek/deepseek-v4.1-flash-1017,openrouter,0.03790868,0,27245,66706,5,6,2,262.04,266.49,submit,last,completed,1,1,10,0.1,local,1
+cvdp_agentic_ttc_lite_0001,cid003,medium,1,1,1,0,deepseek/deepseek-v4.1-flash-1017,openrouter,0.04257056,0,11435,67365,6,7,3,528.45,533.13,wall_time,last,completed,1,1,10,0.1,local,1

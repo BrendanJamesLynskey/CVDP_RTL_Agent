@@ -1,0 +1,11 @@
+id,cid,difficulty,pass,tests,tests_passed,amba,model,provider,cost_usd,cost_unreported_calls,prompt_tokens,completion_tokens,llm_calls,tool_calls,turns,wall_time_s,harness_agent_s,stop_reason,kept,agent_status,self_check,lint,max_turns,budget_usd,runner,summary_found
+cvdp_agentic_DES_0003,cid004,medium,1,1,1,0,anthropic/claude-haiku-5.5,openrouter,0.0225839,0,119939,21180,7,6,3,96.52,100.67,submit,last,completed,1,1,10,0.1,local,1
+cvdp_agentic_axis_to_uart_0001,cid003,medium,1,1,1,1,anthropic/claude-haiku-5.5,openrouter,0.0113286,0,27441,17169,7,6,3,75.76,80.03,submit,last,completed,1,1,10,0.1,local,1
+cvdp_agentic_barrel_shifter_0002,cid004,easy,1,1,1,0,anthropic/claude-haiku-5.5,openrouter,0.0030976,0,12961,3603,5,8,2,20.96,25.59,submit,last,completed,1,1,10,0.1,local,1
+cvdp_agentic_csr_using_apb_interface_0001,cid003,medium,0,1,0,1,anthropic/claude-haiku-5.5,openrouter,0.0035556,0,5951,5921,3,3,1,26.3,30.68,submit,last,completed,1,1,10,0.1,local,1
+cvdp_agentic_dual_port_memory_0001,cid016,easy,1,1,1,0,anthropic/claude-haiku-5.5,openrouter,0.0021878,0,6633,3049,3,1,1,17.91,22.33,submit,last,completed,1,1,10,0.1,local,1
+cvdp_agentic_dynamic_equalizer_0004,cid004,hard,1,1,1,0,anthropic/claude-haiku-5.5,openrouter,0.0205716,0,52181,30707,9,12,4,128.03,132.68,submit,last,completed,1,1,10,0.1,local,1
+cvdp_agentic_lfsr_0001,cid016,easy,1,1,1,0,anthropic/claude-haiku-5.5,openrouter,0.0019817,0,6592,2645,3,3,1,14.69,19.25,submit,last,completed,1,1,10,0.1,local,1
+cvdp_agentic_phase_rotation_0010,cid005,medium,0,1,0,0,anthropic/claude-haiku-5.5,openrouter,0.0106747,0,64527,8444,3,2,1,47.53,51.99,submit,last,completed,1,1,10,0.1,local,1
+cvdp_agentic_phase_rotation_0028,cid005,hard,0,1,0,0,anthropic/claude-haiku-5.5,openrouter,0.0099736,0,26571,14633,3,2,1,59.27,63.85,submit,last,completed,1,1,10,0.1,local,1
+cvdp_agentic_ttc_lite_0001,cid003,medium,0,1,0,0,anthropic/claude-haiku-5.5,openrouter,0.031209,0,80510,46316,21,50,10,200.66,205.16,give_up,last,completed,1,1,10,0.1,local,1
