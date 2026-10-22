@@ -194,6 +194,13 @@ def build(rt):
                 errors.append(f"{item['path']}: testbench ignored (self-check is off)")
                 continue
             try:
+                if not item["content"].strip():  # an existing testbench under verif/, run as it is
+                    full, rel = rt.files.resolve_edit(item["path"])
+                    if not rel.startswith("verif/") or not os.path.isfile(full):
+                        raise PathRefused(f"{item['path']}: no such testbench under verif/")
+                    tb_files.append(rel)
+                    tb_top = item["top"] or tb_top
+                    continue
                 tb_files.append(rt.files.write_tb(item["path"], item["content"]))
                 tb_top = item["top"] or tb_top
                 rt.tracer.log("tool", check="tb_write", command=f"write {tb_files[-1]}", exit_code=0, turn=turn)

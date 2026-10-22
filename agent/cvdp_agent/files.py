@@ -149,7 +149,6 @@ class DiffError(Exception):
     pass
 
 
-_HUNK = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 
 
 def apply_unified_diff(old_text, diff):

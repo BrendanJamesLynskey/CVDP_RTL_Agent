@@ -118,7 +118,7 @@ class Checker:
 
     def check_testbench(self, tb):
         if not tb or not tb.get("files"):
-            return {"ok": None, "summary": "no testbench written"}
+            return {"ok": None, "summary": "not run: your reply had no <tb> block (write one, or name one under verif/)"}
         files, inc = self._sources()
         tb_files = [os.path.join(self.root, f) for f in tb["files"]]
         top = tb.get("top") or ""

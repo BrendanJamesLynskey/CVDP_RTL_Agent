@@ -32,7 +32,9 @@ EDIT = """# Task
 # Current files
 {contents}
 {feedback}
-Make the changes now. Use one block per file, either the whole new file:
+Make the changes now. Your reply is applied to the files automatically and the checks you choose then run on
+them; you will see the results next turn. If a file needs no change, leave it out. Use one block per file, either
+the whole new file:
 <file path="rtl/name.sv">
 ...complete file contents...
 </file>
@@ -57,6 +59,8 @@ or a cocotb test (Python; `top` is the design's top module):
 <tb path="agent_tb/test_name.py" top="dut_module">
 ...
 </tb>
+or, to run a testbench that is already under verif/, name it with an empty body:
+<tb path="verif/existing_tb.sv" top="existing_tb"></tb>
 Keep simulations short (they time out after a minute) and do not dump waveforms."""
 
 TB_OFF = "Do not write a testbench."

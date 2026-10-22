@@ -220,3 +220,12 @@ def test_main_exits_zero_on_error(monkeypatch, task_tree):
     assert main([]) == 0
     s = json.load(open(task_tree / "rundir" / "agent_out" / "summary.json"))
     assert s["stop_reason"] == "error"
+
+
+def test_existing_verif_testbench_is_run_not_written(make_cfg, run_agent, task_tree):
+    (task_tree / "verif" / "adder_tb.sv").write_text("module adder_tb; endmodule\n")
+    blocks = ('<tb path="verif/adder_tb.sv" top="adder_tb"></tb>\n'
+              '<tb path="verif/missing_tb.sv" top="x"></tb>\n<tb path="rtl/adder.sv" top="x"></tb>\n')
+    _, _, checker = run_agent(make_cfg(), [PLAN, edit(extra=blocks), decide("submit")])
+    assert checker.requests[0][1] == {"files": ["verif/adder_tb.sv"], "top": "adder_tb"}
+    assert (task_tree / "verif" / "adder_tb.sv").read_text() == "module adder_tb; endmodule\n"
