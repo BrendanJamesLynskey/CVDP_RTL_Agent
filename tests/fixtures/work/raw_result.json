@@ -1,0 +1,106 @@
+{
+ "cvdp_agentic_lfsr_0001": {
+  "category": "cid016",
+  "difficulty": "easy",
+  "tests": [
+   {
+    "result": 0,
+    "log": "/home/runner/work/x/work/cvdp_agentic_lfsr/reports/1.txt",
+    "error_msg": null,
+    "execution": 1.7,
+    "pid": 100
+   }
+  ],
+  "errors": 0,
+  "agent_status": "completed",
+  "agent_returncode": 0,
+  "agent_execution": 42.5,
+  "agent_logfile": "/home/runner/work/x/work/cvdp_agentic_lfsr/reports/1_agent.txt"
+ },
+ "cvdp_agentic_barrel_shifter_0002": {
+  "category": "cid004",
+  "difficulty": "easy",
+  "tests": [
+   {
+    "result": 1,
+    "log": "/home/runner/work/x/work/cvdp_agentic_barrel_shifter/reports/2.txt",
+    "error_msg": null,
+    "execution": 1.7,
+    "pid": 100
+   }
+  ],
+  "errors": 1,
+  "agent_status": "completed",
+  "agent_returncode": 0,
+  "agent_execution": 42.5,
+  "agent_logfile": "/home/runner/work/x/work/cvdp_agentic_barrel_shifter/reports/2_agent.txt"
+ },
+ "cvdp_agentic_axis_to_uart_0001": {
+  "category": "cid003",
+  "difficulty": "medium",
+  "tests": [
+   {
+    "result": 0,
+    "log": "/home/runner/work/x/work/cvdp_agentic_axis_to_uart/reports/1.txt",
+    "error_msg": null,
+    "execution": 1.7,
+    "pid": 100
+   },
+   {
+    "result": 0,
+    "log": "/home/runner/work/x/work/cvdp_agentic_axis_to_uart/reports/1.txt",
+    "error_msg": null,
+    "execution": 1.7,
+    "pid": 101
+   }
+  ],
+  "errors": 0,
+  "agent_status": "completed",
+  "agent_returncode": 0,
+  "agent_execution": 42.5,
+  "agent_logfile": "/home/runner/work/x/work/cvdp_agentic_axis_to_uart/reports/1_agent.txt"
+ },
+ "cvdp_agentic_ttc_lite_0001": {
+  "category": "cid003",
+  "difficulty": "medium",
+  "tests": [
+   {
+    "result": 0,
+    "log": "/home/runner/work/x/work/cvdp_agentic_ttc_lite/reports/1.txt",
+    "error_msg": null,
+    "execution": 1.7,
+    "pid": 100
+   },
+   {
+    "result": 1,
+    "log": "/home/runner/work/x/work/cvdp_agentic_ttc_lite/reports/1.txt",
+    "error_msg": null,
+    "execution": 1.7,
+    "pid": 101
+   }
+  ],
+  "errors": 1,
+  "agent_status": "completed",
+  "agent_returncode": 0,
+  "agent_execution": 42.5,
+  "agent_logfile": "/home/runner/work/x/work/cvdp_agentic_ttc_lite/reports/1_agent.txt"
+ },
+ "cvdp_agentic_DES_0003": {
+  "category": "cid004",
+  "difficulty": "medium",
+  "tests": [
+   {
+    "result": 1,
+    "log": "/home/runner/work/x/work/cvdp_agentic_DES/reports/3.txt",
+    "error_msg": null,
+    "execution": 1.7,
+    "pid": 100
+   }
+  ],
+  "errors": 1,
+  "agent_status": "completed",
+  "agent_returncode": 0,
+  "agent_execution": 42.5,
+  "agent_logfile": "/home/runner/work/x/work/cvdp_agentic_DES/reports/3_agent.txt"
+ }
+}

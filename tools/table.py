@@ -1,0 +1,95 @@
+"""Results table from one or more collect.py CSVs: pass@1 with a Wilson 95% interval, $/problem, $/solved problem
+and median wall time, by category and for the AMBA slice, per model. Markdown on stdout.
+
+Usage: python3 tools/table.py results.csv [more.csv ...]
+"""
+import csv
+import math
+import statistics
+import sys
+
+CID_NAMES = {"cid003": "spec to RTL", "cid004": "RTL modification", "cid005": "spec to RTL, module reuse",
+             "cid016": "bug fixing"}
+
+
+def wilson(k, n, z=1.959964):
+    """Wilson score interval for k successes in n trials."""
+    if n == 0:
+        return (0.0, 0.0)
+    p = k / n
+    den = 1 + z * z / n
+    centre = (p + z * z / (2 * n)) / den
+    half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / den
+    return (max(0.0, centre - half), min(1.0, centre + half))
+
+
+def _f(x):
+    try:
+        return float(x)
+    except (TypeError, ValueError):
+        return None
+
+
+def stats(rows):
+    n = len(rows)
+    k = sum(1 for r in rows if r["pass"] == "1")
+    costs = [_f(r["cost_usd"]) for r in rows]
+    known = [c for c in costs if c is not None]
+    total = sum(known)
+    walls = [w for w in (_f(r["wall_time_s"]) if _f(r["wall_time_s"]) is not None else _f(r.get("harness_agent_s"))
+                         for r in rows) if w is not None]
+    lo, hi = wilson(k, n)
+    return {
+        "n": n, "k": k, "lo": lo, "hi": hi,
+        "cost": total, "unreported": n - len(known),
+        "per_problem": total / n if n else None,
+        "per_solved": total / k if k else None,
+        "wall": statistics.median(walls) if walls else None,
+        "tokens": sum(int(r["prompt_tokens"] or 0) + int(r["completion_tokens"] or 0) for r in rows),
+    }
+
+
+def money(x):
+    return "n/a" if x is None else f"${x:.4f}"
+
+
+def line(label, s):
+    p = f"{s['k']}/{s['n']} = {100 * s['k'] / s['n']:.1f}% [{100 * s['lo']:.1f}, {100 * s['hi']:.1f}]" if s["n"] \
+        else "0/0"
+    cost = money(s["cost"]) + (f" ({s['unreported']} unreported)" if s["unreported"] else "")
+    wall = "n/a" if s["wall"] is None else f"{s['wall']:.0f} s"
+    return (f"| {label} | {p} | {cost} | {money(s['per_problem'])} | {money(s['per_solved'])} | {wall} "
+            f"| {s['tokens']:,} |")
+
+
+def table(rows):
+    out = []
+    models = sorted({r["model"] for r in rows})
+    for m in models:
+        mr = [r for r in rows if r["model"] == m]
+        out.append(f"#### {m}\n")
+        out.append("| Slice | pass@1 [Wilson 95%] | Cost | $/problem | $/solved | Median wall | Tokens |")
+        out.append("|---|---|---|---|---|---|---|")
+        for cid in sorted({r["cid"] for r in mr}):
+            out.append(line(f"{cid} {CID_NAMES.get(cid, '')}".strip(), stats([r for r in mr if r["cid"] == cid])))
+        amba = [r for r in mr if r["amba"] == "1"]
+        if amba:
+            out.append(line("AMBA slice", stats(amba)))
+        out.append(line("**All**", stats(mr)))
+        stops = {}
+        for r in mr:
+            stops[r["stop_reason"]] = stops.get(r["stop_reason"], 0) + 1
+        out.append("\nStop reasons: " + ", ".join(f"{k} {v}" for k, v in sorted(stops.items())) + "\n")
+    return "\n".join(out)
+
+
+def main(paths):
+    rows = []
+    for p in paths:
+        with open(p) as f:
+            rows += list(csv.DictReader(f))
+    print(table(rows))
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

@@ -1,0 +1,21 @@
+{
+ "provider": "openrouter",
+ "model": "m/a",
+ "turns": 3,
+ "llm_calls": 7,
+ "tool_calls": 9,
+ "prompt_tokens": 1000,
+ "completion_tokens": 500,
+ "cost_usd": 0.012,
+ "cost_unreported_calls": 0,
+ "wall_time_s": 40.0,
+ "stop_reason": "submit",
+ "kept": "last",
+ "switches": {
+  "self_check": true,
+  "lint": false,
+  "max_turns": 10,
+  "budget_usd": 0.1,
+  "wall_s": 480.0
+ }
+}

@@ -1,0 +1,11 @@
+# M1 live check: 10 problems from agentic_code_generation_no_commercial, picked by `python3 tools/pick_ids.py <file> --seed 1` (cid003 3, cid004 3, cid005 2, cid016 2; exactly 2 from the AMBA slice).
+cvdp_agentic_DES_0003
+cvdp_agentic_axis_to_uart_0001
+cvdp_agentic_barrel_shifter_0002
+cvdp_agentic_csr_using_apb_interface_0001
+cvdp_agentic_dual_port_memory_0001
+cvdp_agentic_dynamic_equalizer_0004
+cvdp_agentic_lfsr_0001
+cvdp_agentic_phase_rotation_0010
+cvdp_agentic_phase_rotation_0028
+cvdp_agentic_ttc_lite_0001

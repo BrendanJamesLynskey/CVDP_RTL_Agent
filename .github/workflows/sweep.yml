@@ -1,0 +1,178 @@
+# Sweep: the agent on a split or a list of problems, scored by the CVDP harness.
+#   workflow_dispatch  a real run with an OpenRouter model (the key reaches the agent only through CVDP_AGENT_ENV)
+#   pull_request       a smoke run with the scripted `fake` provider on 2 problems: no secret, proves the image, the
+#                      harness interface and the collection end to end. Its pass rate is not the point.
+name: Sweep
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: "OpenRouter model ID (or 'fake' for the scripted provider)"
+        type: string
+        default: anthropic/claude-haiku-5.5
+      split:
+        description: "Dataset split"
+        type: choice
+        options: [agentic, heavy]
+        default: agentic
+      ids:
+        description: "Comma-separated problem ids (blank = the whole split)"
+        type: string
+        default: ""
+      budget_usd:
+        description: "Per-problem budget, USD (provider-reported cost)"
+        type: string
+        default: "0.10"
+      max_turns:
+        description: "Turn cap (edit, check, reflect)"
+        type: string
+        default: "10"
+      self_check:
+        description: "Self-written testbench step"
+        type: boolean
+        default: true
+      lint:
+        description: "Verilator lint and Yosys synth checks"
+        type: boolean
+        default: true
+      threads:
+        description: "Problems run in parallel"
+        type: string
+        default: "2"
+      runner:
+        description: "Runner: x86-64 or Arm64"
+        type: choice
+        options: [ubuntu-24.04, ubuntu-24.04-arm]
+        default: ubuntu-24.04
+  pull_request:
+
+permissions:
+  contents: read
+  packages: read
+
+env:
+  CVDP_SHA: 8e894cf74414ab1eaea1e2b4e80a02f123df07b6
+  DATASET_REV: 5b807d945f6a99aa645f7e43a64a2115e281b4bf
+  SIM: ghcr.io/brendanjameslynskey/cvdp-sim:8e894cf
+  AGENT: ghcr.io/brendanjameslynskey/cvdp-rtl-agent
+  SMOKE_IDS: cvdp_agentic_barrel_shifter_0002,cvdp_agentic_lfsr_0001
+
+jobs:
+  sweep:
+    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-24.04' || inputs.runner }}
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Simulation image from GHCR
+        run: |
+          if ! docker pull -q "$SIM"; then
+            # Only until images.yml has pushed it once: build from the pinned harness (about 20 min).
+            echo "::warning::$SIM not in GHCR yet; building it from source"
+            git clone -q https://github.com/NVlabs/cvdp_benchmark.git /tmp/cvdp-src
+            git -C /tmp/cvdp-src checkout -q "$CVDP_SHA"
+            docker build -q -f /tmp/cvdp-src/docker/Dockerfile.sim -t "$SIM" /tmp/cvdp-src
+          fi
+          docker tag "$SIM" nvidia/cvdp-sim:v1.0.0
+
+      - name: Agent image
+        id: agent
+        run: |
+          tag=$(git log -1 --format=%H -- agent docker)
+          img="$AGENT:$tag"
+          # The PR smoke run always builds the image from this commit (that is part of what it checks); a sweep pulls
+          # the one images.yml pushed, and builds it only if that is not there yet.
+          if [ "${{ github.event_name }}" = pull_request ] || ! docker pull -q "$img"; then
+            docker build -q -f docker/agent.Dockerfile --build-arg SIM_IMAGE="$SIM" --build-arg AGENT_VERSION="$tag" -t "$img" .
+          fi
+          echo "image=$img" >> "$GITHUB_OUTPUT"
+          echo "Agent image: \`$img\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Harness at a pinned commit
+        run: |
+          git clone -q https://github.com/NVlabs/cvdp_benchmark.git cvdp
+          git -C cvdp checkout -q "$CVDP_SHA"
+          pip install -q -r cvdp/requirements.txt
+          cp cvdp/.env.example cvdp/.env
+          echo "OSS_SIM_IMAGE=nvidia/cvdp-sim:v1.0.0" >> cvdp/.env
+
+      - name: Dataset at a pinned revision
+        env:
+          SPLIT: ${{ github.event_name == 'pull_request' && 'agentic' || inputs.split }}
+        run: |
+          mkdir -p data
+          base="https://huggingface.co/datasets/nvidia/cvdp-benchmark-dataset/resolve/$DATASET_REV"
+          for f in agentic_code_generation_no_commercial agentic_heavy_code_generation_no_commercial; do
+            curl -sSfL -o "data/$f.jsonl" "$base/cvdp_v1.1.0_$f.jsonl"
+          done
+          if [ "$SPLIT" = heavy ]; then
+            mkdir -p data/heavy
+            tree="https://huggingface.co/api/datasets/nvidia/cvdp-benchmark-dataset/tree/$DATASET_REV/cvdp_v1.1.0_agentic_heavy_code_generation_public"
+            for b in $(curl -sSf "$tree" | python3 -c "import json,sys;[print(x['path'].rsplit('/',1)[1]) for x in json.load(sys.stdin) if x['path'].endswith('.bundle')]"); do
+              curl -sSfL -o "data/heavy/$b" "$base/cvdp_v1.1.0_agentic_heavy_code_generation_public/$b"
+            done
+            echo "CVDP_HEAVY_REPOS_PATH=$PWD/data/heavy" >> cvdp/.env
+          fi
+
+      - name: Run
+        env:
+          OPENROUTER_API_KEY: ${{ github.event_name == 'workflow_dispatch' && inputs.model != 'fake' && secrets.OPENROUTER_API_KEY || '' }}
+          AGENT_IMAGE: ${{ steps.agent.outputs.image }}
+          SPLIT: ${{ github.event_name == 'pull_request' && 'agentic' || inputs.split }}
+          IDS: ${{ github.event_name == 'pull_request' && env.SMOKE_IDS || inputs.ids }}
+          MODEL: ${{ github.event_name == 'pull_request' && 'fake' || inputs.model }}
+          BUDGET_USD: ${{ github.event_name == 'pull_request' && '0.10' || inputs.budget_usd }}
+          MAX_TURNS: ${{ github.event_name == 'pull_request' && '10' || inputs.max_turns }}
+          SELF_CHECK: ${{ (github.event_name == 'pull_request' || inputs.self_check) && '1' || '0' }}
+          LINT: ${{ (github.event_name == 'pull_request' || inputs.lint) && '1' || '0' }}
+          THREADS: ${{ github.event_name == 'pull_request' && '2' || inputs.threads }}
+          RUNNER: ${{ github.event_name == 'pull_request' && 'ubuntu-24.04' || inputs.runner }}
+          WORK: work
+        run: |
+          bash tools/sweep.sh
+          cat work/table.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Smoke checks (plumbing, not score)
+        if: github.event_name == 'pull_request'
+        run: python3 tools/smoke_check.py work 2
+
+      - name: Secret check on what gets uploaded
+        if: always()
+        env:
+          OPENROUTER_API_KEY: ${{ github.event_name == 'workflow_dispatch' && inputs.model != 'fake' && secrets.OPENROUTER_API_KEY || '' }}
+        run: |
+          # Never upload the key: fail the job if it, or anything shaped like it, is anywhere in the work dir.
+          if grep -rIl -e 'sk-or-' work 2>/dev/null; then echo "::error::key-shaped string in work dir"; exit 1; fi
+          if [ -n "$OPENROUTER_API_KEY" ] && grep -rIlF -e "$OPENROUTER_API_KEY" work 2>/dev/null; then
+            echo "::error::key in work dir"; exit 1
+          fi
+          echo "no key in work dir"
+
+      - uses: actions/upload-artifact@v4
+        if: success() || failure()
+        with:
+          name: sweep-${{ github.event_name == 'pull_request' && 'smoke' || inputs.split }}-${{ github.run_id }}
+          path: |
+            work/results.csv
+            work/table.md
+            work/raw_result.json
+            work/report.json
+            work/*/reports/*.txt
+            work/*/harness/*/rundir/agent_out/**
+            work/*/harness/*/rundir/agent_tb/**
+            work/*/harness/*/agent_changes.patch
+            work.problems.jsonl
+          if-no-files-found: warn
