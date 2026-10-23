@@ -281,8 +281,8 @@ empty-reply risk at `low`. I would run it once on the 10 problems before the ful
 - **DeepSeek V4.1 Flash's price depends on the time of day** (UTC hours and weekday). The cost of a run depends on
   when it ran. Comparisons of cost per solved problem across runs or models need the run times, or need DeepSeek
   runs kept to off-peak hours, or both.
-- **DeepSeek lists only `max`, `high`, `low` and `none`.** `medium` and `minimal` are mapped to the nearest listed
-  effort by OpenRouter, and in practice `low` behaves much like `high`.
+- **DeepSeek lists only `max`, `high`, `low` and `none`.** OpenRouter maps `medium` and `minimal` to the nearest
+  listed effort.
 - **langchain-openai drops OpenRouter's `provider` field** from the response. Since review round 1 the agent calls
   OpenRouter through the `openai` client directly; LangGraph still runs the graph.
 - **`exclude: true` does not exempt reasoning from `max_tokens`.** The OpenRouter docs say so, and the M2a empties
