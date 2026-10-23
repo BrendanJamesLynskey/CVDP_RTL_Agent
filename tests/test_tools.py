@@ -93,3 +93,32 @@ def test_partly_unreported_row_makes_money_a_lower_bound():
     assert "| **All** | 2/2 = 100.0% [34.2, 100.0] | ≥$0.0400 (1 unreported) | ≥$0.0200 | ≥$0.0200 |" in md
     rows[1]["cost_unreported_calls"] = "0"
     assert "| $0.0400 | $0.0200 | $0.0200 |" in table.table(rows)
+
+
+def test_killed_problem_stays_in_the_requested_models_denominator(tmp_path):
+    """The Arm64 re-run case: one of two problems was killed by the harness and left no summary.json. With the
+    requested model passed in, the table reads 1/2 for that model, not 1/1 plus a separate "unknown" table."""
+    import json as _json
+
+    work = tmp_path / "work"
+    raw = {}
+    for pid, res in (("cvdp_agentic_lfsr_0001", 0), ("cvdp_agentic_ttc_lite_0001", 1)):
+        repo, n = pid.rsplit("_", 1)
+        (work / repo / "reports").mkdir(parents=True)
+        raw[pid] = {"category": "cid016", "difficulty": "easy", "agent_status": "timeout",
+                    "tests": [{"result": res, "log": f"/x/{repo}/reports/{int(n)}.txt", "execution": 1.0}]}
+    out = work / "cvdp_agentic_lfsr" / "harness" / "1" / "rundir" / "agent_out"
+    out.mkdir(parents=True)
+    (out / "summary.json").write_text(_json.dumps({"model": "deepseek/x", "requested_model": "deepseek/x",
+                                                   "cost_usd": 0.01, "cost_unreported_calls": 0,
+                                                   "stop_reason": "submit", "wall_time_s": 20}))
+    (work / "raw_result.json").write_text(_json.dumps(raw))
+    buf = io.StringIO()
+    w = csv.DictWriter(buf, fieldnames=collect.FIELDS)
+    w.writeheader()
+    for r in collect.rows(str(work), model="deepseek/x"):
+        w.writerow(r)
+    md = table.table(list(csv.DictReader(io.StringIO(buf.getvalue()))))
+    assert "#### unknown" not in md
+    assert "| **All** | 1/2 = 50.0%" in md
+    assert "≥$0.0100 (1 unreported)" in md  # the killed problem's cost is not known, so the money is a lower bound

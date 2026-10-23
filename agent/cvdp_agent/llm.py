@@ -124,14 +124,19 @@ class OpenRouterLLM:
             generation_id=gen_id,
         )
 
-    def _generation_cost(self, gen_id):
-        """Fallback: OpenRouter's generation endpoint, which can lag the response by a second or two."""
+    def _generation_cost(self, gen_id, budget_s=10.0):
+        """Fallback: OpenRouter's generation endpoint, which can lag the response by a second or two. Never takes
+        more than `budget_s` in all, so it cannot push the agent past its wall cap."""
         import httpx
 
+        end = time.monotonic() + budget_s
         for wait in (1, 2, 4):
+            if time.monotonic() + wait + 1 > end:
+                break
             time.sleep(wait)
             try:
-                r = httpx.get(f"{OPENROUTER_BASE}/generation", params={"id": gen_id}, timeout=15,
+                r = httpx.get(f"{OPENROUTER_BASE}/generation", params={"id": gen_id},
+                              timeout=max(1.0, min(5.0, end - time.monotonic())),
                               headers={"Authorization": f"Bearer {self._key}"})
                 if r.status_code == 200:
                     cost = (r.json().get("data") or {}).get("total_cost")

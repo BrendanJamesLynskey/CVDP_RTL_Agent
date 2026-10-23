@@ -19,7 +19,10 @@ from .trace import Tracer, truncate
 
 MAX_TOKENS = {"plan": 4000, "edit": 32000, "reflect": 2000}
 LLM_NODES = ("plan", "edit", "reflect")
-FINALIZE_S = 30.0  # time reserved after the wall cap for finalize's compile
+MIN_LLM_S = 20.0   # an LLM call is not started with less time than this before the wall cap
+# Worst case after the wall cap (480 s): an LLM call started before it ends by then (two attempts of at most half
+# the time left each, plus at most 10 s for the cost lookup), checks are cut to the time left, and finalize has
+# cfg.finalize_s (30 s): about 520 s in all, under the harness's 600 s kill.
 
 
 class State(TypedDict, total=False):
@@ -64,6 +67,8 @@ class Runtime:
         self.edited = False
         self.changed_all = set()
         self.finished = None    # set once finish() has written the summary
+        self.ledger_name = f"{uuid.uuid4().hex}.json"  # one entry per problem, rewritten as the cost grows
+        self.last_state = {}
 
     # ---------- stop rules ----------
     def elapsed(self):
@@ -75,6 +80,8 @@ class Runtime:
     def cap(self, state, nxt):
         """The reason to stop instead of running `nxt`, or None."""
         if self.elapsed() >= self.cfg.wall_s:
+            return "wall_time"
+        if nxt in LLM_NODES and self.time_left() < MIN_LLM_S:
             return "wall_time"
         if nxt in LLM_NODES and self.cost_unreported:
             return "cost_unreported"  # the budget can no longer be enforced from reported cost
@@ -97,12 +104,13 @@ class Runtime:
         self.llm_calls += 1
         try:
             r = self.llm.invoke(node, messages, max_tokens=MAX_TOKENS.get(node),
-                                timeout=max(15.0, min(150.0, (remaining - 10) / 2)))
+                                timeout=max(5.0, min(150.0, (remaining - 10) / 2)))
         except Exception as e:  # provider errors end the run; the best edit is still kept
             self.cost_unreported += 1  # an errored or timed-out call may still have been billed
             self.tracer.log("llm", node=node, model=getattr(self.llm, "model", None), turn=state.get("turn", 0),
                             cost=None, error=truncate(f"{type(e).__name__}: {e}", 1000),
                             remaining_s=round(remaining, 1))
+            checkpoint(self, state)
             return None
         self.models.add(r.model)
         self.prompt_tokens += r.prompt_tokens or 0
@@ -111,6 +119,7 @@ class Runtime:
             self.cost_unreported += 1
         else:
             self.spent += r.cost
+        checkpoint(self, state)
         return r
 
     def log_llm(self, node, r, state, decision):
@@ -294,7 +303,7 @@ def finish(rt, state, error=None):
     kept = "none"
     try:
         if hasattr(rt.checker, "time_left"):  # finalize has its own small reserve after the wall cap
-            deadline = rt.clock() + FINALIZE_S
+            deadline = rt.clock() + rt.cfg.finalize_s
             rt.checker.time_left = lambda: deadline - rt.clock()
         if rt.edited and not state.get("checked", True):
             compiled = rt.checker.run([]).get("compile", {}).get("ok")  # edits made after the last check
@@ -313,7 +322,37 @@ def finish(rt, state, error=None):
     except Exception as e:  # keep going: the summary and the ledger entry matter more
         error = error or f"finalize: {type(e).__name__}: {e}"
     stop = "error" if error else (state.get("stop_reason") or rt.stop_reason or "submit")
-    summary = {
+    summary = make_summary(rt, state, stop, kept, compiled)
+    if error:
+        summary["error"] = truncate(error, 2000)
+    rt.finished = stop
+    write_summary(rt, summary)
+    rt.tracer.log("summary", **summary)
+    return {"stop_reason": stop}
+
+
+def checkpoint(rt, state):
+    """After every LLM call: a provisional summary and ledger entry, so a problem the harness kills (at its agent
+    timeout) still shows what it spent. stop_reason "killed" is what is left if finalize never runs."""
+    if rt.finished:
+        return
+    try:
+        write_summary(rt, make_summary(rt, state, "killed", None, state.get("compiled")))
+    except Exception:
+        pass
+
+
+def write_summary(rt, summary):
+    os.makedirs(rt.cfg.agent_out, exist_ok=True)
+    tmp = os.path.join(rt.cfg.agent_out, "summary.json.tmp")
+    with open(tmp, "w") as f:
+        json.dump(summary, f, indent=1)
+    os.replace(tmp, os.path.join(rt.cfg.agent_out, "summary.json"))
+    write_ledger(rt.cfg, summary, rt.ledger_name)
+
+
+def make_summary(rt, state, stop, kept, compiled):
+    return {
         "provider": rt.cfg.provider,
         "model": sorted(rt.models)[0] if len(rt.models) == 1 else (sorted(rt.models) or rt.cfg.model or None),
         "requested_model": rt.cfg.model or None,
@@ -334,15 +373,6 @@ def finish(rt, state, error=None):
         "tools": rt.tools,
         "agent_version": os.environ.get("CVDP_AGENT_VERSION", "dev"),
     }
-    if error:
-        summary["error"] = truncate(error, 2000)
-    rt.finished = stop
-    os.makedirs(rt.cfg.agent_out, exist_ok=True)
-    with open(os.path.join(rt.cfg.agent_out, "summary.json"), "w") as f:
-        json.dump(summary, f, indent=1)
-    write_ledger(rt.cfg, summary)
-    rt.tracer.log("summary", **summary)
-    return {"stop_reason": stop}
 
 
 def ledger_totals(ledger_dir):
@@ -378,7 +408,7 @@ def run_budget_exhausted(cfg, tracer):
     return charge >= cfg.run_budget_usd
 
 
-def write_ledger(cfg, summary):
+def write_ledger(cfg, summary, name=None):
     if not cfg.ledger_dir or not os.path.isdir(cfg.ledger_dir):
         return
     reported = summary["cost_usd"] or 0.0
@@ -387,8 +417,10 @@ def write_ledger(cfg, summary):
              "guard_charge_usd": round(reported + unreported * cfg.budget_usd, 8),
              "stop_reason": summary["stop_reason"]}
     try:
-        with open(os.path.join(cfg.ledger_dir, f"{uuid.uuid4().hex}.json"), "w") as f:
+        path = os.path.join(cfg.ledger_dir, name or f"{uuid.uuid4().hex}.json")
+        with open(path + ".tmp", "w") as f:
             json.dump(entry, f)
+        os.replace(path + ".tmp", path)
     except OSError:
         pass
 

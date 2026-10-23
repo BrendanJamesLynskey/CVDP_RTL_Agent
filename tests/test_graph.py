@@ -305,3 +305,74 @@ def test_existing_verif_testbench_is_run_not_written(make_cfg, run_agent, task_t
     _, _, checker = run_agent(make_cfg(), [PLAN, edit(extra=blocks), decide("submit")])
     assert checker.requests[0][1] == {"files": ["verif/adder_tb.sv"], "top": "adder_tb"}
     assert (task_tree / "verif" / "adder_tb.sv").read_text() == "module adder_tb; endmodule\n"
+
+
+# ---- The Arm64 re-run case: DeepSeek on ttc_lite_0001 was killed at the harness's 600 s and left no summary ----
+
+class HangingChecker:
+    """The real Checker's _run (wall cap, env scrub), but every check is a process that never finishes on its own,
+    like a testbench with no $finish."""
+
+    def __new__(cls, root, tracer, time_left):
+        from cvdp_agent import checks
+
+        class _C(checks.Checker):
+            def run(self, names, tb=None):
+                out = {}
+                for n in ["compile"] + [x for x in names if x != "compile"]:
+                    rc, _, summary = self._run(n, ["sleep", "60"])
+                    out[n] = {"ok": None if rc is None else rc == 0, "summary": summary}
+                return out
+
+        return _C(root, tracer, {}, timeout_s=60, time_left=time_left)
+
+
+def test_hung_checks_cannot_push_the_agent_past_its_wall_cap(make_cfg, task_tree, monkeypatch):
+    """Scaled down: wall cap 6 s and finalize 2 s stand for 480 s and 30 s. Every check hangs; the agent must
+    still stop on wall_time and write its summary within wall cap + finalize, not run on until a harness kill."""
+    import time
+
+    from cvdp_agent import graph
+    from cvdp_agent.llm import FakeLLM
+    from cvdp_agent.trace import Tracer
+
+    monkeypatch.setattr(graph, "MIN_LLM_S", 0.0)
+    cfg = make_cfg(wall_s=6.0, finalize_s=2.0)
+    tracer = Tracer(cfg.agent_out)
+    t0 = time.monotonic()
+    rt = graph.Runtime(cfg, FakeLLM([PLAN] + [edit(checks="compile,lint,synth,testbench"), decide("edit_again")] * 5),
+                       tracer=tracer, tools={})
+    rt.checker = HangingChecker(cfg.root, tracer, rt.time_left)
+    for _ in graph.build(rt).stream({}, {"recursion_limit": 200}, stream_mode="values"):
+        pass
+    took = time.monotonic() - t0
+    s = json.load(open(os.path.join(cfg.agent_out, "summary.json")))
+    assert s["stop_reason"] == "wall_time"
+    assert took < cfg.wall_s + cfg.finalize_s + 2.0, took  # 60 s checks were cut to the time left
+
+
+def test_killed_problem_leaves_a_provisional_summary_and_ledger_entry(make_cfg, task_tree, tmp_path):
+    """If the harness kills the agent, what was spent is already on disk, marked stop_reason "killed"."""
+    from cvdp_agent.graph import ledger_totals, run
+    from cvdp_agent.llm import FakeLLM
+    from conftest import FakeChecker
+
+    ledger = tmp_path / "ledger"
+    ledger.mkdir()
+    cfg = make_cfg(ledger_dir=str(ledger), run_budget_usd=5.0)
+    seen = {}
+
+    class KilledAfterPlan(FakeLLM):
+        def invoke(self, node, messages, max_tokens=None, timeout=None):
+            if node == "edit":  # the process is "killed" here: look at what is on disk
+                seen["summary"] = json.load(open(os.path.join(cfg.agent_out, "summary.json")))
+                seen["ledger"] = ledger_totals(str(ledger))
+            return super().invoke(node, messages, max_tokens, timeout)
+
+    run(cfg, llm=KilledAfterPlan([{"text": PLAN, "cost": 0.004}, {"text": edit(), "cost": 0.006},
+                                  {"text": decide("submit"), "cost": 0.001}]), checker=FakeChecker(cfg.root), tools={})
+    assert seen["summary"]["stop_reason"] == "killed" and seen["summary"]["cost_usd"] == pytest.approx(0.004)
+    assert seen["ledger"][0] == pytest.approx(0.004)
+    # after a normal finish the same ledger entry is rewritten, not added to
+    assert len([f for f in ledger.iterdir() if f.suffix == ".json"]) == 1
+    assert ledger_totals(str(ledger))[0] == pytest.approx(0.011)

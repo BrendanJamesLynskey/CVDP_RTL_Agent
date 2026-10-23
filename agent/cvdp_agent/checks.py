@@ -115,8 +115,27 @@ class Checker:
         incdirs = sorted({os.path.dirname(f) for f in files} | {os.path.join(self.root, "rtl")})
         return files, incdirs
 
+    def _probe_user(self):
+        """Once: can the tool user read the task tree? If not (a root-only mount), every compile would fail for a
+        reason the LLM cannot fix, so fall back to the caller's user, keeping the scrubbed environment, and say so
+        in the trace."""
+        if self.user is None or getattr(self, "_probed", False):
+            return
+        self._probed = True
+        files, _ = self._sources()
+        target = files[0] if files else self.root
+        try:
+            ok = subprocess.run(["test", "-r", target], user=self.user, env=tool_env(), timeout=10).returncode == 0
+        except (OSError, subprocess.TimeoutExpired):
+            ok = False
+        if not ok:
+            self.tracer.log("tool", check="tool_user", command=f"test -r {target}", exit_code=1,
+                            output=f"{self.user} cannot read the task files; checks run as the agent's user")
+            self.user = None
+
     def run(self, names, tb=None):
         """Run the chosen checks. Compile always runs: the best-edit rule needs it."""
+        self._probe_user()
         names = ["compile"] + [n for n in names if n in CHECKS and n != "compile"]
         results = {}
         for n in dict.fromkeys(names):

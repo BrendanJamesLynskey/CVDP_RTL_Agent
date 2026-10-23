@@ -108,7 +108,8 @@ graph TD;
   only), a call whose cost was not reported (`cost_unreported`: the budget can no longer be enforced), and wall
   time (480 s, under the harness's 600 s agent timeout; each check's timeout is cut to the time left, and finalize
   has its own 30 s). On any stop, and on a crash, the best edit is kept (the last one that compiled), the summary
-  and ledger entry are written, and the agent exits 0.
+  and ledger entry are written, and the agent exits 0. Both are also written after every LLM call (as `killed`),
+  so a problem the harness kills keeps its cost.
 - **Tools run without secrets**: checks get an environment with every credential-like variable removed, and in the
   image they run as an unprivileged user (`cvdptool`), so model-written testbench code cannot read the key from its
   own environment or from the agent's through `/proc`.

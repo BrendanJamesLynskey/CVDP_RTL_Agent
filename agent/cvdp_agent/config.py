@@ -32,6 +32,7 @@ class Config:
     ledger_dir: str = ""                # whole-run spend guard: shared directory of per-problem costs
     run_budget_usd: float | None = None # whole-run spend guard: stop starting work once the ledger passes this
     tool_timeout_s: float = 60.0        # per deterministic tool call
+    finalize_s: float = 30.0            # finalize's own time after the wall cap (its compile)
     max_context_chars: int = 120_000    # files shown to the LLM, in total
     extra: dict = field(default_factory=dict)
 

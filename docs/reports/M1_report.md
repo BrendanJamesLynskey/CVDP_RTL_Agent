@@ -54,7 +54,7 @@
   `budget_usd × problems × 1.2`) stops before its first LLM call (`stop_reason: run_budget_exhausted`; the problem
   is scored as the harness finds it). For the guard only, each call with unreported cost is charged the per-problem
   budget; reported cost stays separate.
-- **Tests** (`tests/`, 52, run on every push and pull request by `.github/workflows/tests.yml`): each stop rule,
+- **Tests** (`tests/`, 55, run on every push and pull request by `.github/workflows/tests.yml`): each stop rule,
   path refusal, the budget cap, the best-edit-kept rule, each switch, unreported cost staying `null`, the ledger
   guard, the exit-0 rule; trace redaction (a fake key printed by a real tool never reaches the trace); `collect.py`
   and `table.py` on a fixture work directory shaped like a real `raw_result.json`; one test that runs real Icarus;
@@ -213,7 +213,7 @@ $0.0018 locally, $0.0032 in Actions run 39884621498). **Grand total for M1: $0.4
 
 ## Review round 1
 
-The owner's review of `1bac336` asked for ten fixes before merge. All are in; tests went from 41 to 52, and no
+The owner's review of `1bac336` asked for ten fixes before merge. All are in; tests went from 41 to 55, and no
 test needs an LLM.
 
 | # | Finding | Fix |
@@ -241,6 +241,26 @@ and a dispatched one-problem sweep with Haiku 5.5 and `run_budget_usd=0.05`
 every new step ran: key usage before and after, collect as its own step, the scan, the upload gated on it), all
 `completed, success`.
 
+**The Arm64 re-run case** (from the owner's comment on the PR). In Actions run 39882473408, DeepSeek on
+`ttc_lite_0001` was killed at the harness's 600 s, left no `summary.json`, lost its cost, and the table read 6/9
+instead of 6/10. Items 6 and 7 fix the cause and the count; on top of them:
+
+- **The agent writes its summary and ledger entry as it goes**: after every LLM call, a provisional
+  `summary.json` (`stop_reason: killed`) and its ledger entry (one file per problem, rewritten atomically) hold
+  the cost so far. A problem the harness kills keeps its cost and shows as `killed`; finalize overwrites both.
+- **The remaining ways past the cap are closed**: an LLM call is not started with under 20 s left; its timeout
+  floor is 5 s (it was 15 s, so two attempts could outlast a short remainder); the generation-endpoint cost lookup
+  is capped at 10 s (it could take about 50 s). Worst case is now about 520 s: the 480 s cap, at most 10 s of cost
+  lookup, and finalize's 30 s, under the harness's 600 s.
+- **If the tool user cannot read the task files**, the checker notices once and runs checks as the agent's user
+  (still with the scrubbed environment), noting it in the trace, instead of every compile failing for a reason the
+  LLM cannot fix.
+- **Tests for exactly this case**: a work dir where one of two problems was killed with no summary reads 1/2 under
+  the requested model, with the money shown as a lower bound; the whole agent, with every check a process that
+  never ends (a testbench with no `$finish`), stops on `wall_time` within wall cap + finalize (scaled down to
+  6 s + 2 s); and an agent "killed" before its second LLM call has already left a `killed` summary and a ledger
+  entry with the first call's cost.
+
 ## Known gaps
 
 - **GHCR packages are private until you flip them.** `GITHUB_TOKEN` can push packages but cannot change their
@@ -260,9 +280,9 @@ every new step ran: key usage before and after, collect as its own step, the sca
   just counts the turn.
 - **An unparseable reflect reply defaults to `submit`.** Defensible (the last compiled edit is on disk), but it
   ends the run early.
-- **Wall cap is soft by up to one LLM call** (each call's timeout is half the remaining time, at most 150 s,
-  and the generation-endpoint fallback can add up to about 50 s). Checks no longer overrun it: each tool's timeout
-  is cut to the time left, and a check is skipped when under 5 s remain.
+- **Wall cap is soft by up to about 40 s** (finalize's 30 s and the 10 s cost lookup), by design: worst case is
+  about 520 s against the harness's 600 s. Container start and stop come out of the remaining 80 s; that margin
+  is not measured yet on Arm64.
 - **Budget cap is soft by one call**: it is checked before each call, so a problem can end up to one call over
   budget. Never happened here.
 - **AMBA slice rule kept as stated** (decided in review): the id or the prompt names an AMBA interface.
