@@ -6,7 +6,10 @@ harness's own rule). Cost and tokens come only from summary.json, which records 
 Rows are grouped by the requested model (`--model`, what the sweep asked for), so a problem whose agent left no
 summary.json still counts in that model's denominator.
 
-Usage: python3 tools/collect.py <work_dir> [--dataset problems.jsonl] [--runner ubuntu-24.04] [--model ID] > results.csv
+`seed` is the sweep's repeat number (`--seed`, else the agent's summary); each seed is its own work dir.
+
+Usage: python3 tools/collect.py <work_dir> [--dataset problems.jsonl] [--runner ubuntu-24.04] [--model ID] [--seed N]
+       > results.csv
 """
 import argparse
 import csv
@@ -15,11 +18,12 @@ import os
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-FIELDS = ["id", "cid", "difficulty", "pass", "tests", "tests_passed", "amba", "requested_model", "model", "provider",
-          "cost_usd",
+FIELDS = ["id", "seed", "cid", "difficulty", "pass", "tests", "tests_passed", "amba", "requested_model", "model",
+          "provider", "cost_usd",
           "cost_unreported_calls", "prompt_tokens", "completion_tokens", "llm_calls", "tool_calls", "turns",
           "wall_time_s", "harness_agent_s", "stop_reason", "kept", "agent_status", "self_check", "lint",
-          "max_turns", "budget_usd", "runner", "summary_found"]
+          "max_turns", "budget_usd", "reasoning", "reasoning_used", "reasoning_tokens", "empty_replies",
+          "empty_retries", "reflect_parse_retries", "runner", "summary_found"]
 
 
 def amba_ids(path=os.path.join(HERE, "amba_ids.txt")):
@@ -41,7 +45,7 @@ def problem_dir(work, pid, entry):
     return cand
 
 
-def rows(work, dataset=None, runner="", model=""):
+def rows(work, dataset=None, runner="", model="", seed=""):
     raw = json.load(open(os.path.join(work, "raw_result.json")))
     meta = {}
     if dataset:
@@ -63,6 +67,7 @@ def rows(work, dataset=None, runner="", model=""):
         requested = model or s.get("requested_model") or served or "unknown"
         out.append({
             "id": pid,
+            "seed": seed or s.get("seed") or "",
             "cid": e.get("category") or cats[0],
             "difficulty": e.get("difficulty") or (cats[1] if len(cats) > 1 else ""),
             "pass": int(bool(tests) and passed == len(tests)),
@@ -88,6 +93,12 @@ def rows(work, dataset=None, runner="", model=""):
             "lint": int(sw["lint"]) if "lint" in sw else "",
             "max_turns": sw.get("max_turns", ""),
             "budget_usd": sw.get("budget_usd", ""),
+            "reasoning": sw.get("reasoning", s.get("reasoning", "")),
+            "reasoning_used": s.get("reasoning_used", ""),
+            "reasoning_tokens": s.get("reasoning_tokens", ""),
+            "empty_replies": s.get("empty_replies", ""),
+            "empty_retries": s.get("empty_retries", ""),
+            "reflect_parse_retries": s.get("reflect_parse_retries", ""),
             "runner": runner,
             "summary_found": int(bool(s)),
         })
@@ -100,10 +111,13 @@ def main():
     ap.add_argument("--dataset")
     ap.add_argument("--runner", default="")
     ap.add_argument("--model", default="", help="the model the sweep requested")
+    ap.add_argument("--seed", default="", help="the sweep's repeat number for this work dir")
+    ap.add_argument("--no-header", action="store_true", help="rows only, to append another seed's")
     a = ap.parse_args()
     w = csv.DictWriter(sys.stdout, fieldnames=FIELDS)
-    w.writeheader()
-    for r in rows(a.work, a.dataset, a.runner, a.model):
+    if not a.no_header:
+        w.writeheader()
+    for r in rows(a.work, a.dataset, a.runner, a.model, a.seed):
         w.writerow(r)
 
 

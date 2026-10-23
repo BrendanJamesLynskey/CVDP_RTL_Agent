@@ -14,7 +14,8 @@ from langgraph.graph import END, START, StateGraph
 from . import checks as checks_mod
 from . import prompts
 from .files import EDIT_ROOTS, TEXT_EXT, FileTool, PathRefused
-from .parse import parse_decision, parse_edit, parse_plan
+from .llm import LOWER, ReasoningRejected
+from .parse import empty_reply, parse_decision, parse_edit, parse_plan
 from .trace import Tracer, truncate
 
 MAX_TOKENS = {"plan": 4000, "edit": 32000, "reflect": 2000}
@@ -61,6 +62,12 @@ class Runtime:
         self.prompt_tokens = 0
         self.completion_tokens = 0
         self.models = set()
+        self.reasoning = cfg.reasoning  # falls back to "default" for the rest of the problem if the model refuses it
+        self.reasoning_rejected = 0
+        self.reasoning_tokens = 0
+        self.empty_replies = 0
+        self.empty_retries = 0
+        self.reflect_parse_retries = 0
         self.best = None        # snapshot of rtl/verif/docs after the last edit that compiled
         self.best_turn = None
         self.stop_reason = None
@@ -77,16 +84,24 @@ class Runtime:
     def time_left(self):
         return self.cfg.wall_s - self.elapsed()
 
+    def llm_cap(self):
+        """The reason not to start another LLM call, or None."""
+        if self.elapsed() >= self.cfg.wall_s or self.time_left() < MIN_LLM_S:
+            return "wall_time"
+        if self.cost_unreported:
+            return "cost_unreported"  # the budget can no longer be enforced from reported cost
+        if self.spent >= self.cfg.budget_usd:
+            return "budget"
+        return None
+
     def cap(self, state, nxt):
         """The reason to stop instead of running `nxt`, or None."""
         if self.elapsed() >= self.cfg.wall_s:
             return "wall_time"
-        if nxt in LLM_NODES and self.time_left() < MIN_LLM_S:
-            return "wall_time"
-        if nxt in LLM_NODES and self.cost_unreported:
-            return "cost_unreported"  # the budget can no longer be enforced from reported cost
-        if nxt in LLM_NODES and self.spent >= self.cfg.budget_usd:
-            return "budget"
+        if nxt in LLM_NODES:
+            reason = self.llm_cap()
+            if reason:
+                return reason
         if nxt == "edit" and state.get("turn", 0) >= self.cfg.max_turns:
             return "max_turns"
         return None
@@ -99,22 +114,38 @@ class Runtime:
         return nxt
 
     # ---------- LLM ----------
-    def call(self, node, messages, state):
+    def call(self, node, messages, state, reasoning=None, retry_of=None):
+        """One LLM call, at `reasoning` (default: the problem's current level). If the model refuses the reasoning
+        field, that is traced, the problem falls back to "default" for good, and the call is made again without it."""
+        level = reasoning or self.reasoning
         remaining = self.cfg.wall_s - self.elapsed()
         self.llm_calls += 1
+        call_id = self.llm_calls
         try:
-            r = self.llm.invoke(node, messages, max_tokens=MAX_TOKENS.get(node),
-                                timeout=max(5.0, min(150.0, (remaining - 10) / 2)))
+            try:
+                r = self.llm.invoke(node, messages, max_tokens=MAX_TOKENS.get(node),
+                                    timeout=max(5.0, min(150.0, (remaining - 10) / 2)), reasoning=level)
+            except ReasoningRejected as e:  # refused before generating anything: not billed, never fails the problem
+                self.reasoning_rejected += 1
+                self.tracer.log("llm", node=node, model=getattr(self.llm, "model", None), turn=state.get("turn", 0),
+                                call_id=call_id, reasoning=level, reasoning_rejected=True, cost=0.0,
+                                error=truncate(f"{type(e).__name__}: {e}", 1000), fallback="default")
+                self.reasoning = level = "default"
+                remaining = self.cfg.wall_s - self.elapsed()
+                r = self.llm.invoke(node, messages, max_tokens=MAX_TOKENS.get(node),
+                                    timeout=max(5.0, min(150.0, (remaining - 10) / 2)), reasoning=level)
         except Exception as e:  # provider errors end the run; the best edit is still kept
             self.cost_unreported += 1  # an errored or timed-out call may still have been billed
             self.tracer.log("llm", node=node, model=getattr(self.llm, "model", None), turn=state.get("turn", 0),
-                            cost=None, error=truncate(f"{type(e).__name__}: {e}", 1000),
-                            remaining_s=round(remaining, 1))
+                            call_id=call_id, retry_of=retry_of, reasoning=level, cost=None,
+                            error=truncate(f"{type(e).__name__}: {e}", 1000), remaining_s=round(remaining, 1))
             checkpoint(self, state)
             return None
+        r.call_id, r.retry_of, r.reasoning = call_id, retry_of, level
         self.models.add(r.model)
         self.prompt_tokens += r.prompt_tokens or 0
         self.completion_tokens += r.completion_tokens or 0
+        self.reasoning_tokens += r.reasoning_tokens or 0
         if r.cost is None:
             self.cost_unreported += 1
         else:
@@ -122,9 +153,30 @@ class Runtime:
         checkpoint(self, state)
         return r
 
+    def ask(self, node, messages, state):
+        """call(), and if the reply is empty, one retry with reasoning one step lower and a line asking for the
+        answer only. The empty call's cost counts. If the retry is empty too (or a cap leaves no room for it), the
+        empty reply is what the node gets, as before."""
+        r = self.call(node, messages, state)
+        if r is None or not empty_reply(node, r.text):
+            return r
+        self.empty_replies += 1
+        self.log_llm(node, r, state, decision="empty")
+        if self.llm_cap():
+            return r
+        self.empty_retries += 1
+        r2 = self.call(node, messages + [{"role": "user", "content": prompts.ANSWER_ONLY}], state,
+                       reasoning=LOWER.get(r.reasoning, "low"), retry_of=r.call_id)
+        if r2 is not None and empty_reply(node, r2.text):
+            self.empty_replies += 1
+        return r2
+
     def log_llm(self, node, r, state, decision):
-        self.tracer.log("llm", node=node, model=r.model, turn=state.get("turn", 0), prompt_tokens=r.prompt_tokens,
-                        completion_tokens=r.completion_tokens, cost=r.cost, latency_s=round(r.latency_s, 3),
+        self.tracer.log("llm", node=node, model=r.model, turn=state.get("turn", 0),
+                        call_id=getattr(r, "call_id", None), retry_of=getattr(r, "retry_of", None),
+                        reasoning=getattr(r, "reasoning", None), prompt_tokens=r.prompt_tokens,
+                        completion_tokens=r.completion_tokens, reasoning_tokens=r.reasoning_tokens,
+                        finish_reason=r.finish_reason, cost=r.cost, latency_s=round(r.latency_s, 3),
                         generation_id=r.generation_id, decision=decision, completion=truncate(r.text, 3000))
 
     # ---------- context ----------
@@ -172,7 +224,7 @@ def build(rt):
             task=state["task"], listing="\n".join(state["listing"]), contents=rt.contents(),
             tools=", ".join(k for k, v in rt.tools.items() if v) or "none",
             check_options=prompts.check_options(cfg, rt.tools))
-        r = rt.call("plan", [{"role": "system", "content": prompts.SYSTEM}, {"role": "user", "content": msg}], state)
+        r = rt.ask("plan", [{"role": "system", "content": prompts.SYSTEM}, {"role": "user", "content": msg}], state)
         if r is None:
             return {"stop_reason": "llm_error"}
         p = parse_plan(r.text)
@@ -191,8 +243,8 @@ def build(rt):
             task=state["task"], plan=json.dumps(state.get("plan", {}), indent=1), contents=rt.contents(),
             feedback=feedback, tb_instructions=prompts.TB_ON if cfg.self_check else prompts.TB_OFF,
             check_options=prompts.check_options(cfg, rt.tools))
-        r = rt.call("edit", [{"role": "system", "content": prompts.SYSTEM}, {"role": "user", "content": msg}],
-                    {**state, "turn": turn})
+        r = rt.ask("edit", [{"role": "system", "content": prompts.SYSTEM}, {"role": "user", "content": msg}],
+                   {**state, "turn": turn})
         if r is None:
             return {"turn": turn, "stop_reason": "llm_error"}
         e = parse_edit(r.text)
@@ -253,11 +305,20 @@ def build(rt):
             changed=changed,
             results=checks_mod.render(state.get("results", {})), turn=state.get("turn", 0),
             max_turns=cfg.max_turns, spent=rt.spent, budget=cfg.budget_usd)
-        r = rt.call("reflect", [{"role": "system", "content": prompts.SYSTEM}, {"role": "user", "content": msg}],
-                    state)
+        msgs = [{"role": "system", "content": prompts.SYSTEM}, {"role": "user", "content": msg}]
+        r = rt.ask("reflect", msgs, state)
         if r is None:
             return {"stop_reason": "llm_error"}
         d = parse_decision(r.text)
+        if not d["parsed"] and not empty_reply("reflect", r.text) and not rt.llm_cap():
+            # one retry asking for the JSON decision only; if that cannot be read either, submit
+            rt.log_llm("reflect", r, state, decision="unparseable")
+            rt.reflect_parse_retries += 1
+            r = rt.call("reflect", msgs + [{"role": "user", "content": prompts.JSON_ONLY}], state,
+                        retry_of=r.call_id)
+            if r is None:
+                return {"stop_reason": "llm_error"}
+            d = parse_decision(r.text)
         rt.log_llm("reflect", r, state, decision=d["decision"])
         out = {"decision": d["decision"], "reason": d["reason"]}
         if d["decision"] in ("submit", "give_up"):
@@ -363,6 +424,14 @@ def make_summary(rt, state, stop, kept, compiled):
         "completion_tokens": rt.completion_tokens,
         "cost_usd": round(rt.spent, 8) if rt.llm_calls - rt.cost_unreported > 0 else (None if rt.llm_calls else 0.0),
         "cost_unreported_calls": rt.cost_unreported,
+        "reasoning": rt.cfg.reasoning,
+        "reasoning_used": rt.reasoning,
+        "reasoning_rejected": rt.reasoning_rejected,
+        "reasoning_tokens": rt.reasoning_tokens,
+        "empty_replies": rt.empty_replies,
+        "empty_retries": rt.empty_retries,
+        "reflect_parse_retries": rt.reflect_parse_retries,
+        "seed": rt.cfg.seed or None,
         "wall_time_s": round(rt.elapsed(), 2),
         "stop_reason": stop,
         "decision": state.get("decision"),
@@ -430,6 +499,8 @@ def run(cfg, llm=None, **kw):
 
     tracer = kw.pop("tracer", None) or Tracer(cfg.agent_out)
     rt = Runtime(cfg, llm or llm_mod.make(cfg), tracer=tracer, **kw)
+    rt.tracer.log("start", model=cfg.model or None, provider=cfg.provider, seed=cfg.seed or None,
+                  switches=cfg.switches())
     graph = build(rt)
     state = {}
     try:

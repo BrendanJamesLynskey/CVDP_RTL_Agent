@@ -160,9 +160,9 @@ def test_prompt_follows_switches(make_cfg, run_agent):
     seen = []
 
     class Spy(FakeLLM):
-        def invoke(self, node, messages, max_tokens=None, timeout=None):
+        def invoke(self, node, messages, max_tokens=None, timeout=None, **kw):
             seen.append((node, messages[-1]["content"]))
-            return super().invoke(node, messages, max_tokens, timeout)
+            return super().invoke(node, messages, max_tokens, timeout, **kw)
 
     from cvdp_agent.graph import run
     from conftest import FakeChecker
@@ -363,11 +363,11 @@ def test_killed_problem_leaves_a_provisional_summary_and_ledger_entry(make_cfg, 
     seen = {}
 
     class KilledAfterPlan(FakeLLM):
-        def invoke(self, node, messages, max_tokens=None, timeout=None):
+        def invoke(self, node, messages, max_tokens=None, timeout=None, **kw):
             if node == "edit":  # the process is "killed" here: look at what is on disk
                 seen["summary"] = json.load(open(os.path.join(cfg.agent_out, "summary.json")))
                 seen["ledger"] = ledger_totals(str(ledger))
-            return super().invoke(node, messages, max_tokens, timeout)
+            return super().invoke(node, messages, max_tokens, timeout, **kw)
 
     run(cfg, llm=KilledAfterPlan([{"text": PLAN, "cost": 0.004}, {"text": edit(), "cost": 0.006},
                                   {"text": decide("submit"), "cost": 0.001}]), checker=FakeChecker(cfg.root), tools={})

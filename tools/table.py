@@ -1,7 +1,11 @@
 """Results table from one or more collect.py CSVs: pass@1 with a Wilson 95% interval, $/problem, $/solved problem
 and median wall time, by category and for the AMBA slice, per model. Markdown on stdout.
 
-Usage: python3 tools/table.py results.csv [more.csv ...]
+With --seeds, the rows are repeats of the same problems (the `seed` column), and a table across seeds comes first:
+mean pass@1 over seeds with its min-max range, pooled pass@1 (every problem-seed row) with a Wilson interval, and
+the cost per solved problem pooled across seeds. The per-slice tables after it are then pooled over seeds.
+
+Usage: python3 tools/table.py [--seeds] results.csv [more.csv ...]
 """
 import csv
 import math
@@ -85,15 +89,49 @@ def table(rows):
         stops = {}
         for r in mr:
             stops[r["stop_reason"]] = stops.get(r["stop_reason"], 0) + 1
-        out.append("\nStop reasons: " + ", ".join(f"{k} {v}" for k, v in sorted(stops.items())) + "\n")
+        out.append("\nStop reasons: " + ", ".join(f"{k} {v}" for k, v in sorted(stops.items())))
+        if mr and "empty_replies" in mr[0]:
+            tot = {c: sum(int(_f(r.get(c)) or 0) for r in mr)
+                   for c in ("empty_replies", "empty_retries", "reflect_parse_retries")}
+            out.append(f"\nEmpty replies: {tot['empty_replies']} (retried {tot['empty_retries']}); "
+                       f"reflect parse retries: {tot['reflect_parse_retries']}")
+        out.append("")
     return "\n".join(out)
 
 
-def main(paths):
+def seeds_table(rows):
+    """Across seeds, per model: mean pass@1 over seeds [min-max], pooled pass@1 [Wilson 95%], pooled cost and
+    $/solved. A seed's pass@1 is its passes over its rows (problems)."""
+    key = "requested_model" if rows and "requested_model" in rows[0] else "model"
+    out = ["#### Across seeds\n",
+           "| Model | Seeds | Problems per seed | Mean pass@1 [min–max] | Pooled pass@1 [Wilson 95%] | Cost, all seeds "
+           "| $/solved, pooled |",
+           "|---|---|---|---|---|---|---|"]
+    for m in sorted({r[key] for r in rows}):
+        mr = [r for r in rows if r[key] == m]
+        by_seed = {}
+        for r in mr:
+            by_seed.setdefault(r.get("seed", ""), []).append(r)
+        rates = [stats(v)["k"] / stats(v)["n"] for v in by_seed.values() if v]
+        sizes = sorted({len(v) for v in by_seed.values()})
+        s = stats(mr)
+        lb = s["unreported"] > 0
+        mean = f"{100 * statistics.mean(rates):.1f}% [{100 * min(rates):.1f}–{100 * max(rates):.1f}]"
+        pooled = f"{s['k']}/{s['n']} = {100 * s['k'] / s['n']:.1f}% [{100 * s['lo']:.1f}, {100 * s['hi']:.1f}]"
+        cost = money(s["cost"], lb) + (f" ({s['unreported']} unreported)" if lb else "")
+        out.append(f"| {m} | {len(by_seed)} | {'/'.join(map(str, sizes))} | {mean} | {pooled} | {cost} "
+                   f"| {money(s['per_solved'], lb)} |")
+    return "\n".join(out) + "\n"
+
+
+def main(argv):
+    seeds = "--seeds" in argv
     rows = []
-    for p in paths:
+    for p in [a for a in argv if a != "--seeds"]:
         with open(p) as f:
             rows += list(csv.DictReader(f))
+    if seeds:
+        print(seeds_table(rows))
     print(table(rows))
 
 

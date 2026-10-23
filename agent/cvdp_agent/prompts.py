@@ -91,6 +91,13 @@ Decide what to do next. Reply with one JSON object only:
 Submit when the design compiles and your checks pass. Edit again if something you can fix failed.
 Give up only if you cannot make progress."""
 
+# Added to the messages for the one retry after an empty reply, and after an unparseable reflect reply.
+ANSWER_ONLY = """Your last reply was empty. Reply now with the answer only, in the format asked for above, with no
+reasoning, no tool calls and nothing else."""
+
+JSON_ONLY = """Your last reply could not be read as a decision. Reply with the JSON object only, nothing else:
+{"decision": "edit_again" | "submit" | "give_up", "reason": "<one or two sentences>"}"""
+
 
 def check_options(cfg, tools):
     opts = ["compile"]
