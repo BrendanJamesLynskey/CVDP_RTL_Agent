@@ -339,7 +339,7 @@ def test_three_seeds_three_work_dirs_one_guard(tmp_path):
     assert "#### Across seeds" in md
     assert "| fake | 3 | 2 | 100.0% [100.0–100.0] | 6/6 = 100.0% [61.0, 100.0] | $0.0240 | $0.0040 |" in md
     assert "Run spend (sum of provider-reported cost): $0.0240" in md
-    assert "Empty replies: 0 (retried 0); reflect parse retries: 0" in md
+    assert "Empty replies: 0 (retried 0); reflect parse retries: 0; reasoning tokens (reported): 0" in md
     assert "Harness wall time, seed3:" in md
     # the smoke check the PR run uses, on the same layout
     sc = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "smoke_check.py"), str(work), "2", "3"],
@@ -361,7 +361,7 @@ def test_seed_table_mean_range_and_pooled():
     rows = [dict(base, id=f"p{i}", seed=s, **{"pass": p[i]}) for s, p in passes.items() for i in range(4)]
     md = table.seeds_table(rows)
     assert "| m | 3 | 4 | 50.0% [25.0–75.0] | 6/12 = 50.0% [25.4, 74.6] | $0.1200 | $0.0200 |" in md
-    assert "Empty replies: 12 (retried 12); reflect parse retries: 0" in table.table(rows)
+    assert "Empty replies: 12 (retried 12); reflect parse retries: 0;" in table.table(rows)
 
 
 def test_sweep_rejects_bad_seeds_and_reasoning(tmp_path):

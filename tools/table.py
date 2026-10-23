@@ -93,8 +93,9 @@ def table(rows):
         if mr and "empty_replies" in mr[0]:
             tot = {c: sum(int(_f(r.get(c)) or 0) for r in mr)
                    for c in ("empty_replies", "empty_retries", "reflect_parse_retries")}
+            rt = sum(int(_f(r.get("reasoning_tokens")) or 0) for r in mr)
             out.append(f"\nEmpty replies: {tot['empty_replies']} (retried {tot['empty_retries']}); "
-                       f"reflect parse retries: {tot['reflect_parse_retries']}")
+                       f"reflect parse retries: {tot['reflect_parse_retries']}; reasoning tokens (reported): {rt:,}")
         out.append("")
     return "\n".join(out)
 
