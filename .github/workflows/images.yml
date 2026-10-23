@@ -1,0 +1,132 @@
+# Images, built once and reused by every other workflow:
+#   ghcr.io/brendanjameslynskey/cvdp-sim:8e894cf          the harness's nvidia/cvdp-sim:v1.0.0, built from the pinned
+#                                                         harness; skipped when it is already in GHCR
+#   ghcr.io/brendanjameslynskey/cvdp-rtl-agent:<sha>      the agent on top of it; <sha> is the last commit that
+#                                                         changed agent/ or docker/
+# Both are multi-arch (linux/amd64, linux/arm64): each arch is built natively on its own runner, then the two are
+# joined into one tag with `docker buildx imagetools create`. No QEMU.
+name: Images
+
+on:
+  workflow_dispatch:
+    inputs:
+      rebuild_sim:
+        description: "Rebuild the sim image even if it is already in GHCR"
+        type: boolean
+        default: false
+  push:
+    paths:
+      - "agent/**"
+      - "docker/**"
+      - ".github/workflows/images.yml"
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  CVDP_SHA: 8e894cf74414ab1eaea1e2b4e80a02f123df07b6
+  SIM: ghcr.io/brendanjameslynskey/cvdp-sim:8e894cf
+  AGENT: ghcr.io/brendanjameslynskey/cvdp-rtl-agent
+
+concurrency:
+  group: images-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  sim:
+    strategy:
+      matrix:
+        include:
+          - { runner: ubuntu-24.04, arch: amd64 }
+          - { runner: ubuntu-24.04-arm, arch: arm64 }
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    steps:
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Already in GHCR?
+        id: have
+        run: |
+          if [ "${{ inputs.rebuild_sim }}" != true ] && docker manifest inspect "$SIM-${{ matrix.arch }}" > /dev/null 2>&1; then
+            echo "have=true" >> "$GITHUB_OUTPUT"; echo "$SIM-${{ matrix.arch }} exists; not rebuilding"
+          else
+            echo "have=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Build from the pinned harness and push
+        if: steps.have.outputs.have != 'true'
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          git clone -q https://github.com/NVlabs/cvdp_benchmark.git cvdp
+          git -C cvdp checkout -q "$CVDP_SHA"
+          docker build -f cvdp/docker/Dockerfile.sim \
+            --label org.opencontainers.image.source=https://github.com/${{ github.repository }} \
+            --label org.opencontainers.image.description="nvidia/cvdp-sim:v1.0.0 built from NVlabs/cvdp_benchmark@$CVDP_SHA (Apache-2.0)" \
+            -t "$SIM-${{ matrix.arch }}" cvdp
+          docker push "$SIM-${{ matrix.arch }}"
+
+  sim-manifest:
+    needs: sim
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@v3
+      - run: |
+          docker buildx imagetools create -t "$SIM" "$SIM-amd64" "$SIM-arm64"
+          docker buildx imagetools inspect "$SIM"
+
+  agent:
+    needs: sim-manifest
+    strategy:
+      matrix:
+        include:
+          - { runner: ubuntu-24.04, arch: amd64 }
+          - { runner: ubuntu-24.04-arm, arch: arm64 }
+    runs-on: ${{ matrix.runner }}
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: tag
+        run: echo "tag=$(git log -1 --format=%H -- agent docker)" >> "$GITHUB_OUTPUT"
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push
+        run: |
+          t="$AGENT:${{ steps.tag.outputs.tag }}-${{ matrix.arch }}"
+          docker build -f docker/agent.Dockerfile \
+            --build-arg SIM_IMAGE="$SIM-${{ matrix.arch }}" \
+            --build-arg AGENT_VERSION="${{ steps.tag.outputs.tag }}" \
+            --label org.opencontainers.image.source=https://github.com/${{ github.repository }} \
+            --label org.opencontainers.image.description="CVDP RTL agent (LangGraph)" \
+            -t "$t" .
+          docker run --rm --entrypoint /opt/agent/venv/bin/python "$t" -m cvdp_agent --mermaid | head -3
+          docker push "$t"
+
+  agent-manifest:
+    needs: agent
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@v3
+      - run: |
+          t="$AGENT:${{ needs.agent.outputs.tag }}"
+          docker buildx imagetools create -t "$t" "$t-amd64" "$t-arm64"
+          docker buildx imagetools inspect "$t"
+          echo "Agent image: \`$t\` (linux/amd64, linux/arm64)" >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,22 @@
+# Unit and graph tests with the scripted `fake` provider. No LLM and no secret is needed for any test to pass.
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  pytest:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Icarus Verilog (for the one test that runs real tools)
+        run: sudo apt-get update -q && sudo apt-get install -y -q iverilog
+      - run: pip install -q -r agent/requirements.txt pytest==8.3.2
+      - run: python -m pytest -v tests

@@ -1,0 +1,31 @@
+# The AMBA slice of the free CVDP 1.1.0 agentic splits: problems whose design under change has an AMBA interface
+# (AXI4, AXI4-Lite, AXI-Stream, APB or AHB) at its ports. Made with tools/amba_scan.py (the regex
+# AXI4?(-|_)?(Lite|Stream)?|AXIS|APB|AHB|AMBA, case-insensitive, over ids and prompts), then every match read by hand.
+# Dropped as false positives: "maximum"/"maximal"/"axis" (geometry) in arithmetic_progression_generator_0001,
+# event_storing_0001, phase_rotation_0019/0031, rc5_0001, signed_comparator_0001, heavy_friscv_0005;
+# ttc_lite_0001 (an "AXI-like" register interface with no AXI signals in its spec); heavy_opene902_0071 (the
+# bus-unit data interface, no AHB signals at its ports).
+# Not included: cic_decimator_0001 uses AXI-Stream-style port names, but neither its id nor its prompt or spec names
+# an AMBA interface, so it falls outside the rule.
+# agentic_code_generation_no_commercial (8)
+cvdp_agentic_axi4lite_to_pcie_config_0003
+cvdp_agentic_axis_broadcaster_0001
+cvdp_agentic_axis_to_uart_0001
+cvdp_agentic_axis_to_uart_0004
+cvdp_agentic_csr_using_apb_interface_0001
+cvdp_agentic_ethernet_mii_0004
+cvdp_agentic_ethernet_mii_0006
+cvdp_agentic_secure_apb_history_shift_register_0001
+# agentic_heavy_code_generation_no_commercial (12)
+cvdp_agentic_heavy_axi4_lite_0002
+cvdp_agentic_heavy_axis_0001
+cvdp_agentic_heavy_axis_0020
+cvdp_agentic_heavy_friscv_0001
+cvdp_agentic_heavy_opene902_0001
+cvdp_agentic_heavy_pulpino_0004
+cvdp_agentic_heavy_verilog_axi_0001
+cvdp_agentic_heavy_verilog_ethernet_0027
+cvdp_agentic_heavy_verilog_ethernet_0029
+cvdp_agentic_heavy_verilog_ethernet_0035
+cvdp_agentic_heavy_verilog_pcie_0028
+cvdp_agentic_heavy_verilog_pcie_0061

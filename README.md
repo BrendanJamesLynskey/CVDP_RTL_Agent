@@ -5,7 +5,11 @@ problems. It writes and fixes SystemVerilog, **checks its own work in simulation
 Verilator and cocotb), and records what every problem cost. Results are reported as pass rate, **cost per solved
 problem** and wall time, by category, against a null agent and against published leaderboard rows.
 
-**Status:** milestone 0 done (22 October 2026). No agent results yet.
+**Status:** milestone 1 in review: the agent image, the sweep workflow and a 10-problem live check
+([`docs/reports/M1_report.md`](docs/reports/M1_report.md)). On 10 seeded problems from the agentic split,
+`anthropic/claude-haiku-5.5` passed 6/10 (Wilson 95% [31, 83]%) for $0.117 in all, and the open-weights
+`deepseek/deepseek-v4.1-flash-1017` 5/10 ([24, 76]%) for $0.270; ten problems cannot separate the two. The null
+agent passes none. Milestone 0 done (22 October 2026).
 
 | M0 check | x86-64 (`ubuntu-24.04`) | Arm64 (`ubuntu-24.04-arm`) |
 |---|---|---|
@@ -37,9 +41,10 @@ commercial split, which needs Cadence Xcelium. Two things stand in for them:
   checked formally with SymbiYosys. It is scored by how many seeded bugs it catches (mutant kill rate) and by false
   alarms on the clean RTL, never by its own report.
 
-**AMBA slice.** 20 of the free problems involve AMBA interfaces (AXI4-Lite, AXI-Stream, APB): 10 in each split,
-mostly spec-to-RTL in the first and bug fixing in real repositories (verilog-axi, verilog-ethernet, axis) in the
-second. Results are reported for this slice on its own as well as overall.
+**AMBA slice.** 20 of the free problems have an AMBA interface (AXI4, AXI4-Lite, AXI-Stream, APB, AHB) on the
+design being changed: 8 in the agentic split, mostly spec-to-RTL, and 12 in the heavy split, mostly bug fixing in
+real repositories (verilog-axi, verilog-ethernet, axis). The list, and how it was made, is in
+[`tools/amba_ids.txt`](tools/amba_ids.txt). Results are reported for this slice on its own as well as overall.
 
 **Arm64.** Every workflow runs on GitHub's Arm64 runners as well as x86-64, and the sweep tables give wall time on
 both.
@@ -52,13 +57,113 @@ both.
 - The harness and dataset are pinned (commit and revision in
   [`.github/workflows/m0_harness.yml`](.github/workflows/m0_harness.yml)).
 
+## The agent
+
+A LangGraph graph (`agent/cvdp_agent/`), run by the harness as a Docker image built on the harness's own
+simulation image (Icarus 13, Verilator 5.038, Yosys 0.40, cocotb 2.0.1):
+
+<!-- graph:begin -->
+```mermaid
+---
+config:
+  flowchart:
+    curve: linear
+---
+graph TD;
+	__start__([<p>__start__</p>]):::first
+	read_task(read_task)
+	plan(plan)
+	edit(edit)
+	check(check)
+	reflect(reflect)
+	finalize(finalize)
+	__end__([<p>__end__</p>]):::last
+	__start__ --> read_task;
+	check -.-> finalize;
+	check -.-> reflect;
+	edit -.-> check;
+	edit -.-> finalize;
+	plan -.-> edit;
+	plan -.-> finalize;
+	read_task -.-> finalize;
+	read_task -.-> plan;
+	reflect -.-> edit;
+	reflect -.-> finalize;
+	finalize --> __end__;
+	classDef default fill:#f2f0ff,line-height:1.2
+	classDef first fill-opacity:0
+	classDef last fill:#bfb6fc
+```
+<!-- graph:end -->
+
+- **read_task** reads `/code/prompt.json`, lists the files and detects the tools.
+- **plan**: the LLM returns a JSON plan (files to change, approach, how it will check the result).
+- **edit**: the LLM returns whole files or unified diffs. The file tool writes only under `rtl/`, `verif/` and
+  `docs/` (and a scratch testbench under `rundir/agent_tb/`, never submitted); any other path is refused in code.
+- **check**: deterministic tools the LLM picks from: `iverilog -g2012` compile (always), `verilator --lint-only
+  -Wall`, a Yosys read/synth check, and its own SystemVerilog or cocotb testbench. Output is cut down in code
+  before the LLM sees it.
+- **reflect**: the LLM decides `edit_again`, `submit` or `give_up`.
+- **Stop rules**, checked in code before every step: turn cap, per-problem budget in USD (provider-reported cost
+  only), a call whose cost was not reported (`cost_unreported`: the budget can no longer be enforced), and wall
+  time (480 s, under the harness's 600 s agent timeout; each check's timeout is cut to the time left, and finalize
+  has its own 30 s). On any stop, and on a crash, the best edit is kept (the last one that compiled), the summary
+  and ledger entry are written, and the agent exits 0. Both are also written after every LLM call (as `killed`),
+  so a problem the harness kills keeps its cost.
+- **Tools run without secrets**: checks get an environment with every credential-like variable removed, and in the
+  image they run as an unprivileged user (`cvdptool`), so model-written testbench code cannot read the key from its
+  own environment or from the agent's through `/proc`.
+- **Outputs** per problem in `rundir/agent_out/` (the harness keeps it in the work directory): `trace.jsonl`, every
+  LLM call (node, model, tokens, cost, latency, decision) and tool call (command, exit code, truncated output), with
+  anything key-shaped redacted; `summary.json`, the totals, stop reason and switches.
+
+| Variable | Default | |
+|---|---|---|
+| `CVDP_PROVIDER` | `openrouter` | `openrouter`, or `fake` (scripted, deterministic; tests and the PR smoke run) |
+| `CVDP_MODEL` | | OpenRouter model ID |
+| `CVDP_MAX_TURNS` | 10 | edit, check, reflect cycles |
+| `CVDP_BUDGET_USD` | 0.10 | per problem |
+| `CVDP_SELF_CHECK` | 1 | 0 skips the self-written testbench |
+| `CVDP_LINT` | 1 | 0 skips the Verilator lint and Yosys checks |
+| `CVDP_WALL_S` | 480 | wall-time cap, seconds |
+
+## Running a sweep
+
+From the Actions tab, **Sweep → Run workflow**, or `gh workflow run sweep.yml -f model=anthropic/claude-haiku-5.5
+-f ids=$(grep -v '^#' tools/m1_ids.txt | paste -sd,)`. Inputs: model, split, ids (blank = all), per-problem
+budget, turn cap, self-check and lint switches, threads, runner (x86-64 or Arm64) and an optional absolute
+whole-run budget. The job pulls both images from GHCR, runs the harness (with its own step timeout), then collects,
+writes the table and the key's usage before and after the run to the job summary, scans the work directory for
+anything key-shaped, and uploads it only if the scan passes (per-test logs, `raw_result.json`, every `agent_out/`).
+The key reaches the agent only through `CVDP_AGENT_ENV`. A whole-run guard stops new problems from calling the LLM
+once the summed cost (with the per-problem budget charged for every call whose cost was not reported) passes
+`run_budget_usd`, or budget × problems × 1.2 when that is blank ($11.04 for all 92).
+
+Locally, with the harness in `cvdp/`, the dataset in `data/` and both images in Docker:
+`AGENT_IMAGE=... MODEL=... IDS=... WORK=<new dir> bash tools/sweep.sh`. It refuses a work directory that is not
+empty (an old ledger and the harness's reuse of `raw_result.json` would make the rerun wrong).
+
 ## Layout
 
-- [`.github/workflows/m0_harness.yml`](.github/workflows/m0_harness.yml): M0. Builds the harness's simulation
-  image, checks the harness's example problems score 100% with their solutions, and runs the null agent; on an
-  x86-64 or an Arm64 runner.
+- [`agent/`](agent/): the agent (`cvdp_agent`, Python 3.12, LangGraph) and its pinned requirements.
+- [`docker/agent.Dockerfile`](docker/agent.Dockerfile): the agent image, on top of the simulation image.
+- [`.github/workflows/images.yml`](.github/workflows/images.yml): builds `ghcr.io/brendanjameslynskey/cvdp-sim:8e894cf`
+  (once) and `ghcr.io/brendanjameslynskey/cvdp-rtl-agent:<sha>`, both linux/amd64 and linux/arm64, each arch on its
+  own native runner.
+- [`.github/workflows/sweep.yml`](.github/workflows/sweep.yml): a sweep (dispatch), or the smoke run with the fake
+  provider on 2 problems (pull requests).
+- [`.github/workflows/tests.yml`](.github/workflows/tests.yml): `pytest tests/` on every push and pull request.
+- [`.github/workflows/m0_harness.yml`](.github/workflows/m0_harness.yml): M0. Checks the harness's example problems
+  score 100% with their solutions, and runs the null agent; pulls the simulation image from GHCR (or builds it with
+  `build_sim`).
 - [`agents/null/Dockerfile`](agents/null/Dockerfile): the null agent (changes nothing), the floor.
-- [`tools/inventory.py`](tools/inventory.py): hashes the dataset files and counts problems per category.
+- [`tools/`](tools/): `collect.py` (raw_result.json + summary.json → one CSV row per problem), `table.py` (pass@1
+  with a Wilson 95% interval, $/problem, $/solved problem, median wall time, by category and AMBA slice),
+  `sweep.sh`, `subset.py`, `log_check.py` (classifies per-test logs: tests failed, build failed or harness error), `key_usage.py` (the key's `usage` only), `pick_ids.py` (the seeded M1 sample, `m1_ids.txt`), `amba_scan.py` and `amba_ids.txt`,
+  `inventory.py`.
+- [`tests/`](tests/): the graph with the fake provider (stop rules, path refusal, budget, best edit kept, switches),
+  trace redaction, the results tools on a fixture, and the README graph drift test.
+- [`docs/reports/`](docs/reports/): milestone reports.
 
 ## Milestones
 

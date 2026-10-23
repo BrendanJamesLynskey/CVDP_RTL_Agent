@@ -17,8 +17,17 @@ on:
         type: choice
         options: [ubuntu-24.04, ubuntu-24.04-arm]
         default: ubuntu-24.04
+      build_sim:
+        description: "Build the simulation image from source instead of pulling it from GHCR"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  packages: read
 
 env:
+  SIM: ghcr.io/brendanjameslynskey/cvdp-sim:8e894cf      # built by images.yml from the pinned harness
   CVDP_SHA: 8e894cf74414ab1eaea1e2b4e80a02f123df07b6     # NVlabs/cvdp_benchmark, 8 June 2026
   DATASET_REV: 5b807d945f6a99aa645f7e43a64a2115e281b4bf  # nvidia/cvdp-benchmark-dataset, 21 July 2026
 
@@ -44,8 +53,20 @@ jobs:
           cp cvdp/.env.example cvdp/.env
           echo "OSS_SIM_IMAGE=nvidia/cvdp-sim:v1.0.0" >> cvdp/.env
 
-      - name: Build the simulation image
-        run: docker build -q -f cvdp/docker/Dockerfile.sim -t nvidia/cvdp-sim:v1.0.0 cvdp
+      - uses: docker/login-action@v3
+        if: ${{ !inputs.build_sim }}
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Simulation image (pull from GHCR, or build with build_sim)
+        run: |
+          if [ "${{ inputs.build_sim }}" = true ]; then
+            docker build -q -f cvdp/docker/Dockerfile.sim -t nvidia/cvdp-sim:v1.0.0 cvdp
+          else
+            docker pull -q "$SIM" && docker tag "$SIM" nvidia/cvdp-sim:v1.0.0
+          fi
 
       - name: Fetch the dataset at a pinned revision
         run: |
@@ -87,6 +108,9 @@ jobs:
           for d in work_golden work_null; do
             [ -f "$d/report.json" ] && { echo "### $d"; echo '```'; head -c 6000 "$d/report.json"; echo; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           done
+          for d in work_golden work_null; do
+            [ -d "$d" ] && python3 tools/log_check.py "$d" --excerpt | tee -a "$GITHUB_STEP_SUMMARY"
+          done
           df -h / >> "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/upload-artifact@v4
@@ -99,4 +123,6 @@ jobs:
             work_golden/raw_result.json
             work_null/report.json
             work_null/raw_result.json
+            work_golden/*/reports/*.txt
+            work_null/*/reports/*.txt
           if-no-files-found: warn
