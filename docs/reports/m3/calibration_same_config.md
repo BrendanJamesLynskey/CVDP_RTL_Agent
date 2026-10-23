@@ -2,9 +2,11 @@
 
 Effect = mean over common problems of (arm pass rate − base pass rate), in points of pass rate. 95% interval: paired bootstrap over problems. Sign test: exact, two-sided, on the problems that changed. Arms whose interval includes 0 come first.
 
-| Arm | Finding | Effect [95%] | Better / worse / same | Sign test p | Problems |
-|---|---|---|---|---|---|
-| luna default, x86 run (39967317698) | no detectable effect | -1.1 [-7.6, +5.4] | 4 / 5 / 83 | 1 | 92 |
+| Arm | Finding | Effect [95%] | Better / worse / same | Sign test p | Problems | Dropped |
+|---|---|---|---|---|---|---|
+| luna default, x86 run (39967317698) | no detectable effect | -1.1 [-7.6, +5.4] | 4 / 5 / 83 | 1 | 92 | 0 |
+
+Problems left out of the paired effect (in only one of the arm and the base; the Arms table below still pools over them): none.
 
 #### Arms
 

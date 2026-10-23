@@ -1,4 +1,4 @@
-15 failed (problem, run) rows of 16.
+19 failed (problem, run) rows of 20.
 
 #### Primary label by arm
 
@@ -10,14 +10,14 @@
 | no_edit | 1 | 1 |
 | stopped_by_cap | 2 | 2 |
 | gave_up | 1 | 1 |
-| sim_incomplete | 1 | 1 |
+| sim_incomplete | 2 | 2 |
 | compile_fail_own | 1 | 1 |
-| compile_fail_hidden | 1 | 1 |
+| compile_fail_hidden | 2 | 2 |
 | tests_failed_selfcheck_passed | 2 | 2 |
 | tests_failed_selfcheck_failed | 1 | 1 |
 | tests_failed_no_selfcheck | 1 | 1 |
-| harness_error | 1 | 1 |
-| **All failures** | 15 | 15 |
+| harness_error | 3 | 3 |
+| **All failures** | 19 | 19 |
 
 #### Primary label by cid
 
@@ -29,16 +29,16 @@
 | no_edit | 1 | 1 |
 | stopped_by_cap | 2 | 2 |
 | gave_up | 1 | 1 |
-| sim_incomplete | 1 | 1 |
+| sim_incomplete | 2 | 2 |
 | compile_fail_own | 1 | 1 |
-| compile_fail_hidden | 1 | 1 |
+| compile_fail_hidden | 2 | 2 |
 | tests_failed_selfcheck_passed | 2 | 2 |
 | tests_failed_selfcheck_failed | 1 | 1 |
 | tests_failed_no_selfcheck | 1 | 1 |
-| harness_error | 1 | 1 |
-| **All failures** | 15 | 15 |
+| harness_error | 3 | 3 |
+| **All failures** | 19 | 19 |
 
-Secondary flags: single_turn 13, tests_failed_no_selfcheck 4, compile_fail_hidden 1, compile_fail_own 1, no_edit 1, partial_pass 1, tests_failed_selfcheck_failed 1
+Secondary flags: single_turn 17, tests_failed_no_selfcheck 4, compile_fail_hidden 1, compile_fail_own 1, no_log 1, no_edit 1, no_tests 1, partial_pass 1, best_edit_restored 1, tests_failed_selfcheck_failed 1
 
 #### Evidence, up to 3 per label
 
@@ -122,6 +122,15 @@ trace: compile exit=1 iverilog -g2012 -o rundir/agent_tb/compile.vvp rtl/dut.sv
 trace: llm reflect decision="give_up"
 ```
 
+**sim_incomplete**: `cvdp_agentic_tax_harness_killed_log_0001` (fixture#seed1)
+```
+harness: Failed to execute objective harness
+log:    200.00ns INFO     cocotb.fifo                        writing 64 words
+log:    850.00ns INFO     cocotb.fifo                        waiting for full flag
+trace: llm edit decision={"changed": ["rtl/dut.sv"], "errors": 0, "checks": ["compile", "testbench"]}
+trace: compile exit=0 iverilog -g2012 -o rundir/agent_tb/compile.vvp rtl/dut.sv
+```
+
 **sim_incomplete**: `cvdp_agentic_tax_sim_incomplete_0001` (fixture#seed1)
 ```
 log:    200.00ns INFO     cocotb.fifo                        writing 64 words
@@ -149,6 +158,17 @@ log: ============================== 1 failed in 0.52s ==========================
 trace: llm edit decision={"changed": ["rtl/dut.sv"], "errors": 0, "checks": ["compile", "testbench"]}
 trace: compile exit=0 iverilog -g2012 -o rundir/agent_tb/compile.vvp rtl/dut.sv
 trace: testbench_run exit=0 vvp -n tb.vvp
+```
+
+**compile_fail_hidden**: `cvdp_agentic_tax_restored_best_0001` (fixture#seed1)
+```
+log: E   subprocess.CalledProcessError: Command '['iverilog', '-g2012', '-o', 'sim.vvp', '-s', 'axis_to_uart_tx']' returned non-zero exit status 1.
+log: error: Unable to find the root module "axis_to_uart_tx" in the Verilog source.
+log: ============================== 1 failed in 0.52s ===============================
+trace: llm edit decision={"changed": ["rtl/dut.sv"], "errors": 0, "checks": ["compile", "testbench"]}
+trace: compile exit=0 iverilog -g2012 -o rundir/agent_tb/compile.vvp rtl/dut.sv
+trace: llm edit decision={"changed": ["rtl/dut.sv"], "errors": 0, "checks": ["compile", "testbench"]}
+trace: compile exit=1 iverilog -g2012 -o rundir/agent_tb/compile.vvp rtl/dut.sv
 ```
 
 **tests_failed_selfcheck_passed**: `cvdp_agentic_tax_partial_selfcheck_passed_0001` (fixture#seed1)
@@ -203,6 +223,19 @@ log: docker: Error response from daemon: failed to create task for container: un
 trace: llm edit decision={"changed": ["rtl/dut.sv"], "errors": 0, "checks": ["compile", "testbench"]}
 trace: compile exit=0 iverilog -g2012 -o rundir/agent_tb/compile.vvp rtl/dut.sv
 trace: testbench_run exit=0 vvp -n tb.vvp
+```
+
+**harness_error**: `cvdp_agentic_tax_harness_killed_nolog_0001` (fixture#seed1)
+```
+harness: Failed to execute objective harness
+trace: llm edit decision={"changed": ["rtl/dut.sv"], "errors": 0, "checks": ["compile", "testbench"]}
+trace: compile exit=0 iverilog -g2012 -o rundir/agent_tb/compile.vvp rtl/dut.sv
+```
+
+**harness_error**: `cvdp_agentic_tax_no_tests_0001` (fixture#seed1)
+```
+trace: llm edit decision={"changed": ["rtl/dut.sv"], "errors": 0, "checks": ["compile", "testbench"]}
+trace: compile exit=0 iverilog -g2012 -o rundir/agent_tb/compile.vvp rtl/dut.sv
 ```
 
 #### Hand labels against the rules: 14/15 agree (93%)

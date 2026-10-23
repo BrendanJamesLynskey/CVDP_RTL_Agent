@@ -2,10 +2,12 @@
 
 Effect = mean over common problems of (arm pass rate − base pass rate), in points of pass rate. 95% interval: paired bootstrap over problems. Sign test: exact, two-sided, on the problems that changed. Arms whose interval includes 0 come first.
 
-| Arm | Finding | Effect [95%] | Better / worse / same | Sign test p | Problems |
-|---|---|---|---|---|---|
-| claude-haiku-5.5 (low) | no detectable effect | +1.6 [-4.9, +8.2] | 12 / 12 / 68 | 1 | 92 |
-| deepseek-v4.1-flash (off) | worse than base | -11.4 [-20.1, -2.7] | 6 / 21 / 65 | 0.00592 | 92 |
+| Arm | Finding | Effect [95%] | Better / worse / same | Sign test p | Problems | Dropped |
+|---|---|---|---|---|---|---|
+| claude-haiku-5.5 (low) | no detectable effect | +1.6 [-4.9, +8.2] | 12 / 12 / 68 | 1 | 92 | 0 |
+| deepseek-v4.1-flash (off) | worse than base | -11.4 [-20.1, -2.7] | 6 / 21 / 65 | 0.00592 | 92 | 0 |
+
+Problems left out of the paired effect (in only one of the arm and the base; the Arms table below still pools over them): none.
 
 #### Arms
 

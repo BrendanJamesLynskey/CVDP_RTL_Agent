@@ -10,10 +10,13 @@ never produces a score or a label, and every cost is provider-reported.
 
 Negative and null findings first:
 
-- **The noise floor, from M2.** Two identical gpt-6-luna runs (Arm64 39981444074 and x86 39967317698) give
-  **no detectable effect: −1.1 points [−7.6, +5.4]**, with 4 problems better, 5 worse and 83 the same (sign test
-  p = 1). An arm has to move the pass rate by more than about ±7 points on 92 problems before one run each can
-  show it. That is why each arm gets 2 runs, and why the comparison is paired on problems.
+- **The noise floor, from M2: same settings, different runner (a conservative floor).** M2's two gpt-6-luna runs
+  had the same image, problems and settings, but one ran on Arm64 (39981444074) and one on x86 (39967317698). They
+  give **no detectable effect: −1.1 points [−7.6, +5.4]**, with 4 problems better, 5 worse and 83 the same (sign
+  test p = 1). With one run per side, an arm has to move the pass rate by more than about ±7 points on 92
+  problems before it shows. All M3 arms run on Arm64 with 2 runs each, and a problem's rate is averaged over the
+  runs, so their floor should be narrower: about ±5 if run-to-run noise is what sets the width (±7/√2). That
+  figure is an expectation, not a measurement. Arm A's two runs will measure it.
 - **Haiku against Luna (M2, as a worked example): no detectable effect**, +1.6 points [−4.9, +8.2], 12 better and
   12 worse. DeepSeek is worse than Luna: −11.4 [−20.1, −2.7], 6 better and 21 worse, p = 0.0059.
 - **The arms (B–G against A): [waits on arms].**
@@ -52,18 +55,21 @@ python3 tools/ablate.py --base A \
 Without `--arm`, the CSVs are grouped by label plus the settings that differ from M2 (for example
 `openai/gpt-6-luna (reasoning default) self_check=0`), and the arm with M2's settings is the base.
 
-**Calibration: the same configuration twice** (M2's two Luna runs; `calibration_same_config.md`):
+**Calibration: same settings, different runner** (M2's two Luna runs, Arm64 against x86; a conservative floor;
+`calibration_same_config.md`):
 
-| Arm | Finding | Effect [95%] | Better / worse / same | Sign test p | Problems |
-|---|---|---|---|---|---|
-| luna default, x86 run (39967317698) | no detectable effect | -1.1 [-7.6, +5.4] | 4 / 5 / 83 | 1 | 92 |
+| Arm | Finding | Effect [95%] | Better / worse / same | Sign test p | Problems | Dropped |
+|---|---|---|---|---|---|---|
+| luna default, x86 run (39967317698) | no detectable effect | -1.1 [-7.6, +5.4] | 4 / 5 / 83 | 1 | 92 | 0 |
 
 **Worked example on M2's three models** (each pooled over its x86 and Arm64 runs; `m2_models_paired.md`):
 
-| Arm | Finding | Effect [95%] | Better / worse / same | Sign test p | Problems |
-|---|---|---|---|---|---|
-| claude-haiku-5.5 (low) | no detectable effect | +1.6 [-4.9, +8.2] | 12 / 12 / 68 | 1 | 92 |
-| deepseek-v4.1-flash (off) | worse than base | -11.4 [-20.1, -2.7] | 6 / 21 / 65 | 0.00592 | 92 |
+| Arm | Finding | Effect [95%] | Better / worse / same | Sign test p | Problems | Dropped |
+|---|---|---|---|---|---|---|
+| claude-haiku-5.5 (low) | no detectable effect | +1.6 [-4.9, +8.2] | 12 / 12 / 68 | 1 | 92 | 0 |
+| deepseek-v4.1-flash (off) | worse than base | -11.4 [-20.1, -2.7] | 6 / 21 / 65 | 0.00592 | 92 | 0 |
+
+No problem is dropped from either paired effect: all three models ran all 92.
 
 | Arm | Runs: pass rate each | Pooled pass@1 [95% problem bootstrap] | Cost | $/problem | $/solved | Median wall | Tokens |
 |---|---|---|---|---|---|---|---|
@@ -89,7 +95,9 @@ external service.
 
 ## The taxonomy
 
-One primary label per failed (problem, run): the first rule that holds, in this order: `llm_error`,
+One primary label per failed (problem, run). Every failed row gets a real label: `unclassified` (evidence present,
+no rule holds) is reachable only as a gap in the rules, and a test asserts it never fires on the fixtures. The label
+is the first rule that holds, in this order: `llm_error`,
 `agent_error`, `killed`, `no_edit`, `stopped_by_cap`, `gave_up`, `sim_incomplete`, `compile_fail_own`,
 `compile_fail_hidden`, `tests_failed_selfcheck_passed`, `tests_failed_selfcheck_failed`,
 `tests_failed_no_selfcheck`, `harness_error`. Every other rule that holds becomes a secondary flag, and so do
@@ -97,10 +105,19 @@ One primary label per failed (problem, run): the first rule that holds, in this 
 
 The evidence:
 - **The harness's per-test log**, classified by `log_check.py`: `tests_failed`, `build_failed`, `sim_incomplete`
-  (new: pytest started a simulation and the log ends with no pytest summary, a hang or a kill; M2 counted these as
-  `harness_error`) or `harness_error`.
-- **The agent's trace**: its last compile, and its last own testbench result.
-- **The summary**: the stop reason, and the files changed under `rtl/`.
+  or `harness_error`. `sim_incomplete` is new: pytest started a simulation, or had collected its tests and was
+  capturing their output, and the log ends with no pytest summary (a hang or a kill). M2 counted these as
+  `harness_error`.
+  - On a harness kill, `raw_result.json` has `"log": null` and an `error_msg`. The problem's own log is then read
+    from `reports/<n>.txt`, where n is the problem number without leading zeros.
+  - A failed problem with no log to read, or with no tests recorded, is `harness_error` (flagged `no_log` or
+    `no_tests`).
+- **The agent's trace**: its last compile, and its last own testbench result. When finalize restored the best
+  compiled edit (`kept` = `best_compiled_turn_N`), the submitted code compiled, so its own compile counts as passed
+  even though `final_compiled` describes the discarded edit.
+- **The summary**: the stop reason, and the files changed under `rtl/`. `run_budget_exhausted` (the whole-run
+  guard stopped the problem before its first call) counts as `stopped_by_cap`. `no_task` counts as `agent_error`.
+  Neither counts as `no_edit`, because the agent never reached an edit.
 
 Changes to the brief's list, from what M2 shows:
 - `gave_up` is added: Haiku gave up 1–4 times per sweep.
@@ -192,8 +209,9 @@ trace: testbench_run exit=0 vvp -n tb.vvp
 
 ### Rules against hand labels
 
-**[waits on artifacts]** for real failures. The 15 below are the fixture failures
-(`tests/fixtures/taxonomy/`). Their hand labels were written from each case's log and trace. The same author wrote
+**[waits on artifacts]** for real failures. The 15 below are fixture failures (`tests/fixtures/taxonomy/`). The
+four fixtures added in review round 1 (harness kill with and without a log, a restored best edit, no tests) are
+rule tests and are not in the hand set. Their hand labels were written from each case's log and trace. The same author wrote
 the fixtures and the rules, so this checks the code, not the rules' judgement on real failures.
 `taxonomy.py --sheet sheet.csv --sample 15` draws 15 real failures for hand-labelling, and `--hand sheet.csv`
 scores them.
@@ -258,6 +276,10 @@ mismatch is the real failure. If real runs show many of these, `compile_fail_hid
 
 - **No agent change in M3.** The arms B and C were already running on M2's image, so a change to the agent would
   have split the arms across two images. The taxonomy reads the existing trace format.
+- **Harness kills record no log path.** `raw_result.json` has `"log": null` and an `error_msg`, but the per-test
+  log is still at `reports/<n>.txt`. The planner found 4 such cases in the first real runs (`gcd_0007`,
+  `elevator_control_0004` ×2, `axi4lite_to_pcie_config_0003`).
+- **`final_compiled` describes the last edit, not the one submitted**, when finalize has restored an earlier edit.
 - **Two CSVs named the same in different folders** (`x86/` and `arm64/`) were first merged into one run.
   `ablate.py` now keys a run by its path and seed.
 - **`log_check.py`'s old fallback** called a cut-off simulation `harness_error`. Now `harness_error` is kept for
@@ -272,8 +294,29 @@ mismatch is the real failure. If real runs show many of these, `compile_fail_hid
   worse ones; then the better ones.
 - **The sign test is exact and two-sided**, on the problems that changed, with ties dropped.
 - **The Pareto frontier counts an arm as dominated** only by one that is at least as good on both axes and
-  strictly better on one. Equal points are both on the frontier.
+  strictly better on one. Equal points are both on the frontier. An arm with unreported cost has only a lower
+  bound on its $/problem, so it is drawn hollow, labelled "≥", kept off the frontier, and never counted as
+  dominating another arm.
+- **Problems in only one of an arm and the base** are left out of the paired effect and listed under its table.
+  The Arms table still pools over all of an arm's problems.
 - **One primary label and an explicit precedence**, with the other matching rules kept as flags, so a count adds
   up to the failures and nothing is lost.
 - **The evidence goes into `collect.py`**, so each sweep's `results.csv` carries its own labels and the planner
   does not need the artifacts to count them.
+
+## Review round 1
+
+The planner's review of `54604ac` re-ran the tools on four real runs (A1 39981444074, A2 40031838020,
+B1 40027264043, C1 40027278575) and asked for 2 must-fix and 6 should-fix changes. All are in; tests went from 112
+to 122. No agent change.
+
+| # | Finding | Fix |
+|---|---|---|
+| 1 | `log: null` harness failures came out `unclassified` | Fall back to `reports/<n>.txt`; with no log at all, `harness_error` (flag `no_log`, the `error_msg` in the excerpt). Fixtures: a kill whose log ends mid-cocotb → `sim_incomplete`; a kill with no log file → `harness_error`. |
+| 2 | A restored best edit was labelled `compile_fail_own` | `kept` = `best_compiled…` counts as own compile passed. Fixture: `best_compiled_turn_1`, `final_compiled` false, hidden build failed → `compile_fail_hidden`. |
+| 3 | `run_budget_exhausted` and `no_task` had no rule | `stopped_by_cap` and `agent_error`, never `no_edit`. Test. |
+| 4 | Empty `tests` and missing logs ended `unclassified` | Both `harness_error` (flags `no_tests`, `no_log`). Fixture for `no_tests`. A test asserts `unclassified` never fires on the fixtures. |
+| 5 | Pareto placed unreported-cost arms at their lower bound | Hollow marker and a "≥" label in the SVG; "n/a (cost a lower bound)" in the table, with a footnote; never on the frontier, never dominating. Test. |
+| 6 | Problems dropped from the paired effect were not shown | A Dropped column, and a list per arm of the problems only in the arm or only in the base. Test. |
+| 7 | A killed session with collected tests and no summary was not `sim_incomplete` | `collected N items` (N ≥ 1) plus no summary → `sim_incomplete`. Test. |
+| 8 | The noise floor's wording | "Same settings, different runner (a conservative floor)", with the note that 2 runs per arm on one runner should narrow it. |

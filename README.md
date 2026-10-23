@@ -17,8 +17,9 @@ cost $8.55. Milestone 1 report: [`docs/reports/M1_report.md`](docs/reports/M1_re
 `tools/ablate.py` compares an agent configuration with the base on the same problems, as a paired effect with a
 problem-bootstrap interval and a sign test, and draws the cost/pass-rate Pareto chart. `tools/taxonomy.py` gives
 every failure one deterministic label from the harness log, the trace and the summary. The seven arms (gpt-6-luna,
-2 runs each) are being run; until they are in, the report's tables use M2's data, with M2's two identical Luna
-runs as the noise floor (no detectable effect, −1.1 points [−7.6, +5.4]).
+2 runs each) are being run; until they are in, the report's tables use M2's data. The noise floor is M2's two Luna
+runs, with the same settings on different runners, a conservative floor: no detectable effect, −1.1 points
+[−7.6, +5.4].
 
 **M2a** (merged, [`docs/reports/M2a_report.md`](docs/reports/M2a_report.md)): reasoning limits, a retry on empty
 replies and unreadable decisions, and seeds. On the same 10 problems on Arm64, DeepSeek at `reasoning=off` passed
