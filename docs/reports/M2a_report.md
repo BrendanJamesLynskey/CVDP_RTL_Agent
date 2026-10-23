@@ -132,7 +132,7 @@ weekdays 01:00–04:00 and 06:00–10:00 UTC (see the model list below). The Dee
 (10:01, 10:22 and 11:35). That does **not** mean every call was billed at the off-peak price. The planner's review
 read the artifacts: 20 of 66 calls in the first `low` run, and 7 of 80 in the `off` run, were billed at exactly
 2.0× the list price. That is consistent with OpenRouter routing those calls to a provider that charges more. Until
-review round 1, nothing recorded which provider served a call. The round-1 re-run records it: 9 different
+review round 1, nothing recorded which provider served a call. The round-1 re-run records it: 7 different
 providers served its 56 calls.
 
 **DeepSeek against M1:**
@@ -148,7 +148,7 @@ providers served its 56 calls.
 | Reflect parse retries | (1 markup reply, defaulted to submit) | n/a | 4 (all DSML-only replies, then not caught as empty) | 0 | 0 |
 | Completion tokens (of which reasoning) | 357,638 (not recorded) | 246,734 (not recorded) | 384,304 (346,935 = 90%) | 55,666 (0) | 305,580 (265,158 = 87%) |
 | Median wall per problem | 144 s | 95 s | 136 s | 13 s | 52 s |
-| Longest problem | 528 s | killed at 600 s | 541 s | 61 s | 464 s |
+| Longest problem | 528 s | killed at 600 s | 541 s | 62 s | 464 s |
 | Harness wall time, 10 problems | not recorded | not recorded | 954 s | 194 s | 741 s |
 | Stop reasons | submit 9, wall_time 1 | n/a | submit 8, budget 1, wall_time 1 | submit 9, max_turns 1 | submit 9, wall_time 1 |
 
@@ -348,7 +348,7 @@ from 82 to 97; no test needs an LLM.
 - reasoning 87% of completion tokens;
 - longest problem 464 s (`dynamic_equalizer_0004`, stopped on `wall_time` under the cap and passed); harness wall
   time 741 s;
-- served by 9 providers (`results.csv` in [`m2a/`](m2a/)).
+- served by 7 providers (`results.csv` in [`m2a/`](m2a/)).
 
 Against the first `low` run, empties fell from 14 to 5 and cost from $0.3546 to $0.2194, for one pass fewer
 (`ttc_lite_0001`).
