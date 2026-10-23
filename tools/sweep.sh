@@ -5,6 +5,8 @@
 #   bash tools/sweep.sh [all|run|collect]     (default all; the workflow runs `run` and `collect` as separate steps,
 #                                              so collection still happens when the run step times out)
 #
+# SEED_OFFSET=m numbers the seeds m+1 … m+n (CVDP_SEED, work dirs, the seed column), so two dispatches of the same
+# settings pool with distinct seeds.
 # SEEDS=n runs the same problem list n times, one after another, each in its own work dir ($WORK/seed<k>) and its
 # own harness invocation, with CVDP_SEED=<k> passed to the agent (a label only: sampling is not seeded). One ledger
 # ($WORK.ledger) is shared by every seed, so the whole-run spend guard covers the whole job.
@@ -31,6 +33,7 @@ SELF_CHECK=${SELF_CHECK:-1}
 LINT=${LINT:-1}
 REASONING=${REASONING:-low}          # default | low | medium | high | off
 SEEDS=${SEEDS:-1}
+SEED_OFFSET=${SEED_OFFSET:-0}
 PROVIDER_ORDER=${PROVIDER_ORDER:-}   # OpenRouter providers, comma-separated, tried in order with no fallbacks
 STEP_BUDGET_S=${STEP_BUDGET_S:-}
 SEED_PROBLEM_WORST_S=${SEED_PROBLEM_WORST_S:-660}
@@ -46,6 +49,7 @@ int() { [[ "$2" =~ ^[1-9][0-9]*$ ]] || die "$1 must be a positive integer, got '
 bit() { [[ "$2" =~ ^[01]$ ]] || die "$1 must be 0 or 1, got '$2'"; }
 num BUDGET_USD "$BUDGET_USD"; int MAX_TURNS "$MAX_TURNS"; int THREADS "$THREADS"
 bit SELF_CHECK "$SELF_CHECK"; bit LINT "$LINT"; int SEEDS "$SEEDS"
+[[ "$SEED_OFFSET" =~ ^[0-9]+$ ]] || die "SEED_OFFSET must be a non-negative integer, got '$SEED_OFFSET'"
 case "$REASONING" in
   default|low|medium|high|off) ;;
   *) die "REASONING must be default, low, medium, high or off, got '$REASONING'" ;;
@@ -84,8 +88,8 @@ run_phase() {
   if [ -n "$RUN_BUDGET_USD" ]; then guard=$RUN_BUDGET_USD
   else guard=$(python3 -c "import sys; a = sys.argv; print(round(float(a[1]) * int(a[2]) * int(a[3]) * 1.2, 6))" \
     "$BUDGET_USD" "$n" "$SEEDS"); fi
-  printf '{"problems": %s, "seeds": %s, "run_budget_usd": %s, "model": "%s", "reasoning": "%s", "provider_order": "%s"}\n' \
-    "$n" "$SEEDS" "$guard" "$MODEL" "$REASONING" "$PROVIDER_ORDER" > "$work.run.json"
+  printf '{"problems": %s, "seeds": %s, "seed_offset": %s, "run_budget_usd": %s, "model": "%s", "reasoning": "%s", "provider_order": "%s"}\n' \
+    "$n" "$SEEDS" "$SEED_OFFSET" "$guard" "$MODEL" "$REASONING" "$PROVIDER_ORDER" > "$work.run.json"
 
   if [ "$MODEL" = fake ]; then export CVDP_PROVIDER=fake; else export CVDP_PROVIDER=openrouter; fi
   export CVDP_MODEL="$MODEL" CVDP_BUDGET_USD="$BUDGET_USD" CVDP_MAX_TURNS="$MAX_TURNS" CVDP_SELF_CHECK="$SELF_CHECK" \
@@ -101,7 +105,7 @@ run_phase() {
 
   local worst left skip=""
   worst=$(( (n + THREADS - 1) / THREADS * SEED_PROBLEM_WORST_S + 300 ))
-  for seed in $(seq 1 "$SEEDS"); do
+  for seed in $(seq $((SEED_OFFSET + 1)) $((SEED_OFFSET + SEEDS))); do
     if [ -z "$skip" ] && [ -n "$STEP_BUDGET_S" ]; then
       left=$(( T0 + STEP_BUDGET_S - $(date +%s) ))
       [ "$left" -ge "$worst" ] || skip="the step had ${left} s left, under this seed's worst case of ${worst} s"

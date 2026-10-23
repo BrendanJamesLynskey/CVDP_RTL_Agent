@@ -1,0 +1,2 @@
+{"kind": "llm", "node": "plan", "model": "openai/gpt-6-luna", "decision": "plan", "cost": 0.001}
+{"kind": "llm", "node": "edit", "cost": null, "deadline_missed": true, "error": "CallDeadline: no reply within 440.0 s; call abandoned"}

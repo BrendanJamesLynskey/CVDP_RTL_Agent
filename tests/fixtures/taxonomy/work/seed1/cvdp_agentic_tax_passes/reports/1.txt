@@ -1,0 +1,10 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-8.3.2, pluggy-1.5.0
+rootdir: /code/rundir
+collected 1 item
+
+src/test_runner.py      0.00ns INFO     cocotb.gpi                         Running on Icarus Verilog version 13.0
+     0.00ns INFO     cocotb                             Running tests
+     0.00ns INFO     cocotb.regression                  running test_main (1/1)
+  1240.00ns INFO     cocotb.regression                  TESTS=1 PASS=1 FAIL=0 SKIP=0
+============================== 1 passed in 3.10s ===============================

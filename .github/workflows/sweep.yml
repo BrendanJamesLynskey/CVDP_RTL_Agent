@@ -58,6 +58,10 @@ on:
         description: "Independent repeats of the problem list, run one after another"
         type: string
         default: "1"
+      seed_offset:
+        description: "Number the seeds from seed_offset+1 (a second dispatch of the same arm pools with distinct seeds)"
+        type: string
+        default: "0"
       provider_order:
         description: "Pin OpenRouter providers, comma-separated, in order, no fallbacks (blank = OpenRouter routes)"
         type: string
@@ -86,6 +90,7 @@ env:
   REASONING: ${{ github.event_name == 'pull_request' && 'low' || inputs.reasoning }}
   # The smoke run uses 2 seeds, so the repeat path (work dirs, seed column, table across seeds) runs on every PR.
   SEEDS: ${{ github.event_name == 'pull_request' && '2' || inputs.seeds }}
+  SEED_OFFSET: ${{ github.event_name == 'pull_request' && '0' || inputs.seed_offset }}
   PROVIDER_ORDER: ${{ github.event_name == 'pull_request' && '' || inputs.provider_order }}
   RUNNER: ${{ github.event_name == 'pull_request' && 'ubuntu-24.04' || inputs.runner }}
   WORK: work

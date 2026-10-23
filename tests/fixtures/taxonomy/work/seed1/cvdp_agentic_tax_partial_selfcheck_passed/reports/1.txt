@@ -1,0 +1,12 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-8.3.2, pluggy-1.5.0
+rootdir: /code/rundir
+collected 1 item
+
+src/test_runner.py      0.00ns INFO     cocotb.gpi                         Running on Icarus Verilog version 13.0
+     0.00ns INFO     cocotb                             Running tests
+     0.00ns INFO     cocotb.regression                  running test_burst (1/1)
+AssertionError: burst 3 read back 0x00 != 0xa5
+  9000.00ns INFO     cocotb.regression                  TESTS=3 PASS=2 FAIL=1 SKIP=0
+ERROR: Failed 1 of 3 tests.
+============================== 1 failed in 7.80s ===============================
