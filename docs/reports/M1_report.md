@@ -206,9 +206,9 @@ What the traces show:
 
 **Live-check spend: $0.3937**, all provider-reported: $0.1172 (Haiku, 10 problems), $0.2704 (DeepSeek, 10 problems),
 $0.0060 for one trial problem (Haiku, `lfsr_0001`, before the prompt fix in `e030868`; it passed), and $0.0000147
-for the two one-word key-check calls. Plus $0.0093 for the 2-problem Actions sweep (run 39864754142), and $0.0018 for one
-problem run after review round 1 to check the changed image (Haiku, `lfsr_0001`, passed). **Grand total for M1:
-$0.4048**, of a $5 allowance.
+for the two one-word key-check calls. Plus $0.0093 for the 2-problem Actions sweep (run 39864754142), and $0.0050 for two
+one-problem runs after review round 1 to check the changed image and workflow (Haiku, `lfsr_0001`, both passed:
+$0.0018 locally, $0.0032 in Actions run 39884621498). **Grand total for M1: $0.4080**, of a $5 allowance.
 
 ## Review round 1
 
@@ -231,8 +231,14 @@ test needs an LLM.
 Verified after the fixes: 51 passed and 1 skipped locally (the skipped one needs Icarus, which CI installs); the
 fake-provider smoke run through the real harness with the rebuilt image (every check ran as the tool user and
 passed); a rerun into the same work dir refused; one real problem with Haiku 5.5 through the harness ($0.0018,
-passed, no key-shaped string anywhere in the work dir); the committed tables recompute byte for byte. CI on the
-pushed commit is in the PR.
+passed, no key-shaped string anywhere in the work dir); the committed tables recompute byte for byte. In Actions
+on `2808ce0`: Tests [39884423115](https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent/actions/runs/39884423115),
+Images [39884423254](https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent/actions/runs/39884423254) (agent image
+with the tool user), PR smoke [39884429240](https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent/actions/runs/39884429240),
+and a dispatched one-problem sweep with Haiku 5.5 and `run_budget_usd=0.05`
+([39884621498](https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent/actions/runs/39884621498): passed, $0.0032;
+every new step ran: key usage before and after, collect as its own step, the scan, the upload gated on it), all
+`completed, success`.
 
 ## Known gaps
 
