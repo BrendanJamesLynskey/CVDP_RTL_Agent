@@ -261,6 +261,22 @@ instead of 6/10. Items 6 and 7 fix the cause and the count; on top of them:
   6 s + 2 s); and an agent "killed" before its second LLM call has already left a `killed` summary and a ledger
   entry with the first call's cost.
 
+### The same 10 problems in Actions, on Arm64 (planner re-run)
+
+The live check above ran in the build session's own Docker. To leave traces anyone can download, the planner
+re-ran the same 10 problems and settings in Actions on `ubuntu-24.04-arm`, with the code at `1bac336` (before
+review round 1). The CSVs, with a `requested_model` column added, are in [`m1/arm64/`](m1/arm64/), and the table is
+the current `tools/table.py` on them:
+
+| Model | Run | pass@1 [Wilson 95%] | Cost (provider) | $/solved |
+|---|---|---|---|---|
+| `anthropic/claude-haiku-5.5` | [39882465527](https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent/actions/runs/39882465527) | 6/10 [31.3, 83.2], the same 6 problems as above | $0.0882 | $0.0147 |
+| `deepseek/deepseek-v4.1-flash-1017` | [39882473408](https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent/actions/runs/39882473408) | 6/10 [31.3, 83.2]; `dynamic_equalizer_0004` passed, `ttc_lite_0001` failed | ≥ $0.2401 (1 problem unreported) | ≥ $0.0400 |
+
+`ttc_lite_0001` (DeepSeek) was killed at the harness's 600 s timeout and left no summary, so its cost is unknown.
+That code had neither of the round-1 fixes for this (provisional summaries, and the 20 s floor before an LLM
+call). Run-to-run variation on the same problems is visible even at n = 10, which is why M2 uses seeds.
+
 ## Known gaps
 
 - **GHCR packages are private until you flip them.** `GITHUB_TOKEN` can push packages but cannot change their
