@@ -95,6 +95,19 @@ CASES = {
     "partial_selfcheck_passed": ("submit", ["rtl/dut.sv"], True, [EDIT, compile_ev(0), tb_ev(True)],
                                  "tests_failed_partial", "tests_failed_selfcheck_passed"),
     "passes": ("submit", ["rtl/dut.sv"], True, [EDIT, compile_ev(0), tb_ev(True)], "passed", ""),
+    # review round 1. A harness kill: raw_result.json has "log": null and an error_msg, but the problem's own log
+    # is still in reports/<n>.txt and ends mid-cocotb -> sim_incomplete
+    "harness_killed_log": ("submit", ["rtl/dut.sv"], True, [EDIT, compile_ev(0)], "sim_incomplete", "",
+                           {"log_null": True}),
+    # the same with no log file at all -> harness_error, from the error_msg
+    "harness_killed_nolog": ("submit", ["rtl/dut.sv"], True, [EDIT, compile_ev(0)], None, "",
+                             {"log_null": True}),
+    # finalize restored the edit of turn 1, which compiled; final_compiled is the discarded edit's (False); the
+    # hidden build failed -> compile_fail_hidden, not compile_fail_own
+    "restored_best": ("max_turns_restored", ["rtl/dut.sv"], False, [EDIT, compile_ev(0), EDIT, compile_ev(1)],
+                      "build_failed", "", {"kept": "best_compiled_turn_1"}),
+    # a failed problem the harness recorded no tests for -> harness_error
+    "no_tests": ("submit", ["rtl/dut.sv"], True, [EDIT, compile_ev(0)], None, "", {"no_tests": True}),
 }
 
 
@@ -107,13 +120,16 @@ def main(out=os.path.join(HERE, "work")):
     seed = os.path.join(out, "seed1")
     raw = {}
     hand = []
-    for name, (stop, files, compiled, events, log, hand_label) in CASES.items():
+    for name, (stop, files, compiled, events, log, hand_label, *extra) in CASES.items():
+        extra = extra[0] if extra else {}
+        stop = "submit" if stop == "max_turns_restored" else stop
         repo = pid(name)[:-5]
         agent_out = os.path.join(seed, repo, "harness", "1", "rundir", "agent_out")
         os.makedirs(agent_out)
         os.makedirs(os.path.join(seed, repo, "reports"))
-        with open(os.path.join(seed, repo, "reports", "1.txt"), "w") as f:
-            f.write(LOGS[log])
+        if log is not None:
+            with open(os.path.join(seed, repo, "reports", "1.txt"), "w") as f:
+                f.write(LOGS[log])
         with open(os.path.join(agent_out, "trace.jsonl"), "w") as f:
             for e in events:
                 f.write(json.dumps(e) + "\n")
@@ -122,7 +138,8 @@ def main(out=os.path.join(HERE, "work")):
             summary = {"provider": "openrouter", "model": "openai/gpt-6-luna", "requested_model": "openai/gpt-6-luna",
                        "turns": turns, "llm_calls": len([e for e in events if e["kind"] == "llm"]),
                        "cost_usd": 0.004, "cost_unreported_calls": 1 if stop == "llm_error" else 0,
-                       "stop_reason": stop, "kept": "last", "final_compiled": compiled, "files_changed": files,
+                       "stop_reason": stop, "kept": extra.get("kept", "last"), "final_compiled": compiled,
+                       "files_changed": files,
                        "wall_time_s": 480.5 if stop == "wall_time" else 60.0,
                        "switches": {"self_check": True, "lint": True, "max_turns": 3 if stop == "max_turns" else 10,
                                     "budget_usd": 0.1, "reasoning": "default"}}
@@ -130,10 +147,13 @@ def main(out=os.path.join(HERE, "work")):
                 json.dump(summary, f, indent=1)
         n_tests = 3 if log == "tests_failed_partial" else 1
         results = [0, 0, 1] if n_tests == 3 else [0 if log == "passed" else 1]
+        tests = [{"result": r, "log": f"/x/{repo}/reports/1.txt", "execution": 1.0} for r in results]
+        if extra.get("log_null"):
+            tests = [{"result": 1, "log": None, "error_msg": "Failed to execute objective harness",
+                      "execution": 600.0}]
         raw[pid(name)] = {"category": "cid003", "difficulty": "medium",
                           "agent_status": "timeout" if stop is None else "completed",
-                          "tests": [{"result": r, "log": f"/x/{repo}/reports/1.txt", "execution": 1.0}
-                                    for r in results]}
+                          "tests": [] if extra.get("no_tests") else tests}
         if hand_label:
             hand.append((pid(name), "fixture#seed1", hand_label))
     with open(os.path.join(seed, "raw_result.json"), "w") as f:

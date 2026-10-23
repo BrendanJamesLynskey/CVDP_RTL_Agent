@@ -200,5 +200,49 @@
     "execution": 1.0
    }
   ]
+ },
+ "cvdp_agentic_tax_harness_killed_log_0001": {
+  "category": "cid003",
+  "difficulty": "medium",
+  "agent_status": "completed",
+  "tests": [
+   {
+    "result": 1,
+    "log": null,
+    "error_msg": "Failed to execute objective harness",
+    "execution": 600.0
+   }
+  ]
+ },
+ "cvdp_agentic_tax_harness_killed_nolog_0001": {
+  "category": "cid003",
+  "difficulty": "medium",
+  "agent_status": "completed",
+  "tests": [
+   {
+    "result": 1,
+    "log": null,
+    "error_msg": "Failed to execute objective harness",
+    "execution": 600.0
+   }
+  ]
+ },
+ "cvdp_agentic_tax_restored_best_0001": {
+  "category": "cid003",
+  "difficulty": "medium",
+  "agent_status": "completed",
+  "tests": [
+   {
+    "result": 1,
+    "log": "/x/cvdp_agentic_tax_restored_best/reports/1.txt",
+    "execution": 1.0
+   }
+  ]
+ },
+ "cvdp_agentic_tax_no_tests_0001": {
+  "category": "cid003",
+  "difficulty": "medium",
+  "agent_status": "completed",
+  "tests": []
  }
 }

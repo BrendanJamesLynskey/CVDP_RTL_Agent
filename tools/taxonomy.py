@@ -5,10 +5,12 @@ Primary labels, in the order the rules are tried (the first that holds is the pr
 holds becomes a flag):
 
   llm_error                      the problem stopped on a provider error, a missed call deadline or unreported cost
-  agent_error                    the agent crashed (stop_reason "error"; finalize still ran)
+  agent_error                    the agent crashed (stop_reason "error"; finalize still ran), or found no task
+                                 to read (stop_reason "no_task")
   killed                         no final summary: the harness killed the agent (or it never ran)
   no_edit                        the agent finished without changing anything under rtl/
-  stopped_by_cap                 max_turns, budget or wall_time stopped it
+  stopped_by_cap                 max_turns, budget or wall_time stopped it, or the whole-run spend guard stopped
+                                 it before its first call (run_budget_exhausted)
   gave_up                        the agent chose give_up
   sim_incomplete                 the hidden tests' log ends inside a simulation with no pytest summary (hang/kill)
   compile_fail_own               the hidden tests' build failed, and so did the agent's own last compile
@@ -17,8 +19,11 @@ holds becomes a flag):
   tests_failed_selfcheck_passed  hidden tests failed; the agent's own last testbench passed (self-check too weak)
   tests_failed_selfcheck_failed  hidden tests failed; the agent's own last testbench failed and it submitted anyway
   tests_failed_no_selfcheck      hidden tests failed; the agent never ran a testbench of its own
-  harness_error                  the log shows no test result at all (a harness, bundle or Docker fault)
+  harness_error                  the log shows no test result at all (a harness, bundle or Docker fault), or the
+                                 harness recorded no tests for a failed problem, or kept no log for them
   needs_artifacts                the inputs lack the evidence (a CSV from before M3 has no trace or log columns)
+  unclassified                   evidence present but no rule holds: a gap in the rules (tests assert it never
+                                 fires on the fixtures)
 
 Adjusted from M2: `gave_up` (Haiku gave up 1–4 times per sweep), `agent_error` and `killed` are added, and
 `tests_failed_selfcheck_failed` splits the case the brief's two self-check labels leave out.
@@ -54,7 +59,9 @@ LABELS = ["llm_error", "agent_error", "killed", "no_edit", "stopped_by_cap", "ga
           "tests_failed_selfcheck_failed", "tests_failed_no_selfcheck", "harness_error"]
 EVIDENCE = ["rtl_changed", "own_compile_last", "selfcheck_runs", "selfcheck_last", "log_class"]
 _TB_BAD = re.compile(r"(?i)\b(fail|failed|failure|error|fatal)\b")
-_LOG_ORDER = ["sim_incomplete", "build_failed", "tests_failed", "harness_error", "missing", "passed"]
+_LOG_ORDER = ["sim_incomplete", "build_failed", "tests_failed", "harness_error", "passed"]
+# log_class values that are not a classified log: the harness recorded no tests, or kept no log for them
+NO_LOG = ("no_tests", "no_log")
 
 
 def _redact(text):
@@ -68,22 +75,28 @@ def _redact(text):
 # ---------- evidence from a work dir ----------
 
 def test_logs(work, pid, entry):
-    """The per-test log files of the problem's failing tests."""
-    repo = "_".join(pid.split("_")[:-1])
+    """The per-test log files of the problem's failing tests. When the harness recorded no log for a test (on a
+    harness kill raw_result.json has "log": null and an "error_msg"), the problem's own log is still at
+    <repo>/reports/<n>.txt, n being the problem number without leading zeros: that is used instead."""
+    parts = pid.split("_")
+    repo = "_".join(parts[:-1])
+    fallback = os.path.join(work, repo, "reports", f"{int(parts[-1])}.txt") if parts[-1].isdigit() else ""
     out = []
     for t in entry.get("tests", []):
         if t.get("result") == 0:
             continue
         name = os.path.basename(t.get("log") or "")
-        p = os.path.join(work, repo, "reports", name)
-        if name and os.path.exists(p):
+        p = os.path.join(work, repo, "reports", name) if name else ""
+        p = p if p and os.path.exists(p) else (fallback if fallback and os.path.exists(fallback) else "")
+        if p and p not in out:
             out.append(p)
     return out
 
 
 def log_class(paths):
+    """The worst class over the logs; "no_log" when there is none to read."""
     if not paths:
-        return "missing"
+        return "no_log"
     kinds = {log_check.classify(open(p, errors="replace").read()) for p in paths}
     return next(k for k in _LOG_ORDER if k in kinds or k == "passed")
 
@@ -120,6 +133,8 @@ def trace_evidence(events, summary):
         own = "pass"
     elif summary.get("final_compiled") is False:
         own = "fail"
+    if str(summary.get("kept", "")).startswith("best_compiled"):
+        own = "pass"  # finalize restored the last edit that compiled; final_compiled is the discarded edit's
     tb = [r for r in (selfcheck_result(e) for e in events
                       if e.get("kind") == "tool" and e.get("check") in ("testbench_build", "testbench_run",
                                                                          "testbench_cocotb")) if r]
@@ -136,8 +151,16 @@ def evidence_from_dir(work, pid, entry, problem_dir):
     events = read_trace(os.path.join(out_dir, "trace.jsonl"))
     logs = test_logs(work, pid, entry)
     ev = trace_evidence(events, summary) if summary or events else {k: "" for k in EVIDENCE[:-1]}
-    ev["log_class"] = log_class(logs) if any(t.get("result") != 0 for t in entry.get("tests", [])) else "passed"
-    return ev, {"logs": logs, "events": events}
+    tests = entry.get("tests", [])
+    if not tests:
+        ev["log_class"] = "no_tests"
+    elif all(t.get("result") == 0 for t in tests):
+        ev["log_class"] = "passed"
+    else:
+        ev["log_class"] = log_class(logs)
+    errors = [t.get("error_msg") for t in tests if t.get("error_msg")] + ([entry["error_msg"]]
+                                                                         if entry.get("error_msg") else [])
+    return ev, {"logs": logs, "events": events, "error_msg": errors[0] if errors else ""}
 
 
 # ---------- the rules ----------
@@ -158,12 +181,13 @@ def label(r):
     tb_last = r.get("selfcheck_last") or ""
     tb_runs = _i(r.get("selfcheck_runs"))
     rtl = _i(r.get("rtl_changed"))
+    started = stop not in ("no_task", "run_budget_exhausted")  # the agent got as far as editing
     holds = {
         "llm_error": stop in ("llm_error", "cost_unreported"),
-        "agent_error": stop == "error",
+        "agent_error": stop in ("error", "no_task"),
         "killed": stop in ("killed", "no_summary", "not_run"),
-        "no_edit": rtl == 0,
-        "stopped_by_cap": stop in ("max_turns", "budget", "wall_time"),
+        "no_edit": rtl == 0 and started,
+        "stopped_by_cap": stop in ("max_turns", "budget", "wall_time", "run_budget_exhausted"),
         "gave_up": stop == "give_up",
         "sim_incomplete": has and log == "sim_incomplete",
         "compile_fail_own": has and log == "build_failed" and own in ("fail", "none"),
@@ -171,7 +195,7 @@ def label(r):
         "tests_failed_selfcheck_passed": has and log == "tests_failed" and tb_last == "pass",
         "tests_failed_selfcheck_failed": has and log == "tests_failed" and tb_last == "fail",
         "tests_failed_no_selfcheck": has and log == "tests_failed" and tb_runs == 0,
-        "harness_error": has and log == "harness_error",
+        "harness_error": has and log in ("harness_error",) + NO_LOG,
     }
     true = [k for k in LABELS if holds[k]]
     primary = true[0] if true else ("needs_artifacts" if not has else "unclassified")
@@ -185,6 +209,10 @@ def label(r):
         flags.append("self_check_off")
     if str(r.get("lint")) == "0":
         flags.append("lint_off")
+    if log in NO_LOG:
+        flags.append(log)
+    if stop in ("no_task", "run_budget_exhausted"):
+        flags.append(stop)
     if (_i(r.get("empty_replies")) or 0) > 0:
         flags.append("empty_replies")
     if str(r.get("kept", "")).startswith("best_compiled"):
@@ -229,6 +257,8 @@ def rows_from_csvs(specs, paths):
 def excerpt(r, n=10):
     """At most n lines: the failing log's telling lines, then the trace's last checks and the stop. Redacted."""
     lines = []
+    if (r.get("_paths") or {}).get("error_msg"):
+        lines.append(f"harness: {str(r['_paths']['error_msg'])[:160]}")
     for p in (r.get("_paths") or {}).get("logs", [])[:1]:
         text = open(p, errors="replace").read()
         all_ = [ln.rstrip() for ln in text.splitlines() if ln.strip()]

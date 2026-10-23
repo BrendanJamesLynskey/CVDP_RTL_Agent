@@ -113,8 +113,10 @@ def test_each_label_fires_on_its_own_fixture_and_on_no_other(fixture_rows):
     for lb in taxonomy.LABELS:
         own = fixture_rows[f"cvdp_agentic_tax_{lb}_0001"]
         assert own["_label"] == lb, (lb, own["_label"], own["_flags"])
+        # the review-round-1 fixtures each test one of these labels again on a different input
+        extra = ("ambiguous", "partial", "harness_killed", "restored_best", "no_tests")
         others = [i for i, r in fixture_rows.items() if r.get("_label") == lb and i != own["id"]
-                  and not i.startswith("cvdp_agentic_tax_ambiguous") and not i.startswith("cvdp_agentic_tax_partial")]
+                  and not any(i.startswith(f"cvdp_agentic_tax_{e}") for e in extra)]
         assert others == [], (lb, others)
     assert fixture_rows["cvdp_agentic_tax_passes_0001"]["pass"] == "1"
 
@@ -214,3 +216,79 @@ def test_seed_offset_two_and_one_seed_gives_seed_three_everywhere(tmp_path):
     assert "Seed 3:" in (work / "table.md").read_text()
     run = json.load(open(str(work) + ".run.json"))
     assert run["seed_offset"] == 2 and list(run["seed_runs"]) == ["3"]
+
+
+# ---------- review round 1 ----------
+
+def test_harness_kill_with_null_log_falls_back_to_reports_n_txt(fixture_rows):
+    """raw_result.json has "log": null and an error_msg; the log at reports/<n>.txt ends mid-cocotb."""
+    r = fixture_rows["cvdp_agentic_tax_harness_killed_log_0001"]
+    assert (r["log_class"], r["_label"]) == ("sim_incomplete", "sim_incomplete")
+
+
+def test_harness_kill_with_no_log_at_all_is_a_harness_error(fixture_rows):
+    r = fixture_rows["cvdp_agentic_tax_harness_killed_nolog_0001"]
+    assert (r["log_class"], r["_label"]) == ("no_log", "harness_error") and "no_log" in r["_flags"]
+    ex = taxonomy.excerpt(dict(r))
+    assert "harness: Failed to execute objective harness" in ex
+
+
+def test_failed_problem_with_no_tests_is_a_harness_error(fixture_rows):
+    r = fixture_rows["cvdp_agentic_tax_no_tests_0001"]
+    assert (r["log_class"], r["_label"]) == ("no_tests", "harness_error")
+
+
+def test_unclassified_never_fires_on_the_fixtures(fixture_rows):
+    labels = {r.get("_label") for r in fixture_rows.values() if r["pass"] != "1"}
+    assert "unclassified" not in labels and "needs_artifacts" not in labels
+
+
+def test_restored_best_compiled_edit_counts_as_own_compile_passed(fixture_rows):
+    r = fixture_rows["cvdp_agentic_tax_restored_best_0001"]
+    assert r["kept"] == "best_compiled_turn_1" and r["own_compile_last"] == "pass"
+    assert r["_label"] == "compile_fail_hidden" and "best_edit_restored" in r["_flags"]
+    ev = taxonomy.trace_evidence([], {"kept": "best_compiled_turn_2", "final_compiled": False,
+                                      "files_changed": ["rtl/a.sv"]})
+    assert ev["own_compile_last"] == "pass"
+
+
+def test_stop_reasons_that_end_before_any_edit():
+    base = {"pass": "0", "log_class": "tests_failed", "rtl_changed": "0", "selfcheck_runs": "0"}
+    p, flags = taxonomy.label(dict(base, stop_reason="run_budget_exhausted"))
+    assert p == "stopped_by_cap" and "no_edit" not in flags and "run_budget_exhausted" in flags
+    p, flags = taxonomy.label(dict(base, stop_reason="no_task"))
+    assert p == "agent_error" and "no_edit" not in flags and "no_task" in flags
+    assert taxonomy.label(dict(base, stop_reason="submit"))[0] == "no_edit"
+
+
+def test_pareto_keeps_lower_bound_arms_off_the_frontier():
+    pts = {"a": (0.010, 0.50), "b": (0.020, 0.60), "lb_cheap": (0.005, 0.70)}
+    assert ablate.pareto(pts) == {"lb_cheap"}  # if its cost were known
+    assert ablate.pareto(pts, lower={"lb_cheap"}) == {"a", "b"}  # it is only a lower bound: neither on nor over
+    out = ablate.svg(pts, {"a", "b"}, lower={"lb_cheap"})
+    ET.fromstring(out)
+    assert 'fill="#ffffff"' in out and "lb_cheap (≥$0.0050/problem)" in out
+
+
+def test_pareto_table_marks_unreported_arms():
+    base = rows("1100", run="b")
+    lb = rows("1111", run="l")
+    lb[0]["cost_unreported_calls"] = "1"
+    md = ablate.report({"base": base, "lb": lb}, "base")[0]
+    assert "| lb | ≥$0.0100 | 100.0% | n/a (cost a lower bound) |" in md and "drawn hollow" in md
+
+
+def test_problems_dropped_from_the_paired_effect_are_listed():
+    base = rows("1100")              # p0..p3
+    arm = rows("11") + [dict(rows("1")[0], id="extra")]  # p0, p1 and one problem the base lacks
+    md, _, pairs, _, _ = ablate.report({"base": base, "arm": arm}, "base")
+    assert pairs["arm"]["arm_only"] == ["extra"] and pairs["arm"]["base_only"] == ["p2", "p3"]
+    assert "- arm: 1 only in the arm (`extra`); 2 only in the base (`p2`, `p3`)" in md
+    assert "| 2 | 3 |" in md  # 2 problems paired, 3 dropped
+
+
+def test_log_check_collected_tests_and_no_summary_is_sim_incomplete():
+    head = ("============================= test session starts ==============================\n"
+            "platform linux -- Python 3.12.3, pytest-8.3.2\ncollected 3 items\n\nsrc/test_runner.py ")
+    assert log_check.classify(head) == "sim_incomplete"  # pytest capturing output, then killed
+    assert log_check.classify(head.replace("collected 3 items", "collected 0 items")) == "harness_error"
