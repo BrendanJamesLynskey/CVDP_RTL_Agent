@@ -124,7 +124,9 @@ def paired(arm_rows, base_rows):
     lo, hi = bootstrap_mean(diffs)
     return {"problems": len(common), "effect": statistics.mean(diffs) if diffs else 0.0, "lo": lo, "hi": hi,
             "better": better, "worse": worse, "same": len(common) - better - worse,
-            "p_sign": sign_test(better, worse)}
+            "p_sign": sign_test(better, worse),
+            # left out of the paired effect (the Arms table still pools over them)
+            "arm_only": sorted(set(a) - set(b)), "base_only": sorted(set(b) - set(a))}
 
 
 def summary(rows):
@@ -137,12 +139,16 @@ def summary(rows):
             "tokens": s["tokens"], "runs": run_rates(rows)}
 
 
-def pareto(points):
-    """points: {name: (cost per problem, pass rate)}. Names on the frontier: not dominated by another arm."""
+def pareto(points, lower=()):
+    """points: {name: (cost per problem, pass rate)}. Names on the frontier: not dominated by another arm.
+    Arms in `lower` have unreported cost, so their $/problem is only a lower bound: they are never on the frontier
+    and never count as dominating another arm (their real cost is not known)."""
     front = set()
     for n, (c, p) in points.items():
+        if n in lower:
+            continue
         dominated = any(c2 <= c and p2 >= p and (c2 < c or p2 > p)
-                        for m, (c2, p2) in points.items() if m != n)
+                        for m, (c2, p2) in points.items() if m != n and m not in lower)
         if not dominated:
             front.add(n)
     return front
@@ -178,12 +184,21 @@ def report(arms, base):
            "Effect = mean over common problems of (arm pass rate − base pass rate), in points of pass rate. "
            "95% interval: paired bootstrap over problems. Sign test: exact, two-sided, on the problems that "
            "changed. Arms whose interval includes 0 come first.\n",
-           "| Arm | Finding | Effect [95%] | Better / worse / same | Sign test p | Problems |",
-           "|---|---|---|---|---|---|"]
+           "| Arm | Finding | Effect [95%] | Better / worse / same | Sign test p | Problems | Dropped |",
+           "|---|---|---|---|---|---|---|"]
     for n in names:
         p = pairs[n]
         out.append(f"| {n} | {verdict(p)} | {100 * p['effect']:+.1f} [{100 * p['lo']:+.1f}, {100 * p['hi']:+.1f}] "
-                   f"| {p['better']} / {p['worse']} / {p['same']} | {p['p_sign']:.3g} | {p['problems']} |")
+                   f"| {p['better']} / {p['worse']} / {p['same']} | {p['p_sign']:.3g} | {p['problems']} "
+                   f"| {len(p['arm_only']) + len(p['base_only'])} |")
+    dropped = [(n, pairs[n]) for n in names if pairs[n]["arm_only"] or pairs[n]["base_only"]]
+    out += ["", "Problems left out of the paired effect (in only one of the arm and the base; the Arms table "
+            "below still pools over them): " + ("none." if not dropped else "")]
+    for n, p in dropped:
+        short = lambda ids: ", ".join(f"`{i.replace('cvdp_agentic_', '')}`" for i in ids)  # noqa: E731
+        out.append(f"- {n}: " + "; ".join(x for x in (
+            f"{len(p['arm_only'])} only in the arm ({short(p['arm_only'])})" if p["arm_only"] else "",
+            f"{len(p['base_only'])} only in the base ({short(p['base_only'])})" if p["base_only"] else "") if x))
     out += ["", "#### Arms\n",
             "| Arm | Runs: pass rate each | Pooled pass@1 [95% problem bootstrap] | Cost | $/problem | $/solved "
             "| Median wall | Tokens |",
@@ -199,12 +214,16 @@ def report(arms, base):
                    f"{table.money(s['per_problem'], lb)} | {table.money(s['per_solved'], lb)} | {wall} "
                    f"| {s['tokens']:,} |")
     points = {n: (s["per_problem"] or 0.0, s["rate"]) for n, s in res.items()}
-    front = pareto(points)
+    lower = {n for n, s in res.items() if s["unreported"] > 0}
+    front = pareto(points, lower)
     out += ["", "#### Pareto: pass rate against $ per problem\n", "| Arm | $/problem | Pass rate | Frontier |",
             "|---|---|---|---|"]
     for n in sorted(points, key=lambda n: points[n][0]):
-        out.append(f"| {n} | {table.money(points[n][0], res[n]['unreported'] > 0)} | {pct(points[n][1])}% "
-                   f"| {'yes' if n in front else ''} |")
+        mark = "n/a (cost a lower bound)" if n in lower else ("yes" if n in front else "")
+        out.append(f"| {n} | {table.money(points[n][0], n in lower)} | {pct(points[n][1])}% | {mark} |")
+    if lower:
+        out.append("\n≥: some of the arm's cost was not reported, so its $/problem is a lower bound. It is drawn hollow "
+                   "and kept off the frontier.")
     return "\n".join(out) + "\n", res, pairs, points, front
 
 
@@ -221,7 +240,7 @@ def _esc(s):
     return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
-def svg(points, front, width=640, height=420):
+def svg(points, front, width=640, height=420, lower=()):
     """A scatter of $ per problem (x) against pass rate (y), with the frontier joined. Plain SVG, no scripts."""
     m = {"l": 64, "r": 24, "t": 24, "b": 48}
     xs = [c for c, _ in points.values()] or [0.0]
@@ -250,8 +269,13 @@ def svg(points, front, width=640, height=420):
         out.append(f'<polyline points="{path}" fill="none" stroke="#2b6cb0" stroke-width="1.5"/>')
     for n, (c, p) in sorted(points.items()):
         on = n in front
-        out.append(f'<circle cx="{x(c):.1f}" cy="{y(p):.1f}" r="{5 if on else 4}" '
-                   f'fill="{"#2b6cb0" if on else "#a0aec0"}"/>')
+        if n in lower:  # cost is a lower bound: hollow, and its label says so
+            out.append(f'<circle cx="{x(c):.1f}" cy="{y(p):.1f}" r="4" fill="#ffffff" stroke="#718096" '
+                       f'stroke-width="1.5"/>')
+            n = f"{n} (≥${c:.4f}/problem)"
+        else:
+            out.append(f'<circle cx="{x(c):.1f}" cy="{y(p):.1f}" r="{5 if on else 4}" '
+                       f'fill="{"#2b6cb0" if on else "#a0aec0"}"/>')
         right = x(c) > m["l"] + (width - m["l"] - m["r"]) * 0.6  # label to the left of points near the right edge
         out.append(f'<text x="{x(c) + (-7 if right else 7):.1f}" y="{y(p) - 6:.1f}" '
                    f'text-anchor="{"end" if right else "start"}" fill="#1a202c">{_esc(n)}</text>')
@@ -276,7 +300,7 @@ def main(argv=None):
         write_pareto_csv(a.pareto_csv, points, front, res)
     if a.pareto_svg:
         with open(a.pareto_svg, "w") as f:
-            f.write(svg(points, front))
+            f.write(svg(points, front, lower={n for n, s in res.items() if s["unreported"] > 0}))
     print(md)
 
 
