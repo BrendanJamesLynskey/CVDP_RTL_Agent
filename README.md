@@ -11,6 +11,10 @@ problem** and wall time, by category, against a null agent and against published
 `deepseek/deepseek-v4.1-flash-1017` 5/10 ([24, 76]%) for $0.270; ten problems cannot separate the two. The null
 agent passes none. Milestone 0 done (22 October 2026).
 
+**M2a** (in review, [`docs/reports/M2a_report.md`](docs/reports/M2a_report.md)): reasoning limits, a retry on empty
+replies and unreadable decisions, and seeds. On the same 10 problems on Arm64, DeepSeek at `reasoning=off` passed
+6/10 for $0.0867 with no empty replies; at `low` it passed 7/10 for $0.3546 with 14 empty replies.
+
 | M0 check | x86-64 (`ubuntu-24.04`) | Arm64 (`ubuntu-24.04-arm`) |
 |---|---|---|
 | Golden: harness example problems with their solutions | 1/1 | 1/1 |
