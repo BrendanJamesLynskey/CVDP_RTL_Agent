@@ -158,8 +158,7 @@ def test_whole_agent_on_mock_openrouter_rejecting_reasoning(make_cfg, task_tree)
 # ---------- empty replies ----------
 
 def test_lower_one_step():
-    assert [LOWER[x] for x in ("high", "medium", "default", "low", "off")] == ["medium", "low", "low", "minimal",
-                                                                              "off"]
+    assert [LOWER[x] for x in ("high", "medium", "default", "low", "off")] == ["medium", "low", "low", "off", "off"]
 
 
 def test_empty_reply_detection():
@@ -183,12 +182,12 @@ def test_empty_reply_is_retried_once_lower_and_both_costs_count(make_cfg, run_ag
     assert (s["empty_replies"], s["empty_retries"], s["llm_calls"]) == (1, 1, 4)
     assert s["reasoning_tokens"] == 32000
     retry = llm.requests[2]
-    assert retry["body"]["reasoning"] == reasoning_body("minimal")        # low, one step lower
+    assert retry["body"]["reasoning"] == EXPECTED_BODY["off"]             # low, one step lower
     assert retry["messages"][-1]["content"] == prompts.ANSWER_ONLY
     assert llm.requests[3]["body"]["reasoning"] == EXPECTED_BODY["low"]   # the retry's level is for the retry only
     ev = [e for e in llm_events(cfg) if e["node"] == "edit"]
     assert ev[0]["decision"] == "empty" and ev[0]["finish_reason"] == "length" and ev[0]["cost"] == 0.017
-    assert ev[1]["retry_of"] == ev[0]["call_id"] and ev[1]["reasoning"] == "minimal"
+    assert ev[1]["retry_of"] == ev[0]["call_id"] and ev[1]["reasoning"] == "off"
     assert_no_key(cfg)
 
 
@@ -218,24 +217,28 @@ def test_no_retry_when_the_empty_call_used_the_budget(make_cfg, run_agent):
     assert (s["empty_replies"], s["empty_retries"]) == (1, 0)
 
 
-def test_empty_retry_that_is_rejected_falls_back_to_default(make_cfg, task_tree, clock):
-    """A retry at a lower level the model refuses (say `off` on a model that must reason) still gets made."""
+def test_empty_retry_whose_lower_level_is_rejected_is_made_at_the_problems_level(make_cfg, task_tree, clock):
+    """A model that must reason refuses `off` on the retry: the retry is still made, at the problem's own level,
+    and the problem keeps that level (it is not dropped to default)."""
     from cvdp_agent.graph import run
 
-    class RejectsMinimal(FakeLLM):
+    class RejectsOff(FakeLLM):
         def invoke(self, node, messages, max_tokens=None, timeout=None, reasoning="default"):
-            if reasoning == "minimal":
+            if reasoning == "off":
                 self.requests.append({"node": node, "body": {"reasoning": reasoning_body(reasoning)},
                                       "messages": messages})
-                raise ReasoningRejected(f"HTTP 400: effort minimal not supported (key {FAKE_KEY})")
+                raise ReasoningRejected(f"HTTP 400: effort none is not supported (key {FAKE_KEY})")
             return super().invoke(node, messages, max_tokens, timeout, reasoning)
 
     cfg = make_cfg(reasoning="low")
-    llm = RejectsMinimal([PLAN, {"text": ""}, edit(), decide("submit")], clock=clock)
+    llm = RejectsOff([PLAN, {"text": ""}, edit(), decide("submit")], clock=clock)
     s = run(cfg, llm=llm, checker=FakeChecker(cfg.root), tools={}, clock=clock)
-    assert s["stop_reason"] == "submit" and s["reasoning_used"] == "default" and s["reasoning_rejected"] == 1
+    assert s["stop_reason"] == "submit" and s["reasoning_used"] == "low" and s["reasoning_rejected"] == 1
     assert [r["body"]["reasoning"] for r in llm.requests] == [EXPECTED_BODY["low"], EXPECTED_BODY["low"],
-                                                             reasoning_body("minimal"), None, None]
+                                                             EXPECTED_BODY["off"], EXPECTED_BODY["low"],
+                                                             EXPECTED_BODY["low"]]
+    rejected = [e for e in llm_events(cfg) if e.get("reasoning_rejected")]
+    assert rejected[0]["fallback"] == "low"
     assert_no_key(cfg)
 
 

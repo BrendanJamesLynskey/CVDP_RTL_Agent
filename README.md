@@ -107,8 +107,9 @@ graph TD;
   retried once, asking for the JSON decision only; if that cannot be read either, the agent submits.
 - **Reasoning and empty replies**: every call sends OpenRouter's `reasoning` field at the `CVDP_REASONING` level
   (`{effort, exclude: true}`; nothing for `default`), and the trace keeps the `reasoning_tokens` OpenRouter
-  reports. A model that refuses the field gets it once, then the problem goes on at `default`. A reply that is
-  empty (or only tool-call markup) is retried once, reasoning one step lower (high → medium → low → minimal → off;
+  reports. A model that refuses the field gets it once, then the problem goes on at `default` (a refused lower level on a
+  retry only sends that retry at the problem's own level). A reply that is
+  empty (or only tool-call markup) is retried once, reasoning one step lower (high → medium → low → off;
   default → low) with a line asking for the answer only; both calls are traced and costed, linked by `retry_of`.
   If the retry is empty too, the turn is used as before. `summary.json` counts `empty_replies`, `empty_retries`
   and `reflect_parse_retries`.

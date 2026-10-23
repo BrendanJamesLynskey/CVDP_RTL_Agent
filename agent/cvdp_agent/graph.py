@@ -116,7 +116,9 @@ class Runtime:
     # ---------- LLM ----------
     def call(self, node, messages, state, reasoning=None, retry_of=None):
         """One LLM call, at `reasoning` (default: the problem's current level). If the model refuses the reasoning
-        field, that is traced, the problem falls back to "default" for good, and the call is made again without it."""
+        field, that is traced and the call is made again: at the problem's own level when only a retry's lower
+        level was refused (say `off` on a model that must reason), otherwise without the field, and the problem
+        then stays at "default" for good."""
         level = reasoning or self.reasoning
         remaining = self.cfg.wall_s - self.elapsed()
         self.llm_calls += 1
@@ -127,10 +129,13 @@ class Runtime:
                                     timeout=max(5.0, min(150.0, (remaining - 10) / 2)), reasoning=level)
             except ReasoningRejected as e:  # refused before generating anything: not billed, never fails the problem
                 self.reasoning_rejected += 1
+                fallback = self.reasoning if level != self.reasoning else "default"
                 self.tracer.log("llm", node=node, model=getattr(self.llm, "model", None), turn=state.get("turn", 0),
                                 call_id=call_id, reasoning=level, reasoning_rejected=True, cost=0.0,
-                                error=truncate(f"{type(e).__name__}: {e}", 1000), fallback="default")
-                self.reasoning = level = "default"
+                                error=truncate(f"{type(e).__name__}: {e}", 1000), fallback=fallback)
+                if fallback == "default":
+                    self.reasoning = "default"
+                level = fallback
                 remaining = self.cfg.wall_s - self.elapsed()
                 r = self.llm.invoke(node, messages, max_tokens=MAX_TOKENS.get(node),
                                     timeout=max(5.0, min(150.0, (remaining - 10) / 2)), reasoning=level)

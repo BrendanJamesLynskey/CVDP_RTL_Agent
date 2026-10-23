@@ -10,8 +10,9 @@ OPENROUTER_BASE = "https://openrouter.ai/api/v1"
 # CVDP_REASONING: how much the model may reason. "default" sends no `reasoning` field (the model's own default);
 # the others send OpenRouter's `reasoning: {effort, exclude: true}`, so reasoning text never reaches the reply.
 REASONING = ("default", "low", "medium", "high", "off")
-# One step lower, for the retry after an empty reply. "minimal" is a retry step only, not a setting.
-LOWER = {"high": "medium", "medium": "low", "default": "low", "low": "minimal", "minimal": "off", "off": "off"}
+# One step lower, for the retry after an empty reply. Low goes straight to off: not every model lists "minimal"
+# (DeepSeek V4.1 Flash does not), and OpenRouter maps an unlisted effort to the nearest one, which can be low again.
+LOWER = {"high": "medium", "medium": "low", "default": "low", "low": "off", "off": "off"}
 
 
 def reasoning_body(level):
