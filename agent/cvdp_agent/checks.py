@@ -14,12 +14,36 @@ from .trace import truncate
 CHECKS = ("compile", "lint", "synth", "testbench")
 _INTERESTING = re.compile(r"(?i)(%error|%warning|error|warning|syntax|fail|assert|fatal|undeclared|unknown|mismatch)")
 _TB_BAD = re.compile(r"(?i)\b(fail|failed|failure|error|fatal)\b")
+# Tool processes run code the model wrote (a cocotb test is Python, with network access), so they never get the
+# provider key or anything else that looks like a credential.
+_SECRET_NAME = re.compile(r"(?i)(KEY|TOKEN|SECRET|PASSW|AUTH|CREDENTIAL|COOKIE|SESSION)")
+MIN_TOOL_S = 5.0  # a check with less time than this left is skipped, not started
+
+
+def tool_env():
+    return {k: v for k, v in os.environ.items() if not _SECRET_NAME.search(k)}
+
+
+def tool_user():
+    """In the agent image (running as root), tools run as an unprivileged user, so model-written code cannot read
+    the agent's own environment through /proc. Elsewhere (tests, local runs as a user) they run as the caller."""
+    name = os.environ.get("CVDP_TOOL_USER", "")
+    if not name or os.geteuid() != 0:
+        return None
+    try:
+        import pwd
+
+        pwd.getpwnam(name)
+        return name
+    except KeyError:
+        return None
 
 
 def detect_tools(sim_python="python3"):
     tools = {t: shutil.which(t) is not None for t in ("iverilog", "vvp", "verilator", "yosys")}
     try:
-        r = subprocess.run([sim_python, "-c", "import cocotb, cocotb_tools, pytest"], capture_output=True, timeout=30)
+        r = subprocess.run([sim_python, "-c", "import cocotb, cocotb_tools, pytest"], capture_output=True, timeout=30,
+                           env=tool_env())
         tools["cocotb"] = r.returncode == 0
     except (OSError, subprocess.TimeoutExpired):
         tools["cocotb"] = False
@@ -41,7 +65,10 @@ def summarise(output, limit=2500):
 
 
 class Checker:
-    def __init__(self, root, tracer, tools, timeout_s=60.0, sim_python="python3", clock=time.monotonic):
+    def __init__(self, root, tracer, tools, timeout_s=60.0, sim_python="python3", clock=time.monotonic,
+                 time_left=None):
+        self.time_left = time_left  # seconds this check may still use (the wall cap), or None for no limit
+        self.user = tool_user()
         self.root = root
         self.tracer = tracer
         self.tools = tools
@@ -52,20 +79,33 @@ class Checker:
         self.tb_dir = os.path.join(root, TB_ROOT)
 
     def _run(self, name, cmd, cwd=None, timeout=None):
+        timeout = timeout or self.timeout_s
+        if self.time_left is not None:
+            left = self.time_left()
+            if left < MIN_TOOL_S:
+                self.tracer.log("tool", check=name, command=" ".join(cmd), exit_code=None,
+                                output=f"skipped: {left:.0f}s left before the wall cap")
+                return None, "", f"skipped: only {left:.0f}s left before the wall-time cap"
+            timeout = min(timeout, left)
         self.calls += 1
         t0 = self.clock()
         try:
             p = subprocess.run(cmd, cwd=cwd or self.root, capture_output=True, text=True, errors="replace",
-                               timeout=timeout or self.timeout_s)
+                               timeout=timeout, env=tool_env(), user=self.user)
             rc, out = p.returncode, (p.stdout or "") + (p.stderr or "")
         except subprocess.TimeoutExpired as e:
-            rc, out = 124, f"timeout after {timeout or self.timeout_s}s\n" + str(e.stdout or "")[-2000:]
+            rc, out = 124, f"timeout after {timeout:.0f}s\n" + str(e.stdout or "")[-2000:]
         except OSError as e:
             rc, out = 127, str(e)
         summary = summarise(out)
         self.tracer.log("tool", check=name, command=" ".join(cmd), exit_code=rc,
                         latency_s=round(self.clock() - t0, 3), output=truncate(out, 4000))
         return rc, out, summary
+
+    def _tb_dir_ready(self):
+        os.makedirs(self.tb_dir, exist_ok=True)
+        if self.user:  # the unprivileged tool user writes its build outputs here
+            os.chmod(self.tb_dir, 0o777)
 
     def _sources(self):
         files = []
@@ -89,11 +129,11 @@ class Checker:
         files, inc = self._sources()
         if not files:
             return {"ok": False, "summary": "no .sv/.v files under rtl/"}
-        os.makedirs(self.tb_dir, exist_ok=True)
+        self._tb_dir_ready()
         cmd = ["iverilog", "-g2012", "-o", os.path.join(self.tb_dir, "compile.vvp")]
         cmd += [f"-I{d}" for d in inc] + files
         rc, _, s = self._run("compile", cmd)
-        return {"ok": rc == 0, "exit_code": rc, "summary": s}
+        return {"ok": _ok(rc), "exit_code": rc, "summary": s}
 
     def check_lint(self):
         if not self.tools.get("verilator"):
@@ -104,7 +144,7 @@ class Checker:
         cmd = ["verilator", "--lint-only", "-Wall", "-Wno-fatal", "-Wno-MULTITOP", "--timing"]
         cmd += [f"-I{d}" for d in inc] + files
         rc, _, s = self._run("lint", cmd)
-        return {"ok": rc == 0, "exit_code": rc, "summary": s}
+        return {"ok": _ok(rc), "exit_code": rc, "summary": s}
 
     def check_synth(self):
         if not self.tools.get("yosys"):
@@ -114,11 +154,12 @@ class Checker:
             return {"ok": False, "summary": "no .sv/.v files under rtl/"}
         script = f"read_verilog -sv {' '.join(files)}; hierarchy -auto-top; proc; opt -fast; stat"
         rc, _, s = self._run("synth", ["yosys", "-q", "-p", script])
-        return {"ok": rc == 0, "exit_code": rc, "summary": s}
+        return {"ok": _ok(rc), "exit_code": rc, "summary": s}
 
     def check_testbench(self, tb):
         if not tb or not tb.get("files"):
             return {"ok": None, "summary": "not run: your reply had no <tb> block (write one, or name one under verif/)"}
+        self._tb_dir_ready()
         files, inc = self._sources()
         tb_files = [os.path.join(self.root, f) for f in tb["files"]]
         top = tb.get("top") or ""
@@ -138,10 +179,12 @@ class Checker:
         cmd = ["iverilog", "-g2012", "-o", out] + (["-s", top] if top else [])
         cmd += [f"-I{d}" for d in inc] + files + [f for f in tb_files if f.endswith((".sv", ".v"))]
         rc, _, s = self._run("testbench_build", cmd)
+        if rc is None:
+            return {"ok": None, "summary": s}
         if rc != 0:
             return {"ok": False, "exit_code": rc, "summary": "testbench did not compile\n" + s}
         rc, text, s = self._run("testbench_run", ["vvp", "-n", out], cwd=self.tb_dir)
-        ok = rc == 0 and not _TB_BAD.search(text)
+        ok = None if rc is None else (rc == 0 and not _TB_BAD.search(text))
         return {"ok": ok, "exit_code": rc, "summary": s}
 
     def _cocotb(self, files, tb_files, top):
@@ -165,9 +208,13 @@ class Checker:
         rc, _, s = self._run("testbench_cocotb", [self.sim_python, runner], cwd=self.tb_dir,
                              timeout=max(self.timeout_s, 120))
         tests, failed = _junit_counts(xml)
-        ok = rc == 0 and tests > 0 and failed == 0
+        ok = None if rc is None else (rc == 0 and tests > 0 and failed == 0)
         shutil.rmtree(build, ignore_errors=True)
         return {"ok": ok, "exit_code": rc, "tests": tests, "failed": failed, "summary": s}
+
+
+def _ok(rc):
+    return None if rc is None else rc == 0
 
 
 def _junit_counts(path):

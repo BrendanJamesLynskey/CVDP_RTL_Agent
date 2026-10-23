@@ -1,7 +1,8 @@
 """The agent graph: read_task -> plan -> edit -> check -> reflect -> (edit | finalize).
 
-Stop rules are checked in code before every step: turn cap, per-problem budget (provider-reported cost) and wall
-time. On any stop, finalize keeps the best edit so far (the last one that compiled) and the process exits 0."""
+Stop rules are checked in code before every step: turn cap, per-problem budget (provider-reported cost), a call
+whose cost was not reported, and wall time. On any stop, and on a crash, finalize keeps the best edit so far (the
+last one that compiled), writes the summary and the ledger entry, and the process exits 0."""
 import json
 import os
 import time
@@ -12,11 +13,13 @@ from langgraph.graph import END, START, StateGraph
 
 from . import checks as checks_mod
 from . import prompts
-from .files import EDIT_ROOTS, TEXT_EXT, DiffError, FileTool, PathRefused
+from .files import EDIT_ROOTS, TEXT_EXT, FileTool, PathRefused
 from .parse import parse_decision, parse_edit, parse_plan
 from .trace import Tracer, truncate
 
 MAX_TOKENS = {"plan": 4000, "edit": 32000, "reflect": 2000}
+LLM_NODES = ("plan", "edit", "reflect")
+FINALIZE_S = 30.0  # time reserved after the wall cap for finalize's compile
 
 
 class State(TypedDict, total=False):
@@ -48,7 +51,7 @@ class Runtime:
         self.files = FileTool(cfg.root)
         self.tools = tools if tools is not None else checks_mod.detect_tools()
         self.checker = checker or checks_mod.Checker(cfg.root, self.tracer, self.tools, cfg.tool_timeout_s,
-                                                     clock=clock)
+                                                     clock=clock, time_left=self.time_left)
         self.spent = 0.0
         self.cost_unreported = 0
         self.llm_calls = 0
@@ -60,16 +63,22 @@ class Runtime:
         self.stop_reason = None
         self.edited = False
         self.changed_all = set()
+        self.finished = None    # set once finish() has written the summary
 
     # ---------- stop rules ----------
     def elapsed(self):
         return self.clock() - self.t0
 
+    def time_left(self):
+        return self.cfg.wall_s - self.elapsed()
+
     def cap(self, state, nxt):
         """The reason to stop instead of running `nxt`, or None."""
         if self.elapsed() >= self.cfg.wall_s:
             return "wall_time"
-        if nxt in ("plan", "edit", "reflect") and self.spent >= self.cfg.budget_usd:
+        if nxt in LLM_NODES and self.cost_unreported:
+            return "cost_unreported"  # the budget can no longer be enforced from reported cost
+        if nxt in LLM_NODES and self.spent >= self.cfg.budget_usd:
             return "budget"
         if nxt == "edit" and state.get("turn", 0) >= self.cfg.max_turns:
             return "max_turns"
@@ -90,8 +99,10 @@ class Runtime:
             r = self.llm.invoke(node, messages, max_tokens=MAX_TOKENS.get(node),
                                 timeout=max(15.0, min(150.0, (remaining - 10) / 2)))
         except Exception as e:  # provider errors end the run; the best edit is still kept
+            self.cost_unreported += 1  # an errored or timed-out call may still have been billed
             self.tracer.log("llm", node=node, model=getattr(self.llm, "model", None), turn=state.get("turn", 0),
-                            error=truncate(f"{type(e).__name__}: {e}", 1000), remaining_s=round(remaining, 1))
+                            cost=None, error=truncate(f"{type(e).__name__}: {e}", 1000),
+                            remaining_s=round(remaining, 1))
             return None
         self.models.add(r.model)
         self.prompt_tokens += r.prompt_tokens or 0
@@ -185,8 +196,8 @@ def build(rt):
                     rel = rt.files.write(item["path"], item["content"])
                 changed.append(rel)
                 rt.tracer.log("tool", check="file_write", command=f"write {rel}", exit_code=0, turn=turn)
-            except (PathRefused, DiffError, OSError) as ex:
-                errors.append(f"{item['path']}: {ex}")
+            except Exception as ex:  # refused path, bad diff, non-UTF-8 file, I/O: reported to the LLM
+                errors.append(f"{item['path']}: {type(ex).__name__}: {ex}")
                 rt.tracer.log("tool", check="file_write", command=f"write {item['path']}", exit_code=1,
                               output=str(ex), turn=turn)
         for item in e["tb"]:
@@ -204,8 +215,8 @@ def build(rt):
                 tb_files.append(rt.files.write_tb(item["path"], item["content"]))
                 tb_top = item["top"] or tb_top
                 rt.tracer.log("tool", check="tb_write", command=f"write {tb_files[-1]}", exit_code=0, turn=turn)
-            except (PathRefused, OSError) as ex:
-                errors.append(f"{item['path']}: {ex}")
+            except Exception as ex:
+                errors.append(f"{item['path']}: {type(ex).__name__}: {ex}")
                 rt.tracer.log("tool", check="tb_write", command=f"write {item['path']}", exit_code=1,
                               output=str(ex), turn=turn)
         rt.edited = rt.edited or bool(changed)
@@ -275,25 +286,33 @@ def allowed_check(name, cfg):
     return True
 
 
-def finish(rt, state):
-    """Keep the best edit, write summary.json and the ledger entry."""
+def finish(rt, state, error=None):
+    """Keep the best edit, write summary.json and the ledger entry. Runs once, also after a crash."""
+    if rt.finished:
+        return {"stop_reason": rt.finished}
     compiled = state.get("compiled")
-    if rt.edited and not state.get("checked", True):
-        compiled = rt.checker.run([]).get("compile", {}).get("ok")  # edits made after the last check
-        if compiled:
-            rt.best, rt.best_turn = rt.files.snapshot(), state.get("turn")
     kept = "none"
-    if rt.edited:
-        kept = "last"
-        if compiled is False and rt.best is not None:
-            rt.files.restore(rt.best)
-            kept = f"best_compiled_turn_{rt.best_turn}"
-            rt.tracer.log("tool", check="keep_best", command=f"restore turn {rt.best_turn}", exit_code=0)
-    for f in ("compile.vvp", "tb.vvp"):
-        p = os.path.join(rt.checker.tb_dir, f) if hasattr(rt.checker, "tb_dir") else None
-        if p and os.path.exists(p):
-            os.remove(p)
-    stop = state.get("stop_reason") or rt.stop_reason or "submit"
+    try:
+        if hasattr(rt.checker, "time_left"):  # finalize has its own small reserve after the wall cap
+            deadline = rt.clock() + FINALIZE_S
+            rt.checker.time_left = lambda: deadline - rt.clock()
+        if rt.edited and not state.get("checked", True):
+            compiled = rt.checker.run([]).get("compile", {}).get("ok")  # edits made after the last check
+            if compiled:
+                rt.best, rt.best_turn = rt.files.snapshot(), state.get("turn")
+        if rt.edited:
+            kept = "last"
+            if compiled is False and rt.best is not None:
+                rt.files.restore(rt.best)
+                kept = f"best_compiled_turn_{rt.best_turn}"
+                rt.tracer.log("tool", check="keep_best", command=f"restore turn {rt.best_turn}", exit_code=0)
+        for f in ("compile.vvp", "tb.vvp"):
+            p = os.path.join(rt.checker.tb_dir, f) if hasattr(rt.checker, "tb_dir") else None
+            if p and os.path.exists(p):
+                os.remove(p)
+    except Exception as e:  # keep going: the summary and the ledger entry matter more
+        error = error or f"finalize: {type(e).__name__}: {e}"
+    stop = "error" if error else (state.get("stop_reason") or rt.stop_reason or "submit")
     summary = {
         "provider": rt.cfg.provider,
         "model": sorted(rt.models)[0] if len(rt.models) == 1 else (sorted(rt.models) or rt.cfg.model or None),
@@ -315,6 +334,9 @@ def finish(rt, state):
         "tools": rt.tools,
         "agent_version": os.environ.get("CVDP_AGENT_VERSION", "dev"),
     }
+    if error:
+        summary["error"] = truncate(error, 2000)
+    rt.finished = stop
     os.makedirs(rt.cfg.agent_out, exist_ok=True)
     with open(os.path.join(rt.cfg.agent_out, "summary.json"), "w") as f:
         json.dump(summary, f, indent=1)
@@ -323,33 +345,50 @@ def finish(rt, state):
     return {"stop_reason": stop}
 
 
-def ledger_total(ledger_dir):
-    total = 0.0
+def ledger_totals(ledger_dir):
+    """(reported cost, calls with unreported cost, guard charge) summed over the run's ledger entries."""
+    reported, unreported, charge = 0.0, 0, 0.0
     for fn in os.listdir(ledger_dir):
         if fn.endswith(".json"):
             try:
                 with open(os.path.join(ledger_dir, fn)) as f:
-                    total += float(json.load(f).get("cost_usd") or 0.0)
-            except (OSError, ValueError):
+                    e = json.load(f)
+                c = float(e.get("cost_usd") or 0.0)
+                reported += c
+                unreported += int(e.get("cost_unreported_calls") or 0)
+                charge += float(e.get("guard_charge_usd", c))
+            except (OSError, ValueError, TypeError):
                 continue
-    return total
+    return reported, unreported, charge
+
+
+def ledger_total(ledger_dir):
+    return ledger_totals(ledger_dir)[0]
 
 
 def run_budget_exhausted(cfg, tracer):
+    """The whole-run guard trips on the guard charge: reported cost, plus the per-problem budget for every call
+    whose cost was not reported (a stated ceiling, used by the guard only; reported cost is never estimated)."""
     if not cfg.ledger_dir or cfg.run_budget_usd is None or not os.path.isdir(cfg.ledger_dir):
         return False
-    total = ledger_total(cfg.ledger_dir)
+    reported, unreported, charge = ledger_totals(cfg.ledger_dir)
     tracer.log("tool", check="run_budget", command="sum ledger", exit_code=0,
-               output=f"run spend so far ${total:.4f} of ${cfg.run_budget_usd:.4f}")
-    return total >= cfg.run_budget_usd
+               output=f"reported ${reported:.4f}, {unreported} unreported calls, guard charge ${charge:.4f} "
+                      f"of ${cfg.run_budget_usd:.4f}")
+    return charge >= cfg.run_budget_usd
 
 
 def write_ledger(cfg, summary):
     if not cfg.ledger_dir or not os.path.isdir(cfg.ledger_dir):
         return
+    reported = summary["cost_usd"] or 0.0
+    unreported = summary["cost_unreported_calls"] or 0
+    entry = {"cost_usd": summary["cost_usd"], "cost_unreported_calls": unreported,
+             "guard_charge_usd": round(reported + unreported * cfg.budget_usd, 8),
+             "stop_reason": summary["stop_reason"]}
     try:
         with open(os.path.join(cfg.ledger_dir, f"{uuid.uuid4().hex}.json"), "w") as f:
-            json.dump({"cost_usd": summary["cost_usd"], "stop_reason": summary["stop_reason"]}, f)
+            json.dump(entry, f)
     except OSError:
         pass
 
@@ -360,7 +399,17 @@ def run(cfg, llm=None, **kw):
     tracer = kw.pop("tracer", None) or Tracer(cfg.agent_out)
     rt = Runtime(cfg, llm or llm_mod.make(cfg), tracer=tracer, **kw)
     graph = build(rt)
-    graph.invoke({}, {"recursion_limit": 10 * cfg.max_turns + 20})
+    state = {}
+    try:
+        for state in graph.stream({}, {"recursion_limit": 10 * cfg.max_turns + 20}, stream_mode="values"):
+            pass
+    except Exception as e:
+        import traceback
+
+        rt.tracer.log("error", error=truncate(f"{type(e).__name__}: {e}\n{traceback.format_exc()}", 4000))
+        finish(rt, state, error=f"{type(e).__name__}: {e}")
+    finally:
+        finish(rt, state)  # a no-op when finalize already ran
     with open(os.path.join(cfg.agent_out, "summary.json")) as f:
         return json.load(f)
 

@@ -45,6 +45,10 @@ on:
         type: choice
         options: [ubuntu-24.04, ubuntu-24.04-arm]
         default: ubuntu-24.04
+      run_budget_usd:
+        description: "Whole-run guard, USD (blank = budget_usd x problems x 1.2; that is $11.04 for all 92)"
+        type: string
+        default: ""
   pull_request:
 
 permissions:
@@ -57,6 +61,18 @@ env:
   SIM: ghcr.io/brendanjameslynskey/cvdp-sim:8e894cf
   AGENT: ghcr.io/brendanjameslynskey/cvdp-rtl-agent
   SMOKE_IDS: cvdp_agentic_barrel_shifter_0002,cvdp_agentic_lfsr_0001
+  # The run's settings; a pull request always gets the fake-provider smoke run.
+  SPLIT: ${{ github.event_name == 'pull_request' && 'agentic' || inputs.split }}
+  MODEL: ${{ github.event_name == 'pull_request' && 'fake' || inputs.model }}
+  BUDGET_USD: ${{ github.event_name == 'pull_request' && '0.10' || inputs.budget_usd }}
+  RUN_BUDGET_USD: ${{ github.event_name == 'pull_request' && '' || inputs.run_budget_usd }}
+  MAX_TURNS: ${{ github.event_name == 'pull_request' && '10' || inputs.max_turns }}
+  SELF_CHECK: ${{ (github.event_name == 'pull_request' || inputs.self_check) && '1' || '0' }}
+  LINT: ${{ (github.event_name == 'pull_request' || inputs.lint) && '1' || '0' }}
+  THREADS: ${{ github.event_name == 'pull_request' && '2' || inputs.threads }}
+  RUNNER: ${{ github.event_name == 'pull_request' && 'ubuntu-24.04' || inputs.runner }}
+  WORK: work
+  REAL_MODEL: ${{ github.event_name == 'workflow_dispatch' && inputs.model != 'fake' }}
 
 jobs:
   sweep:
@@ -110,8 +126,6 @@ jobs:
           echo "OSS_SIM_IMAGE=nvidia/cvdp-sim:v1.0.0" >> cvdp/.env
 
       - name: Dataset at a pinned revision
-        env:
-          SPLIT: ${{ github.event_name == 'pull_request' && 'agentic' || inputs.split }}
         run: |
           mkdir -p data
           base="https://huggingface.co/datasets/nvidia/cvdp-benchmark-dataset/resolve/$DATASET_REV"
@@ -127,42 +141,67 @@ jobs:
             echo "CVDP_HEAVY_REPOS_PATH=$PWD/data/heavy" >> cvdp/.env
           fi
 
-      - name: Run
+      - name: Key usage before the run
+        id: usage_before
+        if: env.REAL_MODEL == 'true'
         env:
-          OPENROUTER_API_KEY: ${{ github.event_name == 'workflow_dispatch' && inputs.model != 'fake' && secrets.OPENROUTER_API_KEY || '' }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: python3 tools/key_usage.py >> "$GITHUB_OUTPUT"
+
+      - name: Run
+        # Its own timeout, under the job's, so collection, the key scan and the upload still run when it hits.
+        timeout-minutes: 320
+        env:
+          OPENROUTER_API_KEY: ${{ env.REAL_MODEL == 'true' && secrets.OPENROUTER_API_KEY || '' }}
           AGENT_IMAGE: ${{ steps.agent.outputs.image }}
-          SPLIT: ${{ github.event_name == 'pull_request' && 'agentic' || inputs.split }}
           IDS: ${{ github.event_name == 'pull_request' && env.SMOKE_IDS || inputs.ids }}
-          MODEL: ${{ github.event_name == 'pull_request' && 'fake' || inputs.model }}
-          BUDGET_USD: ${{ github.event_name == 'pull_request' && '0.10' || inputs.budget_usd }}
-          MAX_TURNS: ${{ github.event_name == 'pull_request' && '10' || inputs.max_turns }}
-          SELF_CHECK: ${{ (github.event_name == 'pull_request' || inputs.self_check) && '1' || '0' }}
-          LINT: ${{ (github.event_name == 'pull_request' || inputs.lint) && '1' || '0' }}
-          THREADS: ${{ github.event_name == 'pull_request' && '2' || inputs.threads }}
-          RUNNER: ${{ github.event_name == 'pull_request' && 'ubuntu-24.04' || inputs.runner }}
-          WORK: work
+        run: bash tools/sweep.sh run
+
+      - name: Collect and tabulate
+        if: always() && steps.agent.outcome == 'success'
         run: |
-          bash tools/sweep.sh
+          bash tools/sweep.sh collect
           cat work/table.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Key usage after the run
+        if: always() && env.REAL_MODEL == 'true'
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          BEFORE: ${{ steps.usage_before.outputs.usage }}
+        run: |
+          after=$(python3 tools/key_usage.py | cut -d= -f2)
+          python3 - "$BEFORE" "$after" >> "$GITHUB_STEP_SUMMARY" <<'EOF'
+          import sys
+          b, a = sys.argv[1], sys.argv[2]
+          line = f"\nKey usage (OpenRouter `/api/v1/key`, `usage` only): before ${b}, after ${a}"
+          try:
+              line += f", change ${float(a) - float(b):.4f}. Compare with the run spend above: a larger change means "
+              line += "spend the agents did not see reported (or other use of the key during the run)."
+          except ValueError:
+              line += "."
+          print(line)
+          EOF
 
       - name: Smoke checks (plumbing, not score)
         if: github.event_name == 'pull_request'
         run: python3 tools/smoke_check.py work 2
 
       - name: Secret check on what gets uploaded
+        id: scan
         if: always()
         env:
-          OPENROUTER_API_KEY: ${{ github.event_name == 'workflow_dispatch' && inputs.model != 'fake' && secrets.OPENROUTER_API_KEY || '' }}
+          OPENROUTER_API_KEY: ${{ env.REAL_MODEL == 'true' && secrets.OPENROUTER_API_KEY || '' }}
         run: |
-          # Never upload the key: fail the job if it, or anything shaped like it, is anywhere in the work dir.
-          if grep -rIl -e 'sk-or-' work 2>/dev/null; then echo "::error::key-shaped string in work dir"; exit 1; fi
-          if [ -n "$OPENROUTER_API_KEY" ] && grep -rIlF -e "$OPENROUTER_API_KEY" work 2>/dev/null; then
+          # Never upload the key: fail if it, or anything shaped like it, is anywhere in the work dir, binary files
+          # included. The upload below runs only when this step succeeds.
+          if grep -rl -e 'sk-or-' work work.* 2>/dev/null; then echo "::error::key-shaped string in work dir"; exit 1; fi
+          if [ -n "$OPENROUTER_API_KEY" ] && grep -rlF -e "$OPENROUTER_API_KEY" work work.* 2>/dev/null; then
             echo "::error::key in work dir"; exit 1
           fi
           echo "no key in work dir"
 
       - uses: actions/upload-artifact@v4
-        if: success() || failure()
+        if: always() && steps.scan.outcome == 'success'
         with:
           name: sweep-${{ github.event_name == 'pull_request' && 'smoke' || inputs.split }}-${{ github.run_id }}
           path: |
@@ -175,4 +214,6 @@ jobs:
             work/*/harness/*/rundir/agent_tb/**
             work/*/harness/*/agent_changes.patch
             work.problems.jsonl
+            work.run.json
+            work.ledger/*.json
           if-no-files-found: warn

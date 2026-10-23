@@ -44,8 +44,11 @@ class FakeChecker:
         bad = False
         for dirpath, _, fns in os.walk(os.path.join(self.root, "rtl")):
             for fn in fns:
-                if "SYNTAX_ERROR" in open(os.path.join(dirpath, fn)).read():
-                    bad = True
+                try:
+                    if b"SYNTAX_ERROR" in open(os.path.join(dirpath, fn), "rb").read():
+                        bad = True
+                except OSError:  # a dangling symlink, like a compiler skipping a missing file
+                    continue
         out = {"compile": {"ok": not bad, "summary": "fake compile"}}
         for n in names:
             if n != "compile":

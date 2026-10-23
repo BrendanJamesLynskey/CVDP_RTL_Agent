@@ -105,8 +105,13 @@ graph TD;
   before the LLM sees it.
 - **reflect**: the LLM decides `edit_again`, `submit` or `give_up`.
 - **Stop rules**, checked in code before every step: turn cap, per-problem budget in USD (provider-reported cost
-  only) and wall time (480 s, under the harness's 600 s agent timeout). On any stop the best edit is kept (the last
-  one that compiled) and the agent exits 0.
+  only), a call whose cost was not reported (`cost_unreported`: the budget can no longer be enforced), and wall
+  time (480 s, under the harness's 600 s agent timeout; each check's timeout is cut to the time left, and finalize
+  has its own 30 s). On any stop, and on a crash, the best edit is kept (the last one that compiled), the summary
+  and ledger entry are written, and the agent exits 0.
+- **Tools run without secrets**: checks get an environment with every credential-like variable removed, and in the
+  image they run as an unprivileged user (`cvdptool`), so model-written testbench code cannot read the key from its
+  own environment or from the agent's through `/proc`.
 - **Outputs** per problem in `rundir/agent_out/` (the harness keeps it in the work directory): `trace.jsonl`, every
   LLM call (node, model, tokens, cost, latency, decision) and tool call (command, exit code, truncated output), with
   anything key-shaped redacted; `summary.json`, the totals, stop reason and switches.
@@ -125,13 +130,17 @@ graph TD;
 
 From the Actions tab, **Sweep → Run workflow**, or `gh workflow run sweep.yml -f model=anthropic/claude-haiku-5.5
 -f ids=$(grep -v '^#' tools/m1_ids.txt | paste -sd,)`. Inputs: model, split, ids (blank = all), per-problem
-budget, turn cap, self-check and lint switches, threads and runner (x86-64 or Arm64). The job pulls both images
-from GHCR, runs the harness, writes the table to the job summary and uploads the work directory (per-test logs,
-`raw_result.json`, every `agent_out/`). The key reaches the agent only through `CVDP_AGENT_ENV`; a whole-run guard
-stops new problems from calling the LLM once the summed cost passes budget × problems × 1.2.
+budget, turn cap, self-check and lint switches, threads, runner (x86-64 or Arm64) and an optional absolute
+whole-run budget. The job pulls both images from GHCR, runs the harness (with its own step timeout), then collects,
+writes the table and the key's usage before and after the run to the job summary, scans the work directory for
+anything key-shaped, and uploads it only if the scan passes (per-test logs, `raw_result.json`, every `agent_out/`).
+The key reaches the agent only through `CVDP_AGENT_ENV`. A whole-run guard stops new problems from calling the LLM
+once the summed cost (with the per-problem budget charged for every call whose cost was not reported) passes
+`run_budget_usd`, or budget × problems × 1.2 when that is blank ($11.04 for all 92).
 
 Locally, with the harness in `cvdp/`, the dataset in `data/` and both images in Docker:
-`AGENT_IMAGE=... MODEL=... IDS=... bash tools/sweep.sh`.
+`AGENT_IMAGE=... MODEL=... IDS=... WORK=<new dir> bash tools/sweep.sh`. It refuses a work directory that is not
+empty (an old ledger and the harness's reuse of `raw_result.json` would make the rerun wrong).
 
 ## Layout
 
@@ -149,7 +158,7 @@ Locally, with the harness in `cvdp/`, the dataset in `data/` and both images in 
 - [`agents/null/Dockerfile`](agents/null/Dockerfile): the null agent (changes nothing), the floor.
 - [`tools/`](tools/): `collect.py` (raw_result.json + summary.json → one CSV row per problem), `table.py` (pass@1
   with a Wilson 95% interval, $/problem, $/solved problem, median wall time, by category and AMBA slice),
-  `sweep.sh`, `subset.py`, `log_check.py` (classifies per-test logs: tests failed, build failed or harness error), `pick_ids.py` (the seeded M1 sample, `m1_ids.txt`), `amba_scan.py` and `amba_ids.txt`,
+  `sweep.sh`, `subset.py`, `log_check.py` (classifies per-test logs: tests failed, build failed or harness error), `key_usage.py` (the key's `usage` only), `pick_ids.py` (the seeded M1 sample, `m1_ids.txt`), `amba_scan.py` and `amba_ids.txt`,
   `inventory.py`.
 - [`tests/`](tests/): the graph with the fake provider (stop rules, path refusal, budget, best edit kept, switches),
   trace redaction, the results tools on a fixture, and the README graph drift test.

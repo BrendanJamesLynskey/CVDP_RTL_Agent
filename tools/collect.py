@@ -3,7 +3,10 @@
 Pass/fail comes only from raw_result.json (a problem passes when it has tests and every one has result 0, the
 harness's own rule). Cost and tokens come only from summary.json, which records provider-reported usage.
 
-Usage: python3 tools/collect.py <work_dir> [--dataset problems.jsonl] [--runner ubuntu-24.04] > results.csv
+Rows are grouped by the requested model (`--model`, what the sweep asked for), so a problem whose agent left no
+summary.json still counts in that model's denominator.
+
+Usage: python3 tools/collect.py <work_dir> [--dataset problems.jsonl] [--runner ubuntu-24.04] [--model ID] > results.csv
 """
 import argparse
 import csv
@@ -12,7 +15,8 @@ import os
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-FIELDS = ["id", "cid", "difficulty", "pass", "tests", "tests_passed", "amba", "model", "provider", "cost_usd",
+FIELDS = ["id", "cid", "difficulty", "pass", "tests", "tests_passed", "amba", "requested_model", "model", "provider",
+          "cost_usd",
           "cost_unreported_calls", "prompt_tokens", "completion_tokens", "llm_calls", "tool_calls", "turns",
           "wall_time_s", "harness_agent_s", "stop_reason", "kept", "agent_status", "self_check", "lint",
           "max_turns", "budget_usd", "runner", "summary_found"]
@@ -37,7 +41,7 @@ def problem_dir(work, pid, entry):
     return cand
 
 
-def rows(work, dataset=None, runner=""):
+def rows(work, dataset=None, runner="", model=""):
     raw = json.load(open(os.path.join(work, "raw_result.json")))
     meta = {}
     if dataset:
@@ -55,7 +59,8 @@ def rows(work, dataset=None, runner=""):
         s_path = os.path.join(problem_dir(work, pid, e), "rundir", "agent_out", "summary.json")
         s = json.load(open(s_path)) if os.path.exists(s_path) else {}
         sw = s.get("switches", {})
-        model = s.get("model") or s.get("requested_model") or "unknown"
+        served = s.get("model") or ""
+        requested = model or s.get("requested_model") or served or "unknown"
         out.append({
             "id": pid,
             "cid": e.get("category") or cats[0],
@@ -64,7 +69,8 @@ def rows(work, dataset=None, runner=""):
             "tests": len(tests),
             "tests_passed": passed,
             "amba": int(pid in amba),
-            "model": model if isinstance(model, str) else "+".join(model),
+            "requested_model": requested,
+            "model": served if isinstance(served, str) else "+".join(served),
             "provider": s.get("provider", ""),
             "cost_usd": "" if s.get("cost_usd") is None else s["cost_usd"],
             "cost_unreported_calls": s.get("cost_unreported_calls", ""),
@@ -93,10 +99,11 @@ def main():
     ap.add_argument("work")
     ap.add_argument("--dataset")
     ap.add_argument("--runner", default="")
+    ap.add_argument("--model", default="", help="the model the sweep requested")
     a = ap.parse_args()
     w = csv.DictWriter(sys.stdout, fieldnames=FIELDS)
     w.writeheader()
-    for r in rows(a.work, a.dataset, a.runner):
+    for r in rows(a.work, a.dataset, a.runner, a.model):
         w.writerow(r)
 
 

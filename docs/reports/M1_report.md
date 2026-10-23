@@ -12,14 +12,17 @@
   its own SystemVerilog or cocotb testbench, or an existing one under `verif/`. Tool output is cut down in code
   (errors and warnings first, then the tail, at most 2,500 characters) before the LLM sees it.
 - **Stop rules**, checked in code before every step: turn cap (default 10), per-problem budget in USD (default
-  $0.10, provider-reported cost only), wall-time cap (default 480 s, under the harness's 600 s agent timeout). On
-  any stop, or on `give_up`, the agent keeps the last edit that compiled, and always exits 0.
+  $0.10, provider-reported cost only), a call whose cost was not reported (`cost_unreported`), wall-time cap
+  (default 480 s, under the harness's 600 s agent timeout; checks are cut to the time left, finalize has 30 s of
+  its own). On any stop, on `give_up` and on a crash, the agent keeps the last edit that compiled, writes its
+  summary and ledger entry, and exits 0.
 - **Switches** for the M3 ablations: `CVDP_SELF_CHECK`, `CVDP_LINT`, `CVDP_MAX_TURNS`, `CVDP_BUDGET_USD` (and
   `CVDP_WALL_S`).
 - **Providers**: `fake` (scripted, deterministic) and `openrouter` (`ChatOpenAI` with
   `base_url=https://openrouter.ai/api/v1`, `usage: {include: true}`). Cost per call is `usage.cost`; if that is
   missing the agent asks the generation endpoint; if that has nothing either, the call is recorded with cost `null`
-  and counted in `cost_unreported_calls`. No cost is ever estimated.
+  and counted in `cost_unreported_calls` (so is a call that errored or timed out, which may still be billed), and
+  the problem stops. No cost is ever estimated.
 - **Outputs** per problem in `rundir/agent_out/`: `trace.jsonl` (every LLM call: node, model, prompt and completion
   tokens, cost, latency, generation id, decision, the completion cut to 3,000 characters; every tool call: command,
   exit code, output cut to 4,000 characters) and `summary.json`. Every string is redacted before it is written
@@ -46,9 +49,11 @@
   reaches the agent only through `CVDP_AGENT_ENV`; the job fails if anything key-shaped is in the work directory
   before upload. On `pull_request` it is a smoke run with the `fake` provider on 2 problems.
 - **Whole-run spend guard**: each agent writes its cost to a ledger directory shared through
-  `CVDP_AGENT_MOUNTS`; an agent that starts after the ledger has passed `budget_usd × problems × 1.2` stops before
-  its first LLM call (`stop_reason: run_budget_exhausted`; the problem is scored as the harness finds it).
-- **Tests** (`tests/`, 41, run on every push and pull request by `.github/workflows/tests.yml`): each stop rule,
+  `CVDP_AGENT_MOUNTS`; an agent that starts after the ledger has passed the guard (`run_budget_usd`, or
+  `budget_usd × problems × 1.2`) stops before its first LLM call (`stop_reason: run_budget_exhausted`; the problem
+  is scored as the harness finds it). For the guard only, each call with unreported cost is charged the per-problem
+  budget; reported cost stays separate.
+- **Tests** (`tests/`, 52, run on every push and pull request by `.github/workflows/tests.yml`): each stop rule,
   path refusal, the budget cap, the best-edit-kept rule, each switch, unreported cost staying `null`, the ledger
   guard, the exit-0 rule; trace redaction (a fake key printed by a real tool never reaches the trace); `collect.py`
   and `table.py` on a fixture work directory shaped like a real `raw_result.json`; one test that runs real Icarus;
@@ -199,16 +204,44 @@ What the traces show:
 - **No problem hit the $0.10 budget.** The dearest was $0.050 (DeepSeek, `csr_using_apb_interface_0001`). The
   run-level guard ($1.20 per model) was never close.
 
-**Total spend: $0.3937**, all provider-reported: $0.1172 (Haiku, 10 problems), $0.2704 (DeepSeek, 10 problems),
+**Live-check spend: $0.3937**, all provider-reported: $0.1172 (Haiku, 10 problems), $0.2704 (DeepSeek, 10 problems),
 $0.0060 for one trial problem (Haiku, `lfsr_0001`, before the prompt fix in `e030868`; it passed), and $0.0000147
-for the two one-word key-check calls. Plus $0.0093 for the 2-problem Actions sweep (run 39864754142). **Grand total for M1: $0.4030**, of
-a $5 allowance.
+for the two one-word key-check calls. Plus $0.0093 for the 2-problem Actions sweep (run 39864754142), and $0.0018 for one
+problem run after review round 1 to check the changed image (Haiku, `lfsr_0001`, passed). **Grand total for M1:
+$0.4048**, of a $5 allowance.
+
+## Review round 1
+
+The owner's review of `1bac336` asked for ten fixes before merge. All are in; tests went from 41 to 52, and no
+test needs an LLM.
+
+| # | Finding | Fix |
+|---|---|---|
+| 1 | The key scan did not block the upload | The scan step has `id: scan`; the upload runs only `if: always() && steps.scan.outcome == 'success'`. The greps no longer use `-I`, so binary files are scanned, and the scan covers `work.*` (ledger, problem list) too. |
+| 2 | Tool processes inherited `OPENROUTER_API_KEY` | Checks and tool detection get an environment with every credential-like name removed (`KEY`, `TOKEN`, `SECRET`, `AUTH`, …). In the image they also run as an unprivileged user (`cvdptool`), because a child running as root could still read the agent's environment from `/proc/1/environ`. Checked in the image: a probe run as a tool sees no key and gets `PermissionError` on `/proc/1/environ`. Test: a tool printing `os.environ` does not see the key. |
+| 3 | Uncosted calls counted against no budget | An errored or timed-out call counts as unreported. The first unreported call stops the problem (`stop_reason: cost_unreported`); the edit already made is checked and kept by the usual rule. The ledger records unreported calls, and the run guard charges each one the per-problem budget (a stated ceiling, for the guard only). Tests for each. |
+| 4 | A crash skipped `finalize` | `run()` streams the graph and calls `finish()` in `finally` with the last state (it runs once). The edit node catches any exception per file (`UnicodeDecodeError` on a non-UTF-8 file becomes an edit error); `snapshot()` skips dangling symlinks; `from_env()` is inside `main`'s try, and the fallback summary still lands in `CVDP_ROOT`. Tests for a crashing checker, a non-UTF-8 file, a dangling symlink and `CVDP_MAX_TURNS=10.0`. |
+| 5 | `table.py` understated $/problem and $/solved | A row with no cost or with `cost_unreported_calls > 0` is unreported; when any row in a slice is, Cost, $/problem and $/solved all show `≥$x`. The committed M1 tables recompute unchanged (they have no unreported cost). |
+| 6 | Rows with no `summary.json` left the model's denominator | `collect.py --model` (passed by the sweep) writes a `requested_model` column; `table.py` groups by it. |
+| 7 | The wall cap did not cover the check node | Each tool's timeout is `min(tool timeout, time left)`; a check with under 5 s left is skipped (reported as SKIPPED, not as a failure, so it never triggers the best-edit restore); finalize's compile has its own 30 s. Test: a hung tool is cut at the time left. |
+| 8 | Spend | New dispatch input `run_budget_usd` (absolute guard; blank keeps budget × problems × 1.2, $11.04 for 92). The job records the key's `usage` (only that field, never the label) before and after the run in the job summary, next to the agents' reported total. |
+| 9 | Job timeout | The Run step has `timeout-minutes: 320` under the job's 360; collect, the key-usage line, the scan and the upload are separate `always()` steps. |
+| 10 | `tools/sweep.sh` | Refuses a non-empty `WORK` (and an existing ledger or problem list); validates every numeric input with a regex before it reaches Python (a value like `1);import os…` is rejected); split into `run` and `collect` phases. |
+
+Verified after the fixes: 51 passed and 1 skipped locally (the skipped one needs Icarus, which CI installs); the
+fake-provider smoke run through the real harness with the rebuilt image (every check ran as the tool user and
+passed); a rerun into the same work dir refused; one real problem with Haiku 5.5 through the harness ($0.0018,
+passed, no key-shaped string anywhere in the work dir); the committed tables recompute byte for byte. CI on the
+pushed commit is in the PR.
 
 ## Known gaps
 
 - **GHCR packages are private until you flip them.** `GITHUB_TOKEN` can push packages but cannot change their
   visibility. Once: GitHub → your profile → Packages → `cvdp-sim` and `cvdp-rtl-agent` → Package settings →
   Change visibility → Public. The workflows log in to GHCR, so they work either way.
+- **Heavy split: the edit roots are wrong for most of it** (found in review). In 53 of the 75 heavy problems the
+  hidden tests read design files outside `rtl/`, `verif/` and `docs/`, so the file tool's roots must come from
+  `CVDP_AGENT_WORKSPACE_ROOTS` or from the tree before any heavy run. The 92-problem agentic split is not affected.
 - **Three heavy-split problems may not be scorable**: `i2c` 7, 46 and 49 produced no test output under the null
   agent (see above). Check them before trusting a heavy-split number.
 - **The heavy split is untested with the agent.** Heavy problems use git workspace volumes, not bind mounts, for
@@ -220,9 +253,14 @@ a $5 allowance.
   just counts the turn.
 - **An unparseable reflect reply defaults to `submit`.** Defensible (the last compiled edit is on disk), but it
   ends the run early.
-- **Wall cap is soft by up to one LLM call** (each call's timeout is half the remaining time, at most 150 s).
+- **Wall cap is soft by up to one LLM call** (each call's timeout is half the remaining time, at most 150 s,
+  and the generation-endpoint fallback can add up to about 50 s). Checks no longer overrun it: each tool's timeout
+  is cut to the time left, and a check is skipped when under 5 s remain.
 - **Budget cap is soft by one call**: it is checked before each call, so a problem can end up to one call over
   budget. Never happened here.
+- **AMBA slice rule kept as stated** (decided in review): the id or the prompt names an AMBA interface.
+  `cic_decimator_0001` has AXI-Stream-style port names (`*_tready`), but its id, prompt and spec never name AXI or
+  AMBA, so it stays out; `tools/amba_ids.txt` says so.
 - **The AMBA slice is 8 + 12, not 10 + 10** as the M0 README said; the README is corrected. The regex in the plan
   is case-sensitive, which would miss ids like `axis_*`; the scan runs it case-insensitively and every match was
   read (the list says what was dropped and why).

@@ -114,15 +114,21 @@ class FileTool:
             for dirpath, _, filenames in os.walk(base):
                 for fn in filenames:
                     full = os.path.join(dirpath, fn)
-                    with open(full, "rb") as f:
-                        snap[os.path.relpath(full, self.root)] = f.read()
+                    try:  # a dangling symlink or an unreadable file is not part of the design
+                        with open(full, "rb") as f:
+                            snap[os.path.relpath(full, self.root)] = f.read()
+                    except OSError:
+                        continue
         return snap
 
     def restore(self, snap):
         current = self.snapshot()
         for rel in current:
             if rel not in snap:
-                os.remove(os.path.join(self.root, rel))
+                try:
+                    os.remove(os.path.join(self.root, rel))
+                except OSError:
+                    pass
         for rel, data in snap.items():
             if current.get(rel) != data:
                 full = os.path.join(self.root, rel)

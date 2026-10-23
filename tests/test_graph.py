@@ -172,10 +172,24 @@ def test_prompt_follows_switches(make_cfg, run_agent):
     assert prompts.TB_OFF in edit_prompt and "testbench" not in edit_prompt.split("choose the checks")[1]
 
 
-def test_unreported_cost_is_null_not_estimated(make_cfg, run_agent):
-    s, _, _ = run_agent(make_cfg(), [{"text": PLAN, "cost": None}, {"text": edit(), "cost": None},
-                                     {"text": decide("submit"), "cost": None}])
-    assert s["cost_usd"] is None and s["cost_unreported_calls"] == 3
+def test_unreported_cost_is_null_and_stops_the_problem(make_cfg, run_agent):
+    s, llm, _ = run_agent(make_cfg(), [{"text": PLAN, "cost": None}, {"text": edit(), "cost": None},
+                                       {"text": decide("submit"), "cost": None}])
+    assert s["cost_usd"] is None and s["cost_unreported_calls"] == 1
+    assert s["stop_reason"] == "cost_unreported" and llm.calls == ["plan"]
+
+
+def test_unreported_cost_after_reported_keeps_reported_sum(make_cfg, run_agent, task_tree):
+    s, llm, _ = run_agent(make_cfg(), [{"text": PLAN, "cost": 0.01}, {"text": edit(), "cost": None},
+                                       {"text": decide("submit"), "cost": 0.01}])
+    assert s["stop_reason"] == "cost_unreported" and llm.calls == ["plan", "edit"]
+    assert s["cost_usd"] == pytest.approx(0.01) and s["cost_unreported_calls"] == 1
+    assert rtl(task_tree) == GOOD  # the edit was applied and checked before stopping
+
+
+def test_errored_call_counts_as_unreported(make_cfg, run_agent):
+    s, _, _ = run_agent(make_cfg(), [{"text": PLAN, "cost": 0.01}, {"raise": "timeout"}])
+    assert s["stop_reason"] == "llm_error" and s["cost_unreported_calls"] == 1
 
 
 def test_llm_error_keeps_best_and_stops(make_cfg, run_agent, task_tree):
@@ -195,6 +209,68 @@ def test_run_budget_ledger(make_cfg, run_agent, tmp_path):
     assert s["stop_reason"] == "submit"
     from cvdp_agent.graph import ledger_total
     assert ledger_total(str(ledger)) == pytest.approx(0.63)
+
+
+def test_run_guard_charges_unreported_calls(make_cfg, run_agent, tmp_path):
+    from cvdp_agent.graph import ledger_totals
+
+    ledger = tmp_path / "ledger"
+    ledger.mkdir()
+    # one problem with a reported $0.01 and one unreported call: the guard charges the $0.10 budget for it
+    run_agent(make_cfg(ledger_dir=str(ledger), run_budget_usd=0.5),
+              [{"text": PLAN, "cost": 0.01}, {"text": edit(), "cost": None}])
+    reported, unreported, charge = ledger_totals(str(ledger))
+    assert (reported, unreported) == (pytest.approx(0.01), 1) and charge == pytest.approx(0.11)
+    for _ in range(4):
+        run_agent(make_cfg(ledger_dir=str(ledger), run_budget_usd=0.5), [{"text": PLAN, "cost": None}])
+    s, llm, _ = run_agent(make_cfg(ledger_dir=str(ledger), run_budget_usd=0.5), [PLAN])
+    assert s["stop_reason"] == "run_budget_exhausted" and llm.calls == []  # 0.11 + 4 x 0.10 >= 0.5
+
+
+class CrashingChecker:
+    tb_dir = "/nonexistent"
+    calls = 0
+
+    def run(self, names, tb=None):
+        raise RuntimeError("checker blew up")
+
+
+def test_crash_still_finalizes(make_cfg, run_agent, task_tree, tmp_path):
+    ledger = tmp_path / "ledger"
+    ledger.mkdir()
+    s, _, _ = run_agent(make_cfg(ledger_dir=str(ledger), run_budget_usd=5.0),
+                        [{"text": PLAN, "cost": 0.01}, {"text": edit(), "cost": 0.02}], checker=CrashingChecker())
+    assert s["stop_reason"] == "error" and "checker blew up" in s["error"]
+    assert s["cost_usd"] == pytest.approx(0.03) and s["turns"] == 1
+    assert len(list(ledger.iterdir())) == 1  # the ledger entry is written
+    assert rtl(task_tree) == GOOD
+
+
+def test_non_utf8_file_is_an_edit_error_not_a_crash(make_cfg, run_agent, task_tree):
+    (task_tree / "rtl" / "latin1.sv").write_bytes(b"// caf\xe9\nmodule m; endmodule\n")
+    diff = '<diff path="rtl/latin1.sv">\n@@\n-module m; endmodule\n+module m2; endmodule\n</diff>\n'
+    s, _, _ = run_agent(make_cfg(), [PLAN, edit(extra=diff), decide("submit")])
+    assert s["stop_reason"] == "submit" and s["files_changed"] == ["rtl/adder.sv"]
+
+
+def test_dangling_symlink_does_not_break_snapshot(make_cfg, run_agent, task_tree):
+    os.symlink("/nonexistent/target.sv", task_tree / "rtl" / "dangling.sv")
+    s, _, _ = run_agent(make_cfg(max_turns=2), [PLAN, edit(GOOD), decide("edit_again"), edit(BAD),
+                                                decide("edit_again")])
+    assert s["stop_reason"] == "max_turns" and s["kept"] == "best_compiled_turn_1"
+    assert rtl(task_tree) == GOOD
+
+
+def test_bad_env_input_still_exits_zero(monkeypatch, task_tree):
+    from cvdp_agent.__main__ import main
+
+    monkeypatch.setenv("CVDP_ROOT", str(task_tree))
+    monkeypatch.setenv("CVDP_PROVIDER", "fake")
+    monkeypatch.setenv("CVDP_MAX_TURNS", "10.0")
+    monkeypatch.delenv("CVDP_OUT_DIR", raising=False)
+    assert main([]) == 0
+    s = json.load(open(task_tree / "rundir" / "agent_out" / "summary.json"))
+    assert s["stop_reason"] == "error" and "ValueError" in s["error"]
 
 
 def test_no_prompt_json(make_cfg, run_agent, task_tree):

@@ -137,3 +137,29 @@ def test_real_compile_and_sv_testbench(task_tree, tmp_path):
     assert r["compile"]["ok"] is True and r["testbench"]["ok"] is False
     ft.write("rtl/adder.sv", "module adder(; endmodule\n")
     assert c.run([])["compile"]["ok"] is False
+
+
+def test_tools_never_see_the_key(tmp_path, monkeypatch):
+    monkeypatch.setenv("OPENROUTER_API_KEY", FAKE_KEY)
+    monkeypatch.setenv("SOME_SERVICE_TOKEN", "tok-123")
+    root = tmp_path / "code"
+    (root / "rtl").mkdir(parents=True)
+    c = checks.Checker(str(root), Tracer(None), {})
+    rc, out, _ = c._run("env", ["python3", "-c", "import os; print(dict(os.environ))"])
+    assert rc == 0 and "PATH" in out
+    assert FAKE_KEY not in out and "OPENROUTER_API_KEY" not in out and "tok-123" not in out
+    assert "OPENROUTER_API_KEY" not in checks.tool_env()
+
+
+def test_check_respects_the_wall_cap(tmp_path):
+    root = tmp_path / "code"
+    (root / "rtl").mkdir(parents=True)
+    left = {"s": 3.0}
+    c = checks.Checker(str(root), Tracer(None), {}, timeout_s=60, time_left=lambda: left["s"])
+    rc, _, summary = c._run("hang", ["sleep", "30"])
+    assert rc is None and "skipped" in summary  # under MIN_TOOL_S: not started
+    left["s"] = 6.0
+    import time
+    t0 = time.monotonic()
+    rc, out, _ = c._run("hang", ["sleep", "30"])  # a hung testbench is cut at the time left, not at 60 s
+    assert rc == 124 and time.monotonic() - t0 < 10

@@ -30,18 +30,21 @@ def _f(x):
         return None
 
 
+def unreported(r):
+    """A row whose cost is not fully known: no reported cost, or some calls without one."""
+    return _f(r["cost_usd"]) is None or int(_f(r.get("cost_unreported_calls")) or 0) > 0
+
+
 def stats(rows):
     n = len(rows)
     k = sum(1 for r in rows if r["pass"] == "1")
-    costs = [_f(r["cost_usd"]) for r in rows]
-    known = [c for c in costs if c is not None]
-    total = sum(known)
+    total = sum(_f(r["cost_usd"]) or 0.0 for r in rows)
     walls = [w for w in (_f(r["wall_time_s"]) if _f(r["wall_time_s"]) is not None else _f(r.get("harness_agent_s"))
                          for r in rows) if w is not None]
     lo, hi = wilson(k, n)
     return {
         "n": n, "k": k, "lo": lo, "hi": hi,
-        "cost": total, "unreported": n - len(known),
+        "cost": total, "unreported": sum(1 for r in rows if unreported(r)),
         "per_problem": total / n if n else None,
         "per_solved": total / k if k else None,
         "wall": statistics.median(walls) if walls else None,
@@ -49,24 +52,27 @@ def stats(rows):
     }
 
 
-def money(x):
-    return "n/a" if x is None else f"${x:.4f}"
+def money(x, lower_bound=False):
+    """A lower bound is shown as ≥$x: some cost in the slice was not reported, and none is ever estimated."""
+    return "n/a" if x is None else ("≥" if lower_bound else "") + f"${x:.4f}"
 
 
 def line(label, s):
     p = f"{s['k']}/{s['n']} = {100 * s['k'] / s['n']:.1f}% [{100 * s['lo']:.1f}, {100 * s['hi']:.1f}]" if s["n"] \
         else "0/0"
-    cost = money(s["cost"]) + (f" ({s['unreported']} unreported)" if s["unreported"] else "")
+    lb = s["unreported"] > 0
+    cost = money(s["cost"], lb) + (f" ({s['unreported']} unreported)" if lb else "")
     wall = "n/a" if s["wall"] is None else f"{s['wall']:.0f} s"
-    return (f"| {label} | {p} | {cost} | {money(s['per_problem'])} | {money(s['per_solved'])} | {wall} "
+    return (f"| {label} | {p} | {cost} | {money(s['per_problem'], lb)} | {money(s['per_solved'], lb)} | {wall} "
             f"| {s['tokens']:,} |")
 
 
 def table(rows):
     out = []
-    models = sorted({r["model"] for r in rows})
+    key = "requested_model" if rows and "requested_model" in rows[0] else "model"
+    models = sorted({r[key] for r in rows})
     for m in models:
-        mr = [r for r in rows if r["model"] == m]
+        mr = [r for r in rows if r[key] == m]
         out.append(f"#### {m}\n")
         out.append("| Slice | pass@1 [Wilson 95%] | Cost | $/problem | $/solved | Median wall | Tokens |")
         out.append("|---|---|---|---|---|---|---|")

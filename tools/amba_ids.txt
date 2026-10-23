@@ -5,6 +5,8 @@
 # event_storing_0001, phase_rotation_0019/0031, rc5_0001, signed_comparator_0001, heavy_friscv_0005;
 # ttc_lite_0001 (an "AXI-like" register interface with no AXI signals in its spec); heavy_opene902_0071 (the
 # bus-unit data interface, no AHB signals at its ports).
+# Not included: cic_decimator_0001 uses AXI-Stream-style port names, but neither its id nor its prompt or spec names
+# an AMBA interface, so it falls outside the rule.
 # agentic_code_generation_no_commercial (8)
 cvdp_agentic_axi4lite_to_pcie_config_0003
 cvdp_agentic_axis_broadcaster_0001
