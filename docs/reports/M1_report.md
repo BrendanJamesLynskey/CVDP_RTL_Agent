@@ -43,11 +43,12 @@
   `tools/m1_ids.txt` (the seeded 10-problem sample), `tools/sweep.sh` (what the sweep workflow runs; also runs
   locally).
 - **Sweep workflow** (`.github/workflows/sweep.yml`): dispatch inputs `model`, `split`, `ids`, `budget_usd`,
-  `max_turns`, `self_check`, `lint`, `threads` (default 2), `runner`. Pulls both images from GHCR, runs the
-  harness, collects, tabulates into the job summary and uploads the work directory (per-test logs,
-  `raw_result.json`, `report.json`, every `agent_out/` and `agent_tb/`, each `agent_changes.patch`). The key
-  reaches the agent only through `CVDP_AGENT_ENV`; the job fails if anything key-shaped is in the work directory
-  before upload. On `pull_request` it is a smoke run with the `fake` provider on 2 problems.
+  `max_turns`, `self_check`, `lint`, `threads` (default 2), `runner`, `run_budget_usd`. Pulls both images from
+  GHCR, runs the harness (with its own step timeout), collects, tabulates into the job summary with the key's usage
+  before and after, and uploads the work directory (per-test logs, `raw_result.json`, `report.json`, every
+  `agent_out/` and `agent_tb/`, each `agent_changes.patch`, the ledger) only if a scan finds nothing key-shaped in
+  it. The key reaches the agent only through `CVDP_AGENT_ENV`. On `pull_request` it is a smoke run with the `fake`
+  provider on 2 problems.
 - **Whole-run spend guard**: each agent writes its cost to a ledger directory shared through
   `CVDP_AGENT_MOUNTS`; an agent that starts after the ledger has passed the guard (`run_budget_usd`, or
   `budget_usd × problems × 1.2`) stops before its first LLM call (`stop_reason: run_budget_exhausted`; the problem
