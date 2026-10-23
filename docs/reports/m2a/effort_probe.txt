@@ -1,0 +1,8 @@
+# python3 tools/effort_probe.py deepseek/deepseek-v4.1-flash-1017 default high low off
+# run 2026-10-23 11:32 UTC from the build session (provider-reported usage)
+model deepseek/deepseek-v4.1-flash-1017, max_tokens 4000, prompt: 4-bit up/down counter
+default  completion 293 reasoning 166 cost 0.00015147 finish stop provider Relace answer_chars 446
+high     completion 422 reasoning 309 cost 0.00021597 finish stop provider Relace answer_chars 357
+low      completion 221 reasoning 102 cost 0.00011547 finish stop provider Relace answer_chars 421
+off      completion 128 reasoning 0 cost 6.715e-05 finish stop provider Relace answer_chars 452
+total cost 0.000550

@@ -1,10 +1,20 @@
 """Results table from one or more collect.py CSVs: pass@1 with a Wilson 95% interval, $/problem, $/solved problem
 and median wall time, by category and for the AMBA slice, per model. Markdown on stdout.
 
-Usage: python3 tools/table.py results.csv [more.csv ...]
+Rows are grouped by `label` (the model and its reasoning setting, e.g. "x/y (reasoning off)") when the CSV has
+one, else by the requested model.
+
+With --seeds, the rows are repeats of the same problems (the `seed` column), and a table across seeds comes first:
+mean pass@1 over seeds with its min-max range, pooled pass@1 with a 95% interval from a bootstrap over problems
+(each problem's seeds resampled together, since repeats of one problem are not independent), and the cost per
+solved problem pooled across seeds. The per-slice tables after it are pooled over seeds, and their Wilson
+intervals treat every problem-seed row as independent, so they overstate the precision.
+
+Usage: python3 tools/table.py [--seeds] results.csv [more.csv ...]
 """
 import csv
 import math
+import random
 import statistics
 import sys
 
@@ -67,9 +77,15 @@ def line(label, s):
             f"| {s['tokens']:,} |")
 
 
+def group_key(rows):
+    if rows and rows[0].get("label"):
+        return "label"
+    return "requested_model" if rows and "requested_model" in rows[0] else "model"
+
+
 def table(rows):
     out = []
-    key = "requested_model" if rows and "requested_model" in rows[0] else "model"
+    key = group_key(rows)
     models = sorted({r[key] for r in rows})
     for m in models:
         mr = [r for r in rows if r[key] == m]
@@ -85,15 +101,65 @@ def table(rows):
         stops = {}
         for r in mr:
             stops[r["stop_reason"]] = stops.get(r["stop_reason"], 0) + 1
-        out.append("\nStop reasons: " + ", ".join(f"{k} {v}" for k, v in sorted(stops.items())) + "\n")
+        out.append("\nStop reasons: " + ", ".join(f"{k} {v}" for k, v in sorted(stops.items())))
+        if mr and "empty_replies" in mr[0]:
+            tot = {c: sum(int(_f(r.get(c)) or 0) for r in mr)
+                   for c in ("empty_replies", "empty_retries", "reflect_parse_retries")}
+            rt = sum(int(_f(r.get("reasoning_tokens")) or 0) for r in mr)
+            out.append(f"\nEmpty replies: {tot['empty_replies']} (retried {tot['empty_retries']}); "
+                       f"reflect parse retries: {tot['reflect_parse_retries']}; reasoning tokens (reported): {rt:,}")
+        out.append("")
     return "\n".join(out)
 
 
-def main(paths):
+def problem_bootstrap(rows, b=2000, seed=0):
+    """95% interval for pooled pass@1, resampling problems (each with all its seeds) with replacement."""
+    by_problem = {}
+    for r in rows:
+        by_problem.setdefault(r["id"], []).append(1.0 if r["pass"] == "1" else 0.0)
+    means = [sum(v) / len(v) for v in by_problem.values()]
+    if not means:
+        return (0.0, 0.0)
+    rng = random.Random(seed)
+    n = len(means)
+    stats_ = sorted(sum(rng.choice(means) for _ in range(n)) / n for _ in range(b))
+    return (stats_[int(0.025 * b)], stats_[min(b - 1, int(0.975 * b))])
+
+
+def seeds_table(rows):
+    """Across seeds, per model: mean pass@1 over seeds [min-max], pooled pass@1 [95% problem bootstrap], pooled
+    cost and $/solved. A seed's pass@1 is its passes over its rows (problems)."""
+    key = group_key(rows)
+    out = ["#### Across seeds\n",
+           "| Model | Seeds | Problems per seed | Mean pass@1 [min–max] | Pooled pass@1 [95% problem bootstrap] "
+           "| Cost, all seeds | $/solved, pooled |",
+           "|---|---|---|---|---|---|---|"]
+    for m in sorted({r[key] for r in rows}):
+        mr = [r for r in rows if r[key] == m]
+        by_seed = {}
+        for r in mr:
+            by_seed.setdefault(r.get("seed", ""), []).append(r)
+        rates = [stats(v)["k"] / stats(v)["n"] for v in by_seed.values() if v]
+        sizes = sorted({len(v) for v in by_seed.values()})
+        s = stats(mr)
+        lo, hi = problem_bootstrap(mr)
+        lb = s["unreported"] > 0
+        mean = f"{100 * statistics.mean(rates):.1f}% [{100 * min(rates):.1f}–{100 * max(rates):.1f}]"
+        pooled = f"{s['k']}/{s['n']} = {100 * s['k'] / s['n']:.1f}% [{100 * lo:.1f}, {100 * hi:.1f}]"
+        cost = money(s["cost"], lb) + (f" ({s['unreported']} unreported)" if lb else "")
+        out.append(f"| {m} | {len(by_seed)} | {'/'.join(map(str, sizes))} | {mean} | {pooled} | {cost} "
+                   f"| {money(s['per_solved'], lb)} |")
+    return "\n".join(out) + "\n"
+
+
+def main(argv):
+    seeds = "--seeds" in argv
     rows = []
-    for p in paths:
+    for p in [a for a in argv if a != "--seeds"]:
         with open(p) as f:
             rows += list(csv.DictReader(f))
+    if seeds:
+        print(seeds_table(rows))
     print(table(rows))
 
 

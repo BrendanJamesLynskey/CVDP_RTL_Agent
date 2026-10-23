@@ -27,6 +27,9 @@ class Config:
     wall_s: float = 480.0               # under the harness's default agent timeout (600 s)
     self_check: bool = True             # write and run a self-written testbench
     lint: bool = True                   # verilator --lint-only and the yosys read/synth check
+    reasoning: str = "default"          # default | low | medium | high | off (OpenRouter's reasoning effort)
+    seed: str = ""                      # repeat number from the sweep; a label only (sampling is not seeded)
+    provider_order: list = field(default_factory=list)  # OpenRouter providers to use, in order, no fallbacks
     out_dir: str = ""                   # default <root>/rundir/agent_out
     fake_script: str = ""               # fake provider: a JSON file or inline JSON list of responses
     ledger_dir: str = ""                # whole-run spend guard: shared directory of per-problem costs
@@ -47,7 +50,18 @@ class Config:
             "max_turns": self.max_turns,
             "budget_usd": self.budget_usd,
             "wall_s": self.wall_s,
+            "reasoning": self.reasoning,
+            "provider_order": ",".join(self.provider_order),
         }
+
+
+def _reasoning(name):
+    from .llm import REASONING
+
+    v = (os.environ.get(name) or "default").strip().lower()
+    if v not in REASONING:
+        raise ValueError(f"{name} must be one of {', '.join(REASONING)}, got {v!r}")
+    return v
 
 
 def from_env():
@@ -61,6 +75,9 @@ def from_env():
         wall_s=_num("CVDP_WALL_S", 480.0, float),
         self_check=_flag("CVDP_SELF_CHECK", True),
         lint=_flag("CVDP_LINT", True),
+        reasoning=_reasoning("CVDP_REASONING"),
+        seed=os.environ.get("CVDP_SEED", "").strip(),
+        provider_order=[p.strip() for p in os.environ.get("CVDP_PROVIDER_ORDER", "").split(",") if p.strip()],
         out_dir=os.environ.get("CVDP_OUT_DIR", ""),
         fake_script=os.environ.get("CVDP_FAKE_SCRIPT", ""),
         ledger_dir=os.environ.get("CVDP_LEDGER_DIR", ""),

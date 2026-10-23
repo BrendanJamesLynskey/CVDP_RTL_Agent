@@ -46,7 +46,20 @@ on:
         options: [ubuntu-24.04, ubuntu-24.04-arm]
         default: ubuntu-24.04
       run_budget_usd:
-        description: "Whole-run guard, USD (blank = budget_usd x problems x 1.2; that is $11.04 for all 92)"
+        description: "Whole-job guard over all seeds, USD (blank = budget_usd x problems x seeds x 1.2)"
+        type: string
+        default: ""
+      reasoning:
+        description: "Reasoning effort sent to OpenRouter (default = the model's own; off = none)"
+        type: choice
+        options: [low, default, medium, high, "off"]
+        default: low
+      seeds:
+        description: "Independent repeats of the problem list, run one after another"
+        type: string
+        default: "1"
+      provider_order:
+        description: "Pin OpenRouter providers, comma-separated, in order, no fallbacks (blank = OpenRouter routes)"
         type: string
         default: ""
   pull_request:
@@ -70,6 +83,10 @@ env:
   SELF_CHECK: ${{ (github.event_name == 'pull_request' || inputs.self_check) && '1' || '0' }}
   LINT: ${{ (github.event_name == 'pull_request' || inputs.lint) && '1' || '0' }}
   THREADS: ${{ github.event_name == 'pull_request' && '2' || inputs.threads }}
+  REASONING: ${{ github.event_name == 'pull_request' && 'low' || inputs.reasoning }}
+  # The smoke run uses 2 seeds, so the repeat path (work dirs, seed column, table across seeds) runs on every PR.
+  SEEDS: ${{ github.event_name == 'pull_request' && '2' || inputs.seeds }}
+  PROVIDER_ORDER: ${{ github.event_name == 'pull_request' && '' || inputs.provider_order }}
   RUNNER: ${{ github.event_name == 'pull_request' && 'ubuntu-24.04' || inputs.runner }}
   WORK: work
   REAL_MODEL: ${{ github.event_name == 'workflow_dispatch' && inputs.model != 'fake' }}
@@ -155,6 +172,8 @@ jobs:
           OPENROUTER_API_KEY: ${{ env.REAL_MODEL == 'true' && secrets.OPENROUTER_API_KEY || '' }}
           AGENT_IMAGE: ${{ steps.agent.outputs.image }}
           IDS: ${{ github.event_name == 'pull_request' && env.SMOKE_IDS || inputs.ids }}
+          # The Run step's 320 min, less a margin: a seed starts only if its worst case fits in what is left.
+          STEP_BUDGET_S: "19000"
         run: bash tools/sweep.sh run
 
       - name: Collect and tabulate
@@ -162,6 +181,8 @@ jobs:
         run: |
           bash tools/sweep.sh collect
           cat work/table.md >> "$GITHUB_STEP_SUMMARY"
+          # The per-problem rows in the log too (no secrets in them: ids, counts, provider-reported cost)
+          [ ! -f work/results.csv ] || cat work/results.csv
 
       - name: Key usage after the run
         if: always() && env.REAL_MODEL == 'true'
@@ -184,7 +205,7 @@ jobs:
 
       - name: Smoke checks (plumbing, not score)
         if: github.event_name == 'pull_request'
-        run: python3 tools/smoke_check.py work 2
+        run: python3 tools/smoke_check.py work 2 "$SEEDS"
 
       - name: Secret check on what gets uploaded
         id: scan
@@ -207,12 +228,13 @@ jobs:
           path: |
             work/results.csv
             work/table.md
-            work/raw_result.json
-            work/report.json
-            work/*/reports/*.txt
-            work/*/harness/*/rundir/agent_out/**
-            work/*/harness/*/rundir/agent_tb/**
-            work/*/harness/*/agent_changes.patch
+            work/seed*.skipped
+            work/seed*/raw_result.json
+            work/seed*/report.json
+            work/seed*/*/reports/*.txt
+            work/seed*/*/harness/*/rundir/agent_out/**
+            work/seed*/*/harness/*/rundir/agent_tb/**
+            work/seed*/*/harness/*/agent_changes.patch
             work.problems.jsonl
             work.run.json
             work.ledger/*.json

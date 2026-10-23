@@ -8,6 +8,17 @@ _ATTR = re.compile(r'(\w+)="([^"]*)"')
 _CHECKS = re.compile(r"<checks>(.*?)</checks>", re.DOTALL)
 _FENCE = re.compile(r"^\s*```[\w-]*\n(.*?)\n```\s*$", re.DOTALL)
 DECISIONS = ("edit_again", "submit", "give_up")
+# Tool-call markup some models emit as text instead of an answer: DeepSeek-style special tokens (full-width or
+# ASCII bars), DeepSeek's DSML tags (<｜DSML｜ calls>, <｜DSML｜ invoke name="bash">, <｜DSML｜ parameter …>, and
+# their closing forms), and <tool_call> / <function_calls> blocks. A whole block is markup, whatever it holds.
+_BAR = r"[|｜]"
+_TOOL_BLOCKS = re.compile(
+    rf"<{_BAR}tool[▁_ ]calls?[▁_ ]begin{_BAR}>.*?(?:<{_BAR}tool[▁_ ]calls?[▁_ ]end{_BAR}>|\Z)"
+    rf"|<{_BAR}DSML{_BAR}\s*((?:function_)?calls|invoke|parameter)\b[^>]*>.*?(?:<{_BAR}?/{_BAR}?DSML{_BAR}\s*\1\s*>"
+    rf"|</{_BAR}DSML{_BAR}\s*\1\s*>|\Z)"
+    r"|<(tool_calls?|function_calls?)\b[^>]*>.*?(?:</\2>|\Z)",
+    re.DOTALL | re.IGNORECASE)
+_SPECIAL_TOKEN = re.compile(rf"<{_BAR}[^<>]{{0,80}}?{_BAR}>|</?{_BAR}?/?DSML{_BAR}[^<>]{{0,200}}>")
 
 
 def extract_json(text):
@@ -35,6 +46,24 @@ def extract_json(text):
     return None
 
 
+def strip_tool_markup(text):
+    return _SPECIAL_TOKEN.sub("", _TOOL_BLOCKS.sub("", text or ""))
+
+
+def empty_reply(node, text):
+    """An empty reply: nothing after stripping, or only tool-call markup with nothing usable inside it (no edit
+    block for an edit, no JSON object for a plan or a decision)."""
+    if not (text or "").strip():
+        return True
+    if strip_tool_markup(text).strip():
+        return False
+    if node == "edit":
+        e = parse_edit(text)
+        return not (e["files"] or e["diffs"] or e["tb"])
+    obj = extract_json(text) or {}
+    return not set(obj) & ({"decision"} if node == "reflect" else {"files_to_change", "approach", "check_plan"})
+
+
 def parse_plan(text):
     obj = extract_json(text) or {}
     files = obj.get("files_to_change") or []
@@ -48,12 +77,16 @@ def parse_plan(text):
 
 
 def parse_decision(text):
+    """`parsed` is False when neither a JSON decision nor a bare decision word was found; `decision` is then
+    "submit", the fallback."""
     obj = extract_json(text) or {}
     d = str(obj.get("decision", "")).strip().lower()
-    if d not in DECISIONS:
+    parsed = d in DECISIONS
+    if not parsed:
         m = re.search(r"\b(edit_again|submit|give_up)\b", text or "")
+        parsed = bool(m)
         d = m.group(1) if m else "submit"
-    return {"decision": d, "reason": str(obj.get("reason") or "")[:2000]}
+    return {"decision": d, "reason": str(obj.get("reason") or "")[:2000], "parsed": parsed}
 
 
 def parse_edit(text):
