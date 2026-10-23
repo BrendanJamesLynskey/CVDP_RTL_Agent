@@ -58,6 +58,10 @@ on:
         description: "Independent repeats of the problem list, run one after another"
         type: string
         default: "1"
+      provider_order:
+        description: "Pin OpenRouter providers, comma-separated, in order, no fallbacks (blank = OpenRouter routes)"
+        type: string
+        default: ""
   pull_request:
 
 permissions:
@@ -82,6 +86,7 @@ env:
   REASONING: ${{ github.event_name == 'pull_request' && 'low' || inputs.reasoning }}
   # The smoke run uses 2 seeds, so the repeat path (work dirs, seed column, table across seeds) runs on every PR.
   SEEDS: ${{ github.event_name == 'pull_request' && '2' || inputs.seeds }}
+  PROVIDER_ORDER: ${{ github.event_name == 'pull_request' && '' || inputs.provider_order }}
   RUNNER: ${{ github.event_name == 'pull_request' && 'ubuntu-24.04' || inputs.runner }}
   WORK: work
   REAL_MODEL: ${{ github.event_name == 'workflow_dispatch' && inputs.model != 'fake' }}
@@ -167,6 +172,8 @@ jobs:
           OPENROUTER_API_KEY: ${{ env.REAL_MODEL == 'true' && secrets.OPENROUTER_API_KEY || '' }}
           AGENT_IMAGE: ${{ steps.agent.outputs.image }}
           IDS: ${{ github.event_name == 'pull_request' && env.SMOKE_IDS || inputs.ids }}
+          # The Run step's 320 min, less a margin: a seed starts only if its worst case fits in what is left.
+          STEP_BUDGET_S: "19000"
         run: bash tools/sweep.sh run
 
       - name: Collect and tabulate
@@ -221,7 +228,7 @@ jobs:
           path: |
             work/results.csv
             work/table.md
-            work/seed*.wall_s
+            work/seed*.skipped
             work/seed*/raw_result.json
             work/seed*/report.json
             work/seed*/*/reports/*.txt

@@ -223,7 +223,7 @@ def test_empty_retry_whose_lower_level_is_rejected_is_made_at_the_problems_level
     from cvdp_agent.graph import run
 
     class RejectsOff(FakeLLM):
-        def invoke(self, node, messages, max_tokens=None, timeout=None, reasoning="default"):
+        def invoke(self, node, messages, max_tokens=None, timeout=None, reasoning="default", **kw):
             if reasoning == "off":
                 self.requests.append({"node": node, "body": {"reasoning": reasoning_body(reasoning)},
                                       "messages": messages})
@@ -340,10 +340,15 @@ def test_three_seeds_three_work_dirs_one_guard(tmp_path):
     assert {stops[("1", p["id"])] for p in problems} == {"submit"}
     md = (work / "table.md").read_text()
     assert "#### Across seeds" in md
-    assert "| fake | 3 | 2 | 100.0% [100.0–100.0] | 6/6 = 100.0% [61.0, 100.0] | $0.0240 | $0.0040 |" in md
+    # labelled with the reasoning setting; every problem passed, so the problem bootstrap is degenerate
+    assert "| fake (reasoning medium) | 3 | 2 | 100.0% [100.0–100.0] | 6/6 = 100.0% [100.0, 100.0] | $0.0240 " \
+           "| $0.0040 |" in md
+    assert {r["label"] for r in rows} == {"fake (reasoning medium)"}
     assert "Run spend (sum of provider-reported cost): $0.0240" in md
     assert "Empty replies: 0 (retried 0); reflect parse retries: 0; reasoning tokens (reported): 0" in md
-    assert "Harness wall time, seed3:" in md
+    assert "Seed 3: 20" in md and "harness wall time" in md  # UTC start and end per seed
+    run = json.load(open(str(work) + ".run.json"))
+    assert set(run["seed_runs"]) == {"1", "2", "3"} and run["seed_runs"]["1"]["start_utc"].endswith("Z")
     # the smoke check the PR run uses, on the same layout
     sc = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "smoke_check.py"), str(work), "2", "3"],
                         capture_output=True, text=True)
@@ -363,7 +368,8 @@ def test_seed_table_mean_range_and_pooled():
     passes = {"1": "1100", "2": "1000", "3": "1110"}  # 2/4, 1/4, 3/4
     rows = [dict(base, id=f"p{i}", seed=s, **{"pass": p[i]}) for s, p in passes.items() for i in range(4)]
     md = table.seeds_table(rows)
-    assert "| m | 3 | 4 | 50.0% [25.0–75.0] | 6/12 = 50.0% [25.4, 74.6] | $0.1200 | $0.0200 |" in md
+    # resampling problems, not problem-seed rows: wider than the Wilson interval on 12 rows ([25.4, 74.6])
+    assert "| m | 3 | 4 | 50.0% [25.0–75.0] | 6/12 = 50.0% [16.7, 83.3] | $0.1200 | $0.0200 |" in md
     assert "Empty replies: 12 (retried 12); reflect parse retries: 0;" in table.table(rows)
 
 
@@ -394,3 +400,161 @@ def test_models_table():
            "default) |  |" in md
     assert "| `b/y` | yes | $1.000 | $2.000 | 8,192 | no | $0.500/$1.000 for weekends |" in md
     assert "| `c/missing` | no |" in md
+
+
+# ---------- review round 1 ----------
+
+# DeepSeek's DSML tool-call markup as it came back in the live `low` run (run 39936095610)
+DSML = ('<｜DSML｜ calls>\n<｜DSML｜ invoke name="bash">\n<｜DSML｜ parameter name="command" string="true">'
+        'ls -la /code/rtl</｜DSML｜ parameter>\n</｜DSML｜ invoke>\n</｜DSML｜ calls>')
+
+
+def test_dsml_markup_is_an_empty_reply():
+    for node in ("plan", "edit", "reflect"):
+        assert empty_reply(node, DSML), node
+    assert empty_reply("reflect", '<｜DSML｜ invoke name="bash">cat rtl/x.sv')            # cut off mid-call
+    assert not empty_reply("reflect", DSML + '\n{"decision": "submit", "reason": "ok"}')  # an answer after it
+
+
+def test_dsml_only_reflect_gets_the_empty_retry_not_the_parse_retry(make_cfg, run_agent):
+    cfg = make_cfg(reasoning="low")
+    s, llm, _ = run_agent(cfg, [PLAN, edit(), DSML, decide("submit")])
+    assert llm.calls == ["plan", "edit", "reflect", "reflect"] and s["stop_reason"] == "submit"
+    assert (s["empty_replies"], s["empty_retries"], s["reflect_parse_retries"]) == (1, 1, 0)
+    assert llm.requests[3]["body"]["reasoning"] == EXPECTED_BODY["off"]
+
+
+def test_a_call_past_its_deadline_is_abandoned_and_counted_unreported(make_cfg, task_tree, monkeypatch):
+    """Scaled down: a 4 s wall cap. The provider takes 30 s to answer the edit; the call is abandoned at its
+    deadline, counted as unreported, and the agent still stops and writes its summary within the cap + finalize."""
+    import time
+
+    from cvdp_agent import graph
+
+    monkeypatch.setattr(graph, "MIN_LLM_S", 0.0)
+    monkeypatch.setattr(graph, "DEADLINE_MARGIN_S", 0.5)
+    cfg = make_cfg(wall_s=4.0, finalize_s=1.0)
+    t0 = time.monotonic()
+    s = graph.run(cfg, llm=FakeLLM([{"text": PLAN, "cost": 0.001}, {"text": edit(), "real_sleep": 30, "cost": 0.05}]),
+                  checker=FakeChecker(cfg.root), tools={})
+    took = time.monotonic() - t0
+    assert took < cfg.wall_s + cfg.finalize_s + 1.0, took
+    assert s["stop_reason"] == "llm_error" and s["cost_unreported_calls"] == 1
+    assert s["cost_usd"] == pytest.approx(0.001)  # the abandoned call's cost is not known, so not added
+    missed = [e for e in llm_events(cfg) if e.get("deadline_missed")]
+    assert len(missed) == 1 and missed[0]["node"] == "edit" and "abandoned" in missed[0]["error"]
+
+
+def test_the_in_flight_call_is_on_disk_as_unreported_before_it_returns(make_cfg, task_tree, tmp_path):
+    from cvdp_agent.graph import ledger_totals, run
+
+    ledger = tmp_path / "ledger"
+    ledger.mkdir()
+    cfg = make_cfg(ledger_dir=str(ledger), run_budget_usd=5.0, budget_usd=0.10)
+    seen = {}
+
+    class Peek(FakeLLM):
+        def invoke(self, node, messages, **kw):
+            if node == "edit":  # "killed" here: what does the disk say?
+                seen["summary"] = json.load(open(os.path.join(cfg.agent_out, "summary.json")))
+                seen["ledger"] = ledger_totals(str(ledger))
+            return super().invoke(node, messages, **kw)
+
+    s = run(cfg, llm=Peek([{"text": PLAN, "cost": 0.004}, {"text": edit(), "cost": 0.006},
+                           {"text": decide("submit"), "cost": 0.001}]), checker=FakeChecker(cfg.root), tools={})
+    assert seen["summary"]["stop_reason"] == "killed" and seen["summary"]["in_flight_calls"] == 1
+    assert seen["summary"]["cost_unreported_calls"] == 1
+    assert seen["ledger"][2] == pytest.approx(0.004 + 0.10)  # the guard charges the in-flight call the budget
+    assert s["cost_unreported_calls"] == 0 and s["in_flight_calls"] == 0  # cleared when the call returned
+
+
+@pytest.mark.parametrize("level,plan_cap,edit_cap", [("off", 4000, 32000), ("low", 12000, 40000),
+                                                     ("high", 28000, 56000), ("default", 20000, 48000)])
+def test_reasoning_gets_headroom_over_the_answer_cap(make_cfg, run_agent, level, plan_cap, edit_cap):
+    _, llm, _ = run_agent(make_cfg(reasoning=level), [PLAN, edit(), decide("submit")])
+    assert [r["max_tokens"] for r in llm.requests] == [plan_cap, edit_cap, 2000 + (plan_cap - 4000)]
+
+
+def test_max_tokens_and_retries_are_cut_to_the_time_left(make_cfg, run_agent):
+    # the plan streams 1,000 tokens in 10 s (100/s) and leaves 30 s: the edit may ask for 100 x 28 s x 0.9
+    s, llm, _ = run_agent(make_cfg(wall_s=120.0, reasoning="low"),
+                          [{"text": PLAN, "completion_tokens": 1000, "latency_s": 10.0, "sleep": 90.0}, edit(),
+                           decide("submit")])
+    assert llm.requests[0]["max_tokens"] == 12000 and llm.requests[0]["max_retries"] is None
+    assert llm.requests[1]["max_tokens"] == int(100 * 28 * 0.9) and llm.requests[1]["max_retries"] == 0
+
+
+def test_capped_empty_reply_is_traced_once(make_cfg, run_agent):
+    cfg = make_cfg(budget_usd=0.05)
+    run_agent(cfg, [{"text": PLAN, "cost": 0.01}, {"text": "", "cost": 0.05}])
+    ids = [e["call_id"] for e in llm_events(cfg)]
+    assert len(ids) == len(set(ids)) == 2
+    assert llm_events(cfg)[1]["empty"] is True
+
+
+def test_errored_empty_retry_counts_unreported_and_leaks_no_key(make_cfg, run_agent):
+    """The retry raises an error whose text is long enough to be cut, with the key across the cut: redaction must
+    come before truncation, or the key's second half would survive."""
+    cfg = make_cfg(reasoning="low")
+    msg = "x" * 480 + f" upstream said: Authorization {FAKE_KEY} " + "y" * 600
+    s, llm, _ = run_agent(cfg, [PLAN, {"text": "", "cost": 0.01}, {"raise": msg}])
+    assert s["stop_reason"] == "llm_error" and s["cost_unreported_calls"] == 1
+    assert (s["empty_replies"], s["empty_retries"]) == (1, 1)
+    errored = [e for e in llm_events(cfg) if "error" in e]
+    assert errored[0]["retry_of"] == 2
+    text = open(os.path.join(cfg.agent_out, "trace.jsonl")).read()
+    for i in range(0, len(FAKE_KEY) - 12):
+        assert FAKE_KEY[i:i + 12] not in text
+
+
+def test_rejection_event_carries_retry_of(make_cfg, task_tree, clock):
+    from cvdp_agent.graph import run
+
+    class RejectsOff(FakeLLM):
+        def invoke(self, node, messages, reasoning="default", **kw):
+            if reasoning == "off":
+                raise ReasoningRejected("HTTP 400: effort none is not supported")
+            return super().invoke(node, messages, reasoning=reasoning, **kw)
+
+    cfg = make_cfg(reasoning="low")
+    run(cfg, llm=RejectsOff([PLAN, {"text": ""}, edit(), decide("submit")], clock=clock),
+        checker=FakeChecker(cfg.root), tools={}, clock=clock)
+    rejected = [e for e in llm_events(cfg) if e.get("reasoning_rejected")]
+    assert rejected[0]["retry_of"] == 2
+
+
+def test_openrouter_records_the_serving_provider_and_pins_the_order(make_cfg):
+    from cvdp_agent.graph import run
+
+    replies = [dict(_completion(t), provider=p) for t, p in ((PLAN, "Alpha"), (edit(), "Beta"),
+                                                              (decide("submit"), "Alpha"))]
+    mock = MockOpenRouter(replies)
+    llm = OpenRouterLLM("test/model", http_client=httpx.Client(transport=httpx.MockTransport(mock)),
+                        provider_order=["Alpha", "Beta"])
+    cfg = make_cfg(provider="openrouter", model="test/model", reasoning="off")
+    s = run(cfg, llm=llm, checker=FakeChecker(cfg.root), tools={})
+    assert all(b["provider"] == {"order": ["Alpha", "Beta"], "allow_fallbacks": False} for b in mock.bodies)
+    assert s["providers"] == {"Alpha": 2, "Beta": 1}
+    assert [e["provider"] for e in llm_events(cfg)] == ["Alpha", "Beta", "Alpha"]
+    assert_no_key(cfg)
+
+
+def test_provider_order_from_env(monkeypatch):
+    monkeypatch.setenv("CVDP_PROVIDER_ORDER", "DeepInfra, Novita")
+    assert config_mod.from_env().provider_order == ["DeepInfra", "Novita"]
+
+
+def test_seed_not_started_when_the_step_cannot_fit_its_worst_case(tmp_path):
+    data = tmp_path / "data"
+    data.mkdir()
+    (data / "agentic_code_generation_no_commercial.jsonl").write_text(
+        json.dumps({"id": "cvdp_agentic_lfsr_0001", "categories": ["cid016", "easy"]}) + "\n")
+    work = tmp_path / "work"
+    env = dict(os.environ, SEEDS="2", MODEL="fake", THREADS="1", WORK=str(work), CVDP_DIR=str(tmp_path / "nope"),
+               DATA_DIR=str(data), AGENT_IMAGE="unused", STEP_BUDGET_S="100", SEED_PROBLEM_WORST_S="60")
+    r = subprocess.run(["bash", os.path.join(ROOT, "tools", "sweep.sh")], env=env, capture_output=True, text=True,
+                       timeout=120)
+    assert r.returncode == 0, r.stdout + r.stderr  # worst case 1 x 60 + 300 = 360 s > 100 s: nothing started
+    md = (work / "table.md").read_text()
+    assert "**Seed 1: not started**" in md and "**Seed 2: not started**" in md and "360 s" in md
+    assert not (work / "seed1").exists()

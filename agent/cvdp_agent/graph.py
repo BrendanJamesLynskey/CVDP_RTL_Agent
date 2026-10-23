@@ -5,6 +5,7 @@ whose cost was not reported, and wall time. On any stop, and on a crash, finaliz
 last one that compiled), writes the summary and the ledger entry, and the process exits 0."""
 import json
 import os
+import threading
 import time
 import uuid
 from typing import TypedDict
@@ -16,14 +17,45 @@ from . import prompts
 from .files import EDIT_ROOTS, TEXT_EXT, FileTool, PathRefused
 from .llm import LOWER, ReasoningRejected
 from .parse import empty_reply, parse_decision, parse_edit, parse_plan
-from .trace import Tracer, truncate
+from .trace import Tracer, redact, truncate
 
-MAX_TOKENS = {"plan": 4000, "edit": 32000, "reflect": 2000}
+MAX_TOKENS = {"plan": 4000, "edit": 32000, "reflect": 2000}  # room for the answer itself
+# Room for reasoning on top of the answer's. Reasoning tokens count against max_tokens (with exclude: true too), so
+# without this a model that reasons at length fills the cap and returns an empty reply (finish_reason: length).
+REASONING_HEADROOM = {"off": 0, "low": 8000, "medium": 16000, "high": 24000, "default": 16000}
 LLM_NODES = ("plan", "edit", "reflect")
-MIN_LLM_S = 20.0   # an LLM call is not started with less time than this before the wall cap
-# Worst case after the wall cap (480 s): an LLM call started before it ends by then (two attempts of at most half
-# the time left each, plus at most 10 s for the cost lookup), checks are cut to the time left, and finalize has
-# cfg.finalize_s (30 s): about 520 s in all, under the harness's 600 s kill.
+MIN_LLM_S = 20.0          # an LLM call is not started with less time than this before the wall cap
+DEADLINE_MARGIN_S = 2.0   # every call (its cost lookup included) must be back this long before the wall cap
+SHORT_CALL_S = 60.0       # a call with less time than this gets no client-side retry
+MIN_MAX_TOKENS = 512      # the throughput clamp never cuts max_tokens below this
+# Worst case after the wall cap (480 s): every LLM call has a hard deadline DEADLINE_MARGIN_S before it and is
+# abandoned there (counted as cost unreported); checks are cut to the time left; finalize has cfg.finalize_s
+# (30 s): about 510 s in all, under the harness's 600 s kill.
+
+
+class CallDeadline(TimeoutError):
+    """An LLM call did not return by its deadline and was abandoned. It may still be billed."""
+
+
+def run_with_deadline(fn, seconds):
+    """fn() in a daemon thread; its result, or CallDeadline if it has not returned within `seconds`. The thread is
+    left behind (it cannot be killed), so it must not touch shared state; it never does here."""
+    box = {}
+
+    def work():
+        try:
+            box["r"] = fn()
+        except BaseException as e:  # handed to the caller
+            box["e"] = e
+
+    t = threading.Thread(target=work, daemon=True)
+    t.start()
+    t.join(seconds)
+    if t.is_alive():
+        raise CallDeadline(f"no reply within {seconds:.1f} s; call abandoned")
+    if "e" in box:
+        raise box["e"]
+    return box["r"]
 
 
 class State(TypedDict, total=False):
@@ -68,6 +100,10 @@ class Runtime:
         self.empty_replies = 0
         self.empty_retries = 0
         self.reflect_parse_retries = 0
+        self.in_flight = 0       # an LLM call under way: counted as unreported in a provisional summary
+        self.out_tokens = 0      # completion tokens and seconds of the calls so far, for the throughput clamp
+        self.out_seconds = 0.0
+        self.providers = {}      # the provider OpenRouter served each call from, with counts
         self.best = None        # snapshot of rtl/verif/docs after the last edit that compiled
         self.best_turn = None
         self.stop_reason = None
@@ -114,43 +150,69 @@ class Runtime:
         return nxt
 
     # ---------- LLM ----------
+    def max_tokens_for(self, node, level, seconds):
+        """The answer's room plus reasoning headroom for the level, cut to what the model can produce in `seconds`
+        at the throughput seen so far in this problem."""
+        cap = MAX_TOKENS.get(node, 4000) + REASONING_HEADROOM.get(level, 0)
+        if self.out_seconds > 0 and self.out_tokens > 0:
+            cap = min(cap, max(MIN_MAX_TOKENS, int(self.out_tokens / self.out_seconds * seconds * 0.9)))
+        return cap
+
+    def _attempt(self, node, messages, level, state):
+        seconds = max(1.0, self.time_left() - DEADLINE_MARGIN_S)
+        max_tokens = self.max_tokens_for(node, level, seconds)
+        self.in_flight = 1
+        checkpoint(self, state)  # if the harness kills us mid-call, the call shows as unreported
+        try:
+            r = run_with_deadline(lambda: self.llm.invoke(
+                node, messages, max_tokens=max_tokens, timeout=min(150.0, seconds), reasoning=level,
+                max_retries=0 if seconds < SHORT_CALL_S else None), seconds)
+        finally:
+            self.in_flight = 0
+        r.max_tokens = max_tokens
+        return r
+
     def call(self, node, messages, state, reasoning=None, retry_of=None):
-        """One LLM call, at `reasoning` (default: the problem's current level). If the model refuses the reasoning
-        field, that is traced and the call is made again: at the problem's own level when only a retry's lower
-        level was refused (say `off` on a model that must reason), otherwise without the field, and the problem
-        then stays at "default" for good."""
+        """One LLM call, at `reasoning` (default: the problem's current level), with a hard deadline before the
+        wall cap. If the model refuses the reasoning field, that is traced and the call is made again: at the
+        problem's own level when only a retry's lower level was refused (say `off` on a model that must reason),
+        otherwise without the field, and the problem then stays at "default" for good."""
         level = reasoning or self.reasoning
-        remaining = self.cfg.wall_s - self.elapsed()
+        remaining = self.time_left()
         self.llm_calls += 1
         call_id = self.llm_calls
         try:
             try:
-                r = self.llm.invoke(node, messages, max_tokens=MAX_TOKENS.get(node),
-                                    timeout=max(5.0, min(150.0, (remaining - 10) / 2)), reasoning=level)
+                r = self._attempt(node, messages, level, state)
             except ReasoningRejected as e:  # refused before generating anything: not billed, never fails the problem
                 self.reasoning_rejected += 1
                 fallback = self.reasoning if level != self.reasoning else "default"
                 self.tracer.log("llm", node=node, model=getattr(self.llm, "model", None), turn=state.get("turn", 0),
-                                call_id=call_id, reasoning=level, reasoning_rejected=True, cost=0.0,
-                                error=truncate(f"{type(e).__name__}: {e}", 1000), fallback=fallback)
+                                call_id=call_id, retry_of=retry_of, reasoning=level, reasoning_rejected=True,
+                                cost=0.0, error=truncate(redact(f"{type(e).__name__}: {e}"), 1000),
+                                fallback=fallback)
                 if fallback == "default":
                     self.reasoning = "default"
                 level = fallback
-                remaining = self.cfg.wall_s - self.elapsed()
-                r = self.llm.invoke(node, messages, max_tokens=MAX_TOKENS.get(node),
-                                    timeout=max(5.0, min(150.0, (remaining - 10) / 2)), reasoning=level)
-        except Exception as e:  # provider errors end the run; the best edit is still kept
-            self.cost_unreported += 1  # an errored or timed-out call may still have been billed
+                r = self._attempt(node, messages, level, state)
+        except Exception as e:  # provider errors and missed deadlines end the run; the best edit is still kept
+            self.cost_unreported += 1  # an errored, timed-out or abandoned call may still have been billed
             self.tracer.log("llm", node=node, model=getattr(self.llm, "model", None), turn=state.get("turn", 0),
                             call_id=call_id, retry_of=retry_of, reasoning=level, cost=None,
-                            error=truncate(f"{type(e).__name__}: {e}", 1000), remaining_s=round(remaining, 1))
+                            deadline_missed=isinstance(e, CallDeadline),
+                            error=truncate(redact(f"{type(e).__name__}: {e}"), 1000), remaining_s=round(remaining, 1))
             checkpoint(self, state)
             return None
-        r.call_id, r.retry_of, r.reasoning = call_id, retry_of, level
+        r.call_id, r.retry_of, r.reasoning, r.empty = call_id, retry_of, level, empty_reply(node, r.text)
         self.models.add(r.model)
+        if r.provider:
+            self.providers[r.provider] = self.providers.get(r.provider, 0) + 1
         self.prompt_tokens += r.prompt_tokens or 0
         self.completion_tokens += r.completion_tokens or 0
         self.reasoning_tokens += r.reasoning_tokens or 0
+        if r.completion_tokens and r.latency_s >= 1.0:
+            self.out_tokens += r.completion_tokens
+            self.out_seconds += r.latency_s
         if r.cost is None:
             self.cost_unreported += 1
         else:
@@ -161,27 +223,28 @@ class Runtime:
     def ask(self, node, messages, state):
         """call(), and if the reply is empty, one retry with reasoning one step lower and a line asking for the
         answer only. The empty call's cost counts. If the retry is empty too (or a cap leaves no room for it), the
-        empty reply is what the node gets, as before."""
+        empty reply is what the node gets, as before. Every call is traced once."""
         r = self.call(node, messages, state)
-        if r is None or not empty_reply(node, r.text):
+        if r is None or not r.empty:
             return r
         self.empty_replies += 1
-        self.log_llm(node, r, state, decision="empty")
         if self.llm_cap():
-            return r
+            return r  # the node traces it, marked empty
+        self.log_llm(node, r, state, decision="empty")
         self.empty_retries += 1
         r2 = self.call(node, messages + [{"role": "user", "content": prompts.ANSWER_ONLY}], state,
                        reasoning=LOWER.get(r.reasoning, "low"), retry_of=r.call_id)
-        if r2 is not None and empty_reply(node, r2.text):
+        if r2 is not None and r2.empty:
             self.empty_replies += 1
         return r2
 
     def log_llm(self, node, r, state, decision):
-        self.tracer.log("llm", node=node, model=r.model, turn=state.get("turn", 0),
+        self.tracer.log("llm", node=node, model=r.model, provider=r.provider, turn=state.get("turn", 0),
                         call_id=getattr(r, "call_id", None), retry_of=getattr(r, "retry_of", None),
-                        reasoning=getattr(r, "reasoning", None), prompt_tokens=r.prompt_tokens,
-                        completion_tokens=r.completion_tokens, reasoning_tokens=r.reasoning_tokens,
-                        finish_reason=r.finish_reason, cost=r.cost, latency_s=round(r.latency_s, 3),
+                        reasoning=getattr(r, "reasoning", None), max_tokens=getattr(r, "max_tokens", None),
+                        prompt_tokens=r.prompt_tokens, completion_tokens=r.completion_tokens,
+                        reasoning_tokens=r.reasoning_tokens, finish_reason=r.finish_reason,
+                        empty=getattr(r, "empty", False), cost=r.cost, latency_s=round(r.latency_s, 3),
                         generation_id=r.generation_id, decision=decision, completion=truncate(r.text, 3000))
 
     # ---------- context ----------
@@ -390,7 +453,7 @@ def finish(rt, state, error=None):
     stop = "error" if error else (state.get("stop_reason") or rt.stop_reason or "submit")
     summary = make_summary(rt, state, stop, kept, compiled)
     if error:
-        summary["error"] = truncate(error, 2000)
+        summary["error"] = truncate(redact(error), 2000)
     rt.finished = stop
     write_summary(rt, summary)
     rt.tracer.log("summary", **summary)
@@ -428,7 +491,9 @@ def make_summary(rt, state, stop, kept, compiled):
         "prompt_tokens": rt.prompt_tokens,
         "completion_tokens": rt.completion_tokens,
         "cost_usd": round(rt.spent, 8) if rt.llm_calls - rt.cost_unreported > 0 else (None if rt.llm_calls else 0.0),
-        "cost_unreported_calls": rt.cost_unreported,
+        "cost_unreported_calls": rt.cost_unreported + rt.in_flight,
+        "in_flight_calls": rt.in_flight,
+        "providers": dict(sorted(rt.providers.items())),
         "reasoning": rt.cfg.reasoning,
         "reasoning_used": rt.reasoning,
         "reasoning_rejected": rt.reasoning_rejected,
@@ -514,7 +579,7 @@ def run(cfg, llm=None, **kw):
     except Exception as e:
         import traceback
 
-        rt.tracer.log("error", error=truncate(f"{type(e).__name__}: {e}\n{traceback.format_exc()}", 4000))
+        rt.tracer.log("error", error=truncate(redact(f"{type(e).__name__}: {e}\n{traceback.format_exc()}"), 4000))
         finish(rt, state, error=f"{type(e).__name__}: {e}")
     finally:
         finish(rt, state)  # a no-op when finalize already ran

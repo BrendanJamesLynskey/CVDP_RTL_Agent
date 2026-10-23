@@ -18,12 +18,12 @@ import os
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-FIELDS = ["id", "seed", "cid", "difficulty", "pass", "tests", "tests_passed", "amba", "requested_model", "model",
+FIELDS = ["label", "id", "seed", "cid", "difficulty", "pass", "tests", "tests_passed", "amba", "requested_model", "model",
           "provider", "cost_usd",
           "cost_unreported_calls", "prompt_tokens", "completion_tokens", "llm_calls", "tool_calls", "turns",
           "wall_time_s", "harness_agent_s", "stop_reason", "kept", "agent_status", "self_check", "lint",
           "max_turns", "budget_usd", "reasoning", "reasoning_used", "reasoning_tokens", "empty_replies",
-          "empty_retries", "reflect_parse_retries", "runner", "summary_found"]
+          "empty_retries", "reflect_parse_retries", "providers", "runner", "summary_found"]
 
 
 def amba_ids(path=os.path.join(HERE, "amba_ids.txt")):
@@ -45,7 +45,8 @@ def problem_dir(work, pid, entry):
     return cand
 
 
-def rows(work, dataset=None, runner="", model="", seed=""):
+def rows(work, dataset=None, runner="", model="", seed="", reasoning_hint=""):
+    """`reasoning_hint` is the sweep's setting, used for a row whose agent left no summary."""
     raw = json.load(open(os.path.join(work, "raw_result.json")))
     meta = {}
     if dataset:
@@ -65,7 +66,9 @@ def rows(work, dataset=None, runner="", model="", seed=""):
         sw = s.get("switches", {})
         served = s.get("model") or ""
         requested = model or s.get("requested_model") or served or "unknown"
+        reasoning = sw.get("reasoning", s.get("reasoning", "")) or reasoning_hint
         out.append({
+            "label": f"{requested} (reasoning {reasoning})" if reasoning else requested,
             "id": pid,
             "seed": seed or s.get("seed") or "",
             "cid": e.get("category") or cats[0],
@@ -93,12 +96,13 @@ def rows(work, dataset=None, runner="", model="", seed=""):
             "lint": int(sw["lint"]) if "lint" in sw else "",
             "max_turns": sw.get("max_turns", ""),
             "budget_usd": sw.get("budget_usd", ""),
-            "reasoning": sw.get("reasoning", s.get("reasoning", "")),
+            "reasoning": reasoning,
             "reasoning_used": s.get("reasoning_used", ""),
             "reasoning_tokens": s.get("reasoning_tokens", ""),
             "empty_replies": s.get("empty_replies", ""),
             "empty_retries": s.get("empty_retries", ""),
             "reflect_parse_retries": s.get("reflect_parse_retries", ""),
+            "providers": "+".join(f"{k}:{v}" for k, v in (s.get("providers") or {}).items()),
             "runner": runner,
             "summary_found": int(bool(s)),
         })
@@ -112,12 +116,13 @@ def main():
     ap.add_argument("--runner", default="")
     ap.add_argument("--model", default="", help="the model the sweep requested")
     ap.add_argument("--seed", default="", help="the sweep's repeat number for this work dir")
+    ap.add_argument("--reasoning", default="", help="the sweep's reasoning setting (labels rows with no summary)")
     ap.add_argument("--no-header", action="store_true", help="rows only, to append another seed's")
     a = ap.parse_args()
     w = csv.DictWriter(sys.stdout, fieldnames=FIELDS)
     if not a.no_header:
         w.writeheader()
-    for r in rows(a.work, a.dataset, a.runner, a.model, a.seed):
+    for r in rows(a.work, a.dataset, a.runner, a.model, a.seed, a.reasoning):
         w.writerow(r)
 
 

@@ -9,12 +9,16 @@ _CHECKS = re.compile(r"<checks>(.*?)</checks>", re.DOTALL)
 _FENCE = re.compile(r"^\s*```[\w-]*\n(.*?)\n```\s*$", re.DOTALL)
 DECISIONS = ("edit_again", "submit", "give_up")
 # Tool-call markup some models emit as text instead of an answer: DeepSeek-style special tokens (full-width or
-# ASCII bars), and <tool_call> / <function_calls> blocks. A whole block is markup, whatever it holds.
+# ASCII bars), DeepSeek's DSML tags (<｜DSML｜ calls>, <｜DSML｜ invoke name="bash">, <｜DSML｜ parameter …>, and
+# their closing forms), and <tool_call> / <function_calls> blocks. A whole block is markup, whatever it holds.
+_BAR = r"[|｜]"
 _TOOL_BLOCKS = re.compile(
-    r"<[|｜]tool[▁_ ]calls?[▁_ ]begin[|｜]>.*?(?:<[|｜]tool[▁_ ]calls?[▁_ ]end[|｜]>|\Z)"
-    r"|<(tool_calls?|function_calls?)\b[^>]*>.*?(?:</\1>|\Z)",
+    rf"<{_BAR}tool[▁_ ]calls?[▁_ ]begin{_BAR}>.*?(?:<{_BAR}tool[▁_ ]calls?[▁_ ]end{_BAR}>|\Z)"
+    rf"|<{_BAR}DSML{_BAR}\s*((?:function_)?calls|invoke|parameter)\b[^>]*>.*?(?:<{_BAR}?/{_BAR}?DSML{_BAR}\s*\1\s*>"
+    rf"|</{_BAR}DSML{_BAR}\s*\1\s*>|\Z)"
+    r"|<(tool_calls?|function_calls?)\b[^>]*>.*?(?:</\2>|\Z)",
     re.DOTALL | re.IGNORECASE)
-_SPECIAL_TOKEN = re.compile(r"<[|｜][^<>]{0,80}?[|｜]>")
+_SPECIAL_TOKEN = re.compile(rf"<{_BAR}[^<>]{{0,80}}?{_BAR}>|</?{_BAR}?/?DSML{_BAR}[^<>]{{0,200}}>")
 
 
 def extract_json(text):
