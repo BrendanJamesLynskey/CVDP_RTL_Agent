@@ -5,13 +5,15 @@ problems. It writes and fixes SystemVerilog, **checks its own work in simulation
 Verilator and cocotb), and records what every problem cost. Results are reported as pass rate, **cost per solved
 problem** and wall time, by category, against a null agent and against published leaderboard rows.
 
-**Status:** milestone 1 in review: the agent image, the sweep workflow and a 10-problem live check
-([`docs/reports/M1_report.md`](docs/reports/M1_report.md)). On 10 seeded problems from the agentic split,
-`anthropic/claude-haiku-5.5` passed 6/10 (Wilson 95% [31, 83]%) for $0.117 in all, and the open-weights
-`deepseek/deepseek-v4.1-flash-1017` 5/10 ([24, 76]%) for $0.270; ten problems cannot separate the two. The null
-agent passes none. Milestone 0 done (22 October 2026).
+**Status:** milestone 2 done ([`docs/reports/M2_report.md`](docs/reports/M2_report.md), 23 October 2026). On all
+92 problems of the free agentic split, run once on x86-64 and once on Arm64: `anthropic/claude-haiku-5.5`
+(reasoning low) passed 52 and 56, `openai/gpt-6-luna` (default) 52 and 53, and the open-weights
+`deepseek/deepseek-v4.1-flash-1017` (off) 43 and 41. Haiku and Luna tie on pass rate; Luna costs half as much per
+solved problem ($0.011 against $0.018–0.021); DeepSeek is about 10 problems behind at $0.024. Ten problems change
+result between two identical runs, so gaps of a few problems mean nothing. The null agent passes none. All of M2
+cost $8.55. Milestone 1 report: [`docs/reports/M1_report.md`](docs/reports/M1_report.md).
 
-**M2a** (in review, [`docs/reports/M2a_report.md`](docs/reports/M2a_report.md)): reasoning limits, a retry on empty
+**M2a** (merged, [`docs/reports/M2a_report.md`](docs/reports/M2a_report.md)): reasoning limits, a retry on empty
 replies and unreadable decisions, and seeds. On the same 10 problems on Arm64, DeepSeek at `reasoning=off` passed
 6/10 for $0.0867 with no empty replies; at `low` it passed 7/10 for $0.3546 with 14 empty replies.
 
