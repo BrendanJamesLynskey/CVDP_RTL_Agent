@@ -3,8 +3,9 @@ failing, or from something before the tests (a missing bundle, a harness or Dock
 
   tests_failed   pytest ran the hidden tests and they failed (assertions, cocotb "Failed N of M tests")
   build_failed   the tests ran but the design did not compile or elaborate (e.g. a module the agent must write)
-  sim_incomplete pytest started and a simulation (cocotb / the simulator) was running, but the log ends with no
-                 pytest summary: the simulation hung or was killed. The harness scores it as a failure.
+  sim_incomplete pytest started and a simulation (cocotb / the simulator) was running, or pytest had collected its
+                 tests and was capturing their output, but the log ends with no pytest summary: the simulation
+                 hung or was killed. The harness scores it as a failure.
   harness_error  no test session, or a session that ended with no result: missing repository bundle, Docker or
                  harness error, empty log
   passed         pytest reported only passes
@@ -24,6 +25,7 @@ _BUILD = re.compile(r"(?i)(syntax error|unknown module|I give up|error: .*elabor
 _PASSED = re.compile(r"=+ \d+ passed")
 # pytest's closing line ("=== 1 failed in 3.2s ===", "=== no tests ran in 0.1s ===")
 _SUMMARY = re.compile(r"=+ .*\bin [\d.]+s\b.*=+|=+ no tests ran")
+_COLLECTED = re.compile(r"\bcollected [1-9]\d* items?\b")
 _SIM = re.compile(r"(?i)cocotb|running test|\bvvp\b|iverilog|verilator|sim(ulation)? (started|running)")
 
 
@@ -36,7 +38,9 @@ def classify(text):
         return "build_failed"
     if _FAILED.search(text):
         return "tests_failed"
-    if not _SUMMARY.search(text) and _SIM.search(text):
+    if not _SUMMARY.search(text) and (_SIM.search(text) or _COLLECTED.search(text)):
+        # a simulation was running, or pytest had collected its tests and was capturing their output, when the log
+        # stopped: a hang or a kill
         return "sim_incomplete"
     return "harness_error"
 
