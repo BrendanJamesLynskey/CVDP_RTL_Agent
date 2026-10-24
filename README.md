@@ -233,6 +233,8 @@ empty (an old ledger and the harness's reuse of `raw_result.json` would make the
   own native runner.
 - [`.github/workflows/sweep.yml`](.github/workflows/sweep.yml): a sweep (dispatch), or the smoke run with the fake
   provider on 2 problems (pull requests).
+- [`.github/workflows/learn_lessons.yml`](.github/workflows/learn_lessons.yml): M3b. Builds a lessons snapshot with
+  `tools/learn_lessons.py` from named learning-run sweeps and uploads it as an artifact (dispatch).
 - [`.github/workflows/tests.yml`](.github/workflows/tests.yml): `pytest tests/` on every push and pull request.
 - [`.github/workflows/m0_harness.yml`](.github/workflows/m0_harness.yml): M0. Checks the harness's example problems
   score 100% with their solutions, and runs the null agent; pulls the simulation image from GHCR (or builds it with
