@@ -16,7 +16,7 @@ import sys
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 SRC = os.path.join(ROOT, "site", "story.html")
 OUT = os.path.join(ROOT, "docs", "index.html")
-URL = "https://brendanjameslynskey.github.io/CVDP_RTL_Agent/"
+URL = "https://cvdp-rtl-agent.vercel.app/"
 
 RESET = (":root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);"
          "padding-bottom:env(safe-area-inset-bottom,0px)}"

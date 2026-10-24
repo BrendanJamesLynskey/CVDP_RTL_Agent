@@ -5,7 +5,7 @@ problems. It writes and fixes SystemVerilog, **checks its own work in simulation
 Verilator and cocotb), and records what every problem cost. Results are reported as pass rate, **cost per solved
 problem** and wall time, by category, against a null agent and against published leaderboard rows.
 
-**The story so far, as an animated page:** [brendanjameslynskey.github.io/CVDP_RTL_Agent](https://brendanjameslynskey.github.io/CVDP_RTL_Agent/) (source in [`site/`](site/)).
+**The story so far, as an animated page:** [cvdp-rtl-agent.vercel.app](https://cvdp-rtl-agent.vercel.app/) (also on [GitHub Pages](https://brendanjameslynskey.github.io/CVDP_RTL_Agent/)) (source in [`site/`](site/)).
 
 **Status:** milestone 2 done ([`docs/reports/M2_report.md`](docs/reports/M2_report.md), 23 October 2026). On all
 92 problems of the free agentic split, run once on x86-64 and once on Arm64: `anthropic/claude-haiku-5.5`
