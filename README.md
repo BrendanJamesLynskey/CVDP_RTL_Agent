@@ -13,7 +13,7 @@ solved problem ($0.011 against $0.018–0.021); DeepSeek is about 10 problems be
 result between two identical runs, so gaps of a few problems mean nothing. The null agent passes none. All of M2
 cost $8.55. Milestone 1 report: [`docs/reports/M1_report.md`](docs/reports/M1_report.md).
 
-**M3** (report in review, [`docs/reports/M3_report.md`](docs/reports/M3_report.md), 24 October 2026): six changes to
+**M3** (merged, [`docs/reports/M3_report.md`](docs/reports/M3_report.md), 24 October 2026): six changes to
 the agent, 2 runs each on all 92 problems, compared with the base on the same problems. **None changed the pass
 rate by a detectable amount**: self-check off −1.1 points [−6.0, +4.3], lint off −1.6 [−6.5, +3.3], both off −1.6,
 5 turns −0.5, 20 turns +3.8 [−1.1, +9.2], a $0.02 budget −1.6. Lint off costs 38–59% more per solved problem.
@@ -22,6 +22,16 @@ With self-check on, the agent ran its own testbench on only a third of the probl
 (a hidden build failure, or a port, signal or parameter the design names differently); they cover 10 of the 24
 problems no run has solved. M3 cost $8.25. `tools/ablate.py` gives paired effects and the Pareto chart;
 `tools/taxonomy.py` gives each failure one deterministic label.
+
+**M3b** (skeleton merged, scored runs pending, [`docs/reports/M3b_report.md`](docs/reports/M3b_report.md)): a
+richer harness against a memory of lessons, at a fixed model (`openai/gpt-6-luna`). Four arms of 3 runs each:
+LangGraph and Deep Agents, each with and without a frozen lessons snapshot. They are scored on 86 of the 92 agentic
+problems; `tools/reachable.py` excludes 6 whose hidden testbench reads names the agent is never given
+(`digital_stopwatch_0001`, `phase_rotation_0010`, `0028`, `0031`, `0038`, `poly_decimator_0001`;
+[`docs/reports/m3b/unreachable.md`](docs/reports/m3b/unreachable.md)). The lessons are learned only from the 29
+heavy problems whose files to change lie inside the agent's edit roots (`tools/m3b_learn_in_roots_ids.txt`,
+3 seeds), never from an agentic problem. Unscored smoke runs on 10 problems: Deep Agents 4/10 (B), LangGraph with a
+fixture snapshot 5/10 (C), Deep Agents with it 6/10 (D), $0.1855 in all.
 
 **M2a** (merged, [`docs/reports/M2a_report.md`](docs/reports/M2a_report.md)): reasoning limits, a retry on empty
 replies and unreadable decisions, and seeds. On the same 10 problems on Arm64, DeepSeek at `reasoning=off` passed
