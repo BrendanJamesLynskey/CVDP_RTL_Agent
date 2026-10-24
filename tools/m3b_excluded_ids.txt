@@ -1,0 +1,7 @@
+# M3b excluded agentic problems: the ones tools/reachable.py finds unreachable (6 of 92; see docs/reports/m3b/unreachable.md)
+cvdp_agentic_digital_stopwatch_0001
+cvdp_agentic_phase_rotation_0010
+cvdp_agentic_phase_rotation_0028
+cvdp_agentic_phase_rotation_0031
+cvdp_agentic_phase_rotation_0038
+cvdp_agentic_poly_decimator_0001

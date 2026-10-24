@@ -15,7 +15,7 @@ solved problem ($0.011 against $0.018–0.021); DeepSeek is about 10 problems be
 result between two identical runs, so gaps of a few problems mean nothing. The null agent passes none. All of M2
 cost $8.55. Milestone 1 report: [`docs/reports/M1_report.md`](docs/reports/M1_report.md).
 
-**M3** (report in review, [`docs/reports/M3_report.md`](docs/reports/M3_report.md), 24 October 2026): six changes to
+**M3** (merged, [`docs/reports/M3_report.md`](docs/reports/M3_report.md), 24 October 2026): six changes to
 the agent, 2 runs each on all 92 problems, compared with the base on the same problems. **None changed the pass
 rate by a detectable amount**: self-check off −1.1 points [−6.0, +4.3], lint off −1.6 [−6.5, +3.3], both off −1.6,
 5 turns −0.5, 20 turns +3.8 [−1.1, +9.2], a $0.02 budget −1.6. Lint off costs 38–59% more per solved problem.
@@ -24,6 +24,16 @@ With self-check on, the agent ran its own testbench on only a third of the probl
 (a hidden build failure, or a port, signal or parameter the design names differently); they cover 10 of the 24
 problems no run has solved. M3 cost $8.25. `tools/ablate.py` gives paired effects and the Pareto chart;
 `tools/taxonomy.py` gives each failure one deterministic label.
+
+**M3b** (skeleton merged, scored runs pending, [`docs/reports/M3b_report.md`](docs/reports/M3b_report.md)): a
+richer harness against a memory of lessons, at a fixed model (`openai/gpt-6-luna`). Four arms of 3 runs each:
+LangGraph and Deep Agents, each with and without a frozen lessons snapshot. They are scored on 86 of the 92 agentic
+problems; `tools/reachable.py` excludes 6 whose hidden testbench reads names the agent is never given
+(`digital_stopwatch_0001`, `phase_rotation_0010`, `0028`, `0031`, `0038`, `poly_decimator_0001`;
+[`docs/reports/m3b/unreachable.md`](docs/reports/m3b/unreachable.md)). The lessons are learned only from the 29
+heavy problems whose files to change lie inside the agent's edit roots (`tools/m3b_learn_in_roots_ids.txt`,
+3 seeds), never from an agentic problem. Unscored smoke runs on 10 problems: Deep Agents 4/10 (B), LangGraph with a
+fixture snapshot 5/10 (C), Deep Agents with it 6/10 (D), $0.1855 in all.
 
 **M2a** (merged, [`docs/reports/M2a_report.md`](docs/reports/M2a_report.md)): reasoning limits, a retry on empty
 replies and unreadable decisions, and seeds. On the same 10 problems on Arm64, DeepSeek at `reasoning=off` passed
@@ -149,6 +159,20 @@ graph TD;
   LLM call (node, model, tokens, cost, latency, decision) and tool call (command, exit code, truncated output), with
   anything key-shaped redacted; `summary.json`, the totals, stop reason and switches.
 
+**Deep Agents harness** (M3b, `CVDP_HARNESS=deepagents`; `deepagents==0.7.32`): the same model, `Runtime.call`
+(provider code, reasoning, empty-reply retry, deadline, provider-reported cost), stop rules, file-path policy,
+checks, best-edit rule, trace and summary, driven by Deep Agents' tool-calling loop instead of the graph above. On:
+its planning tool `write_todos`, its file tools (`ls`, `read_file`, `write_file`, `edit_file`, `glob`, `grep`) on the
+real task tree through the same path policy, and one `run_checks` tool for the checks. Off: the shell, sub-agents and
+large-result eviction; conversation summarization is as shipped. The turn cap becomes a cap of 22 model calls
+(`CVDP_MAX_ROUNDS`; M2's most calls in 10 turns), stopping with `max_turns`. See `agent/cvdp_agent/deep.py`.
+
+**Lessons memory** (M3b, `CVDP_MEMORY=<snapshot.json>`): a frozen snapshot of short general lessons (built by
+`tools/learn_lessons.py` from learning-set runs only), checked against its content hash on load. The top 5 by
+deterministic BM25 over the task prompt and `docs/` files are added to the plan prompt (or Deep Agents' task
+message); the retrieved ids are traced and in the summary, and `results.csv` names the snapshot in its `memory`
+column.
+
 | Variable | Default | |
 |---|---|---|
 | `CVDP_PROVIDER` | `openrouter` | `openrouter`, or `fake` (scripted, deterministic; tests and the PR smoke run) |
@@ -161,6 +185,9 @@ graph TD;
 | `CVDP_REASONING` | `default` (the sweep sends `low`) | `default`, `low`, `medium`, `high` or `off` (OpenRouter's `reasoning.effort`; `off` is `none`) |
 | `CVDP_SEED` | | the sweep's repeat number; a label in the trace and summary only (sampling is not seeded) |
 | `CVDP_PROVIDER_ORDER` | | OpenRouter providers, comma-separated, used in that order with no fallbacks |
+| `CVDP_HARNESS` | `langgraph` | `langgraph` (the graph above) or `deepagents` |
+| `CVDP_MAX_ROUNDS` | 22 | model-call cap of the Deep Agents harness |
+| `CVDP_MEMORY` | | path of a lessons snapshot inside the container (the sweep mounts it read-only) |
 
 ## Running a sweep
 
@@ -169,7 +196,9 @@ From the Actions tab, **Sweep → Run workflow**, or `gh workflow run sweep.yml 
 budget, turn cap, self-check and lint switches, threads, runner (x86-64 or Arm64), an optional absolute
 whole-run budget, `reasoning` (default `low`), `seeds` (default 1), `seed_offset`
 (default 0: seeds are numbered `seed_offset+1 … seed_offset+seeds`, so a second dispatch of the same settings
-pools with distinct seeds) and `provider_order` (blank: OpenRouter
+pools with distinct seeds), `harness` (`langgraph` or `deepagents`), `memory` (blank, or a lessons snapshot path in
+the repo, e.g. `docs/reports/m3b/lessons/lessons_<hash>.json`, mounted read-only into the agent's container) and
+`provider_order` (blank: OpenRouter
 routes each call; the provider that served it is in the trace, and its price can differ from the list price).
 Tables and `results.csv` label each row with the model and its reasoning setting, e.g.
 `deepseek/deepseek-v4.1-flash-1017 (reasoning off)`.
@@ -214,9 +243,12 @@ empty (an old ledger and the harness's reuse of `raw_result.json` would make the
   `sweep.sh`, `subset.py`, `effort_probe.py` (reasoning tokens per `CVDP_REASONING` level on one small prompt),
   `log_check.py` (classifies per-test logs: tests failed, build failed, simulation incomplete or harness error),
   `ablate.py` (paired comparison of arms against a base on the same problems: effect with a problem-bootstrap
-  interval, better/worse counts, an exact sign test, and the Pareto CSV and SVG), `taxonomy.py` (one deterministic
+  interval, better/worse counts, an exact sign test, and the Pareto CSV and SVG; `--ids` keeps only the listed problems), `taxonomy.py` (one deterministic
   failure label per failed problem and run, from logs, trace and summary; `collect.py` writes it as
-  `failure_label`), `behaviour.py` (testbench use, turns and stop reasons per run), `key_usage.py` (the key's `usage` only), `models.py` (whether OpenRouter model IDs exist, their prices, context and `reasoning` support, from the public model list), `pick_ids.py` (the seeded M1 sample, `m1_ids.txt`), `amba_scan.py` and `amba_ids.txt`,
+  `failure_label`), `reachable.py` (problems whose hidden
+  testbench reads names the agent is never given; made the M3b evaluation set `m3b_eval_ids.txt`), `learn_lessons.py`
+  (builds a lessons snapshot from learning-set work dirs, refusing any evaluation-set problem), `retrieval.py` (which
+  lessons each problem gets), `behaviour.py` (testbench use, turns and stop reasons per run), `key_usage.py` (the key's `usage` only), `models.py` (whether OpenRouter model IDs exist, their prices, context and `reasoning` support, from the public model list), `pick_ids.py` (the seeded M1 sample, `m1_ids.txt`), `amba_scan.py` and `amba_ids.txt`,
   `inventory.py`.
 - [`tests/`](tests/): the graph with the fake provider (stop rules, path refusal, budget, best edit kept, switches),
   trace redaction, the results tools on a fixture, and the README graph drift test.
@@ -230,6 +262,7 @@ empty (an old ledger and the harness's reuse of `raw_result.json` would make the
 | M1 | The agent image: plan, edit, simulate and lint, reflect, with a per-problem budget |
 | M2 | Sweep the free agentic split with two cheap models and one open-weights model |
 | M3 | Ablations: self-check on and off, lint on and off, turn and budget caps; failure taxonomy |
+| M3b | Harness against self-improvement: Deep Agents vs LangGraph, and a frozen lessons memory, on a fixed evaluation set |
 | M4 | Write-up, logs packed for the Si2 LBC-bench leaderboard |
 | M5 | Open AMBA verification track: test plan, cocotb testbench with coverage, SVA with SymbiYosys; scored by seeded-bug kill rate and false alarms |
 

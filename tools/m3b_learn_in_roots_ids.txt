@@ -1,0 +1,34 @@
+# M3b learning set: the 29 of the 75 heavy problems (tools/m3b_learn_ids.txt) whose
+# files to change (the keys of the record's `patch`) all lie inside the agent's edit roots
+# (rtl/, verif/, docs/). Made by tools/learn_in_roots.py from
+# agentic_heavy_code_generation_no_commercial.jsonl (SHA-256 809916fa3248a4b2...).
+# The lessons memory learns only from these.
+cvdp_agentic_heavy_schoolMIPS_0012
+cvdp_agentic_heavy_wifi_ldpc_codec_0002
+cvdp_agentic_heavy_cheriot-ibex_0007
+cvdp_agentic_heavy_cheriot-ibex_0003
+cvdp_agentic_heavy_async-fifo_0001
+cvdp_agentic_heavy_friscv_0003
+cvdp_agentic_heavy_verilog_ethernet_0029
+cvdp_agentic_heavy_polyphony_0002
+cvdp_agentic_heavy_friscv_0005
+cvdp_agentic_heavy_i2c_0046
+cvdp_agentic_heavy_cv32e40p_1_0001
+cvdp_agentic_heavy_verilog_ethernet_0035
+cvdp_agentic_heavy_RISC-V_0005
+cvdp_agentic_heavy_friscv_0001
+cvdp_agentic_heavy_verilog_ethernet_0027
+cvdp_agentic_heavy_async-fifo_0003
+cvdp_agentic_heavy_schoolMIPS_0010
+cvdp_agentic_heavy_i2c_0007
+cvdp_agentic_heavy_axi4_lite_0002
+cvdp_agentic_heavy_verilog_pcie_0004
+cvdp_agentic_heavy_fabulous_fabric_0006
+cvdp_agentic_heavy_fabulous_fabric_0002
+cvdp_agentic_heavy_verilog_pcie_0061
+cvdp_agentic_heavy_verilog_pcie_0025
+cvdp_agentic_heavy_RISC-V_0002
+cvdp_agentic_heavy_pulpino_0004
+cvdp_agentic_heavy_i2c_0049
+cvdp_agentic_heavy_verilog_axi_0001
+cvdp_agentic_heavy_verilog_pcie_0057

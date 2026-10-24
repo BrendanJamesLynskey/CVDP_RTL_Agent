@@ -30,6 +30,10 @@ class Config:
     reasoning: str = "default"          # default | low | medium | high | off (OpenRouter's reasoning effort)
     seed: str = ""                      # repeat number from the sweep; a label only (sampling is not seeded)
     provider_order: list = field(default_factory=list)  # OpenRouter providers to use, in order, no fallbacks
+    harness: str = "langgraph"          # langgraph (the M1-M3 agent) | deepagents (LangGraph's Deep Agents, M3b)
+    max_rounds: int = 22                # deepagents: model calls (tool-call rounds); M2's worst case for 10 turns
+    memory: str = ""                    # a lessons snapshot (JSON, tools/learn_lessons.py); blank = no memory
+    memory_k: int = 5                   # lessons retrieved into the plan prompt
     out_dir: str = ""                   # default <root>/rundir/agent_out
     fake_script: str = ""               # fake provider: a JSON file or inline JSON list of responses
     ledger_dir: str = ""                # whole-run spend guard: shared directory of per-problem costs
@@ -52,6 +56,9 @@ class Config:
             "wall_s": self.wall_s,
             "reasoning": self.reasoning,
             "provider_order": ",".join(self.provider_order),
+            # M3b settings appear only when set, so an M1-M3 agent's summary keeps exactly its old fields
+            **({"harness": self.harness, "max_rounds": self.max_rounds} if self.harness != "langgraph" else {}),
+            **({"memory": self.memory} if self.memory else {}),
         }
 
 
@@ -61,6 +68,13 @@ def _reasoning(name):
     v = (os.environ.get(name) or "default").strip().lower()
     if v not in REASONING:
         raise ValueError(f"{name} must be one of {', '.join(REASONING)}, got {v!r}")
+    return v
+
+
+def _harness(name):
+    v = (os.environ.get(name) or "langgraph").strip().lower()
+    if v not in ("langgraph", "deepagents"):
+        raise ValueError(f"{name} must be langgraph or deepagents, got {v!r}")
     return v
 
 
@@ -78,6 +92,9 @@ def from_env():
         reasoning=_reasoning("CVDP_REASONING"),
         seed=os.environ.get("CVDP_SEED", "").strip(),
         provider_order=[p.strip() for p in os.environ.get("CVDP_PROVIDER_ORDER", "").split(",") if p.strip()],
+        harness=_harness("CVDP_HARNESS"),
+        max_rounds=_num("CVDP_MAX_ROUNDS", 22, int),
+        memory=os.environ.get("CVDP_MEMORY", "").strip(),
         out_dir=os.environ.get("CVDP_OUT_DIR", ""),
         fake_script=os.environ.get("CVDP_FAKE_SCRIPT", ""),
         ledger_dir=os.environ.get("CVDP_LEDGER_DIR", ""),

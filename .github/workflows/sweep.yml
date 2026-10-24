@@ -62,6 +62,15 @@ on:
         description: "Number the seeds from seed_offset+1 (a second dispatch of the same arm pools with distinct seeds)"
         type: string
         default: "0"
+      harness:
+        description: "Agent harness: langgraph (M1-M3) or deepagents (M3b)"
+        type: choice
+        options: [langgraph, deepagents]
+        default: langgraph
+      memory:
+        description: "Lessons snapshot in the repo, e.g. docs/reports/m3b/lessons/lessons_<hash>.json (blank = none)"
+        type: string
+        default: ""
       provider_order:
         description: "Pin OpenRouter providers, comma-separated, in order, no fallbacks (blank = OpenRouter routes)"
         type: string
@@ -92,6 +101,8 @@ env:
   SEEDS: ${{ github.event_name == 'pull_request' && '2' || inputs.seeds }}
   SEED_OFFSET: ${{ github.event_name == 'pull_request' && '0' || inputs.seed_offset }}
   PROVIDER_ORDER: ${{ github.event_name == 'pull_request' && '' || inputs.provider_order }}
+  HARNESS: ${{ github.event_name == 'pull_request' && 'langgraph' || inputs.harness }}
+  MEMORY: ${{ github.event_name == 'pull_request' && '' || inputs.memory }}
   RUNNER: ${{ github.event_name == 'pull_request' && 'ubuntu-24.04' || inputs.runner }}
   WORK: work
   REAL_MODEL: ${{ github.event_name == 'workflow_dispatch' && inputs.model != 'fake' }}
