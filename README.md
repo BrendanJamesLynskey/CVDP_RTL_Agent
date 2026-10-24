@@ -13,6 +13,14 @@ solved problem ($0.011 against $0.018–0.021); DeepSeek is about 10 problems be
 result between two identical runs, so gaps of a few problems mean nothing. The null agent passes none. All of M2
 cost $8.55. Milestone 1 report: [`docs/reports/M1_report.md`](docs/reports/M1_report.md).
 
+**M3** (in review, [`docs/reports/M3_report.md`](docs/reports/M3_report.md)): the ablation and failure tools.
+`tools/ablate.py` compares an agent configuration with the base on the same problems, as a paired effect with a
+problem-bootstrap interval and a sign test, and draws the cost/pass-rate Pareto chart. `tools/taxonomy.py` gives
+every failure one deterministic label from the harness log, the trace and the summary. The seven arms (gpt-6-luna,
+2 runs each) are being run; until they are in, the report's tables use M2's data. The noise floor is M2's two Luna
+runs, with the same settings on different runners, a conservative floor: no detectable effect, −1.1 points
+[−7.6, +5.4].
+
 **M2a** (merged, [`docs/reports/M2a_report.md`](docs/reports/M2a_report.md)): reasoning limits, a retry on empty
 replies and unreadable decisions, and seeds. On the same 10 problems on Arm64, DeepSeek at `reasoning=off` passed
 6/10 for $0.0867 with no empty replies; at `low` it passed 7/10 for $0.3546 with 14 empty replies.
@@ -155,7 +163,9 @@ graph TD;
 From the Actions tab, **Sweep → Run workflow**, or `gh workflow run sweep.yml -f model=anthropic/claude-haiku-5.5
 -f ids=$(grep -v '^#' tools/m1_ids.txt | paste -sd,)`. Inputs: model, split, ids (blank = all), per-problem
 budget, turn cap, self-check and lint switches, threads, runner (x86-64 or Arm64), an optional absolute
-whole-run budget, `reasoning` (default `low`), `seeds` (default 1) and `provider_order` (blank: OpenRouter
+whole-run budget, `reasoning` (default `low`), `seeds` (default 1), `seed_offset`
+(default 0: seeds are numbered `seed_offset+1 … seed_offset+seeds`, so a second dispatch of the same settings
+pools with distinct seeds) and `provider_order` (blank: OpenRouter
 routes each call; the provider that served it is in the trace, and its price can differ from the list price).
 Tables and `results.csv` label each row with the model and its reasoning setting, e.g.
 `deepseek/deepseek-v4.1-flash-1017 (reasoning off)`.
@@ -198,7 +208,11 @@ empty (an old ledger and the harness's reuse of `raw_result.json` would make the
 - [`tools/`](tools/): `collect.py` (raw_result.json + summary.json → one CSV row per problem), `table.py` (pass@1
   with a Wilson 95% interval, $/problem, $/solved problem, median wall time, by category and AMBA slice),
   `sweep.sh`, `subset.py`, `effort_probe.py` (reasoning tokens per `CVDP_REASONING` level on one small prompt),
-  `log_check.py` (classifies per-test logs: tests failed, build failed or harness error), `key_usage.py` (the key's `usage` only), `models.py` (whether OpenRouter model IDs exist, their prices, context and `reasoning` support, from the public model list), `pick_ids.py` (the seeded M1 sample, `m1_ids.txt`), `amba_scan.py` and `amba_ids.txt`,
+  `log_check.py` (classifies per-test logs: tests failed, build failed, simulation incomplete or harness error),
+  `ablate.py` (paired comparison of arms against a base on the same problems: effect with a problem-bootstrap
+  interval, better/worse counts, an exact sign test, and the Pareto CSV and SVG), `taxonomy.py` (one deterministic
+  failure label per failed problem and run, from logs, trace and summary; `collect.py` writes it as
+  `failure_label`), `key_usage.py` (the key's `usage` only), `models.py` (whether OpenRouter model IDs exist, their prices, context and `reasoning` support, from the public model list), `pick_ids.py` (the seeded M1 sample, `m1_ids.txt`), `amba_scan.py` and `amba_ids.txt`,
   `inventory.py`.
 - [`tests/`](tests/): the graph with the fake provider (stop rules, path refusal, budget, best edit kept, switches),
   trace redaction, the results tools on a fixture, and the README graph drift test.

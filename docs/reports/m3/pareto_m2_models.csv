@@ -1,0 +1,4 @@
+arm,usd_per_problem,pass_rate,frontier,cost_lower_bound
+gpt-6-luna (default),0.006104,0.5707,1,0
+deepseek-v4.1-flash (off),0.010911,0.4565,0,0
+claude-haiku-5.5 (low),0.011643,0.587,1,0

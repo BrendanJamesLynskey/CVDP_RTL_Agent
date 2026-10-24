@@ -1,0 +1,10 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-8.3.2, pluggy-1.5.0
+rootdir: /code/rundir
+collected 1 item
+
+src/test_runner.py      0.00ns INFO     cocotb.gpi                         Running on Icarus Verilog version 13.0
+     0.00ns INFO     cocotb                             Running tests
+     0.00ns INFO     cocotb.regression                  running test_fifo_full (1/1)
+   200.00ns INFO     cocotb.fifo                        writing 64 words
+   850.00ns INFO     cocotb.fifo                        waiting for full flag

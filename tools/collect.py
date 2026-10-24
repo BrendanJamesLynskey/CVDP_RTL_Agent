@@ -17,13 +17,21 @@ import json
 import os
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIELDS = ["label", "id", "seed", "cid", "difficulty", "pass", "tests", "tests_passed", "amba", "requested_model", "model",
           "provider", "cost_usd",
           "cost_unreported_calls", "prompt_tokens", "completion_tokens", "llm_calls", "tool_calls", "turns",
           "wall_time_s", "harness_agent_s", "stop_reason", "kept", "agent_status", "self_check", "lint",
           "max_turns", "budget_usd", "reasoning", "reasoning_used", "reasoning_tokens", "empty_replies",
-          "empty_retries", "reflect_parse_retries", "providers", "runner", "summary_found"]
+          "empty_retries", "reflect_parse_retries", "providers", "runner", "summary_found",
+          # M3: the failure taxonomy's evidence (tools/taxonomy.py) and its label for a failed problem
+          "rtl_changed", "own_compile_last", "selfcheck_runs", "selfcheck_last", "log_class", "failure_label",
+          "failure_flags"]
+
+
+import taxonomy  # noqa: E402  (after the path insert; taxonomy imports collect lazily)
 
 
 def amba_ids(path=os.path.join(HERE, "amba_ids.txt")):
@@ -61,7 +69,8 @@ def rows(work, dataset=None, runner="", model="", seed="", reasoning_hint=""):
         tests = e.get("tests", [])
         passed = sum(1 for t in tests if t.get("result") == 0)
         cats = meta.get(pid, [e.get("category", ""), e.get("difficulty", "")])
-        s_path = os.path.join(problem_dir(work, pid, e), "rundir", "agent_out", "summary.json")
+        pdir = problem_dir(work, pid, e)
+        s_path = os.path.join(pdir, "rundir", "agent_out", "summary.json")
         s = json.load(open(s_path)) if os.path.exists(s_path) else {}
         sw = s.get("switches", {})
         served = s.get("model") or ""
@@ -106,6 +115,14 @@ def rows(work, dataset=None, runner="", model="", seed="", reasoning_hint=""):
             "runner": runner,
             "summary_found": int(bool(s)),
         })
+        row = out[-1]
+        ev, _ = taxonomy.evidence_from_dir(work, pid, e, pdir)
+        row.update(ev)
+        if row["pass"] != 1:
+            primary, flags = taxonomy.label({k: "" if v is None else str(v) for k, v in row.items()})
+            row["failure_label"], row["failure_flags"] = primary, "+".join(flags)
+        else:
+            row["failure_label"] = row["failure_flags"] = ""
     return out
 
 

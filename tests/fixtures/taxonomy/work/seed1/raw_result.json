@@ -1,0 +1,248 @@
+{
+ "cvdp_agentic_tax_llm_error_0001": {
+  "category": "cid003",
+  "difficulty": "medium",
+  "agent_status": "completed",
+  "tests": [
+   {
+    "result": 1,
+    "log": "/x/cvdp_agentic_tax_llm_error/reports/1.txt",
+    "execution": 1.0
+   }
+  ]
+ },
+ "cvdp_agentic_tax_agent_error_0001": {
+  "category": "cid003",
+  "difficulty": "medium",
+  "agent_status": "completed",
+  "tests": [
+   {
+    "result": 1,
+    "log": "/x/cvdp_agentic_tax_agent_error/reports/1.txt",
+    "execution": 1.0
+   }
+  ]
+ },
+ "cvdp_agentic_tax_killed_0001": {
+  "category": "cid003",
+  "difficulty": "medium",
+  "agent_status": "timeout",
+  "tests": [
+   {
+    "result": 1,
+    "log": "/x/cvdp_agentic_tax_killed/reports/1.txt",
+    "execution": 1.0
+   }
+  ]
+ },
+ "cvdp_agentic_tax_no_edit_0001": {
+  "category": "cid003",
+  "difficulty": "medium",
+  "agent_status": "completed",
+  "tests": [
+   {
+    "result": 1,
+    "log": "/x/cvdp_agentic_tax_no_edit/reports/1.txt",
+    "execution": 1.0
+   }
+  ]
+ },
+ "cvdp_agentic_tax_stopped_by_cap_0001": {
+  "category": "cid003",
+  "difficulty": "medium",
+  "agent_status": "completed",
+  "tests": [
+   {
+    "result": 1,
+    "log": "/x/cvdp_agentic_tax_stopped_by_cap/reports/1.txt",
+    "execution": 1.0
+   }
+  ]
+ },
+ "cvdp_agentic_tax_gave_up_0001": {
+  "category": "cid003",
+  "difficulty": "medium",
+  "agent_status": "completed",
+  "tests": [
+   {
+    "result": 1,
+    "log": "/x/cvdp_agentic_tax_gave_up/reports/1.txt",
+    "execution": 1.0
+   }
+  ]
+ },
+ "cvdp_agentic_tax_sim_incomplete_0001": {
+  "category": "cid003",
+  "difficulty": "medium",
+  "agent_status": "completed",
+  "tests": [
+   {
+    "result": 1,
+    "log": "/x/cvdp_agentic_tax_sim_incomplete/reports/1.txt",
+    "execution": 1.0
+   }
+  ]
+ },
+ "cvdp_agentic_tax_compile_fail_own_0001": {
+  "category": "cid003",
+  "difficulty": "medium",
+  "agent_status": "completed",
+  "tests": [
+   {
+    "result": 1,
+    "log": "/x/cvdp_agentic_tax_compile_fail_own/reports/1.txt",
+    "execution": 1.0
+   }
+  ]
+ },
+ "cvdp_agentic_tax_compile_fail_hidden_0001": {
+  "category": "cid003",
+  "difficulty": "medium",
+  "agent_status": "completed",
+  "tests": [
+   {
+    "result": 1,
+    "log": "/x/cvdp_agentic_tax_compile_fail_hidden/reports/1.txt",
+    "execution": 1.0
+   }
+  ]
+ },
+ "cvdp_agentic_tax_tests_failed_selfcheck_passed_0001": {
+  "category": "cid003",
+  "difficulty": "medium",
+  "agent_status": "completed",
+  "tests": [
+   {
+    "result": 1,
+    "log": "/x/cvdp_agentic_tax_tests_failed_selfcheck_passed/reports/1.txt",
+    "execution": 1.0
+   }
+  ]
+ },
+ "cvdp_agentic_tax_tests_failed_selfcheck_failed_0001": {
+  "category": "cid003",
+  "difficulty": "medium",
+  "agent_status": "completed",
+  "tests": [
+   {
+    "result": 1,
+    "log": "/x/cvdp_agentic_tax_tests_failed_selfcheck_failed/reports/1.txt",
+    "execution": 1.0
+   }
+  ]
+ },
+ "cvdp_agentic_tax_tests_failed_no_selfcheck_0001": {
+  "category": "cid003",
+  "difficulty": "medium",
+  "agent_status": "completed",
+  "tests": [
+   {
+    "result": 1,
+    "log": "/x/cvdp_agentic_tax_tests_failed_no_selfcheck/reports/1.txt",
+    "execution": 1.0
+   }
+  ]
+ },
+ "cvdp_agentic_tax_harness_error_0001": {
+  "category": "cid003",
+  "difficulty": "medium",
+  "agent_status": "completed",
+  "tests": [
+   {
+    "result": 1,
+    "log": "/x/cvdp_agentic_tax_harness_error/reports/1.txt",
+    "execution": 1.0
+   }
+  ]
+ },
+ "cvdp_agentic_tax_ambiguous_cap_mismatch_0001": {
+  "category": "cid003",
+  "difficulty": "medium",
+  "agent_status": "completed",
+  "tests": [
+   {
+    "result": 1,
+    "log": "/x/cvdp_agentic_tax_ambiguous_cap_mismatch/reports/1.txt",
+    "execution": 1.0
+   }
+  ]
+ },
+ "cvdp_agentic_tax_partial_selfcheck_passed_0001": {
+  "category": "cid003",
+  "difficulty": "medium",
+  "agent_status": "completed",
+  "tests": [
+   {
+    "result": 0,
+    "log": "/x/cvdp_agentic_tax_partial_selfcheck_passed/reports/1.txt",
+    "execution": 1.0
+   },
+   {
+    "result": 0,
+    "log": "/x/cvdp_agentic_tax_partial_selfcheck_passed/reports/1.txt",
+    "execution": 1.0
+   },
+   {
+    "result": 1,
+    "log": "/x/cvdp_agentic_tax_partial_selfcheck_passed/reports/1.txt",
+    "execution": 1.0
+   }
+  ]
+ },
+ "cvdp_agentic_tax_passes_0001": {
+  "category": "cid003",
+  "difficulty": "medium",
+  "agent_status": "completed",
+  "tests": [
+   {
+    "result": 0,
+    "log": "/x/cvdp_agentic_tax_passes/reports/1.txt",
+    "execution": 1.0
+   }
+  ]
+ },
+ "cvdp_agentic_tax_harness_killed_log_0001": {
+  "category": "cid003",
+  "difficulty": "medium",
+  "agent_status": "completed",
+  "tests": [
+   {
+    "result": 1,
+    "log": null,
+    "error_msg": "Failed to execute objective harness",
+    "execution": 600.0
+   }
+  ]
+ },
+ "cvdp_agentic_tax_harness_killed_nolog_0001": {
+  "category": "cid003",
+  "difficulty": "medium",
+  "agent_status": "completed",
+  "tests": [
+   {
+    "result": 1,
+    "log": null,
+    "error_msg": "Failed to execute objective harness",
+    "execution": 600.0
+   }
+  ]
+ },
+ "cvdp_agentic_tax_restored_best_0001": {
+  "category": "cid003",
+  "difficulty": "medium",
+  "agent_status": "completed",
+  "tests": [
+   {
+    "result": 1,
+    "log": "/x/cvdp_agentic_tax_restored_best/reports/1.txt",
+    "execution": 1.0
+   }
+  ]
+ },
+ "cvdp_agentic_tax_no_tests_0001": {
+  "category": "cid003",
+  "difficulty": "medium",
+  "agent_status": "completed",
+  "tests": []
+ }
+}

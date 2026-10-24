@@ -1,0 +1,21 @@
+{
+ "provider": "openrouter",
+ "model": "openai/gpt-6-luna",
+ "requested_model": "openai/gpt-6-luna",
+ "turns": 1,
+ "llm_calls": 2,
+ "cost_usd": 0.004,
+ "cost_unreported_calls": 1,
+ "stop_reason": "llm_error",
+ "kept": "last",
+ "final_compiled": null,
+ "files_changed": [],
+ "wall_time_s": 60.0,
+ "switches": {
+  "self_check": true,
+  "lint": true,
+  "max_turns": 10,
+  "budget_usd": 0.1,
+  "reasoning": "default"
+ }
+}

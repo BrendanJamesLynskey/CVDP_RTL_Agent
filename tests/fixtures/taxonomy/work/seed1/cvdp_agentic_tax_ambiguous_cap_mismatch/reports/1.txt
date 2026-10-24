@@ -1,0 +1,9 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-8.3.2, pluggy-1.5.0
+rootdir: /code/rundir
+collected 1 item
+
+src/test_runner.py F
+E   subprocess.CalledProcessError: Command '['iverilog', '-g2012', '-o', 'sim.vvp', '-s', 'axis_to_uart_tx']' returned non-zero exit status 1.
+error: Unable to find the root module "axis_to_uart_tx" in the Verilog source.
+============================== 1 failed in 0.52s ===============================
