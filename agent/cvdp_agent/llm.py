@@ -38,12 +38,14 @@ class LLMResult:
     reasoning_tokens: int | None = None   # usage.completion_tokens_details.reasoning_tokens, as reported
     finish_reason: str | None = None
     provider: str | None = None           # the provider OpenRouter routed the call to
+    tool_calls: list | None = None        # [{"id", "name", "args"}] when the call offered tools (Deep Agents)
 
 
 class FakeLLM:
     """Scripted and deterministic, for tests and the CI smoke run. Each response is a dict
     {"text": ..., "cost": float|None, "prompt_tokens": int, "completion_tokens": int, "reasoning_tokens": int,
-    "sleep": s (fake clock), "real_sleep": s, "provider": name} or a plain string ("text": "" is an empty reply). Responses are taken in order; when the script runs
+    "sleep": s (fake clock), "real_sleep": s, "provider": name, "tool_calls": [{"name", "args"}]} or a plain string
+    ("text": "" is an empty reply). Responses are taken in order; when the script runs
     out, `default(node)` answers. With `rejects_reasoning`, any request that carries a `reasoning` field is refused
     the way OpenRouter refuses it (before generating anything), and the scripted response is kept for the next call.
     Every request body's `reasoning` field is recorded in `requests`."""
@@ -66,10 +68,13 @@ class FakeLLM:
                 spec = f.read()
         return cls(json.loads(spec))
 
-    def invoke(self, node, messages, max_tokens=None, timeout=None, reasoning="default", max_retries=None):
+    def invoke(self, node, messages, max_tokens=None, timeout=None, reasoning="default", max_retries=None,
+               tools=None):
         body = {"reasoning": reasoning_body(reasoning)}
         self.requests.append({"node": node, "body": body, "messages": messages, "max_tokens": max_tokens,
                               "timeout": timeout, "max_retries": max_retries})
+        if tools is not None:  # recorded only when offered, so the LangGraph agent's requests are as they were
+            self.requests[-1]["tools"] = [t["function"]["name"] for t in tools]
         if self.rejects_reasoning and body["reasoning"] is not None:
             raise ReasoningRejected("HTTP 400: this model does not support the reasoning parameter")
         self.calls.append(node)
@@ -82,8 +87,9 @@ class FakeLLM:
             self.clock.advance(item["sleep"])
         if item.get("real_sleep"):  # a provider that really does not answer in time
             time.sleep(item["real_sleep"])
-        text = item["text"] if item.get("text") is not None else default(node)
-        prompt_chars = sum(len(m["content"]) for m in messages)
+        calls = item.get("tool_calls")
+        text = item["text"] if item.get("text") is not None else ("" if calls else default(node))
+        prompt_chars = sum(len(m.get("content") or "") for m in messages)
         return LLMResult(
             text=text,
             model=self.model,
@@ -94,6 +100,8 @@ class FakeLLM:
             reasoning_tokens=item.get("reasoning_tokens"),
             finish_reason=item.get("finish_reason", "stop"),
             provider=item.get("provider", "fake"),
+            tool_calls=[{"id": f"call_{len(self.calls)}_{i}", "name": c["name"], "args": c.get("args", {})}
+                        for i, c in enumerate(calls)] if calls else None,
         )
 
 
@@ -117,6 +125,8 @@ def default(node):
                 f'<tb path="agent_tb/agent_smoke_tb.sv" top="agent_smoke_tb">\n{SMOKE_TB}</tb>\n')
     if node == "reflect":
         return json.dumps({"decision": "submit", "reason": "fake provider"})
+    if node == "agent":  # Deep Agents: a final reply with no tool call, which submits the unchanged design
+        return "fake provider: no design change"
     return ""
 
 
@@ -150,16 +160,21 @@ class OpenRouterLLM:
             body["provider"] = {"order": self.provider_order, "allow_fallbacks": False}
         return body
 
-    def invoke(self, node, messages, max_tokens=None, timeout=None, reasoning="default", max_retries=None):
+    def invoke(self, node, messages, max_tokens=None, timeout=None, reasoning="default", max_retries=None,
+               tools=None):
         import openai
 
         t0 = time.monotonic()
         body = self.request_body(reasoning)
         opts = {k: v for k, v in (("timeout", timeout), ("max_retries", max_retries)) if v is not None}
+        extra = {"max_tokens": max_tokens} if max_tokens else {}
+        if tools:  # Deep Agents: tool calling. The LangGraph agent never passes tools, so its request is unchanged.
+            extra["tools"] = tools
         try:
             r = self._client.with_options(**opts).chat.completions.create(
-                model=self.model, messages=[{"role": m["role"], "content": m["content"]} for m in messages],
-                temperature=0.2, extra_body=body, **({"max_tokens": max_tokens} if max_tokens else {}))
+                model=self.model, messages=[{k: m[k] for k in ("role", "content", "tool_calls", "tool_call_id")
+                                             if k in m} for m in messages],
+                temperature=0.2, extra_body=body, **extra)
         except openai.BadRequestError as e:
             if "reasoning" in body:  # a 400 generates nothing; the caller retries without the field
                 raise ReasoningRejected(f"HTTP 400: {e}") from e
@@ -174,6 +189,15 @@ class OpenRouterLLM:
             cost = self._generation_cost(gen_id)
         choice = r.choices[0] if r.choices else None
         content = choice.message.content if choice and choice.message else None
+        calls = None
+        if choice and choice.message and getattr(choice.message, "tool_calls", None):
+            calls = []
+            for c in choice.message.tool_calls:
+                try:
+                    args = json.loads(c.function.arguments or "{}")
+                except ValueError:
+                    args = {"_unparsed": c.function.arguments}
+                calls.append({"id": c.id, "name": c.function.name, "args": args})
         return LLMResult(
             text=content if isinstance(content, str) else "",
             model=r.model or self.model,
@@ -184,6 +208,7 @@ class OpenRouterLLM:
             generation_id=gen_id,
             reasoning_tokens=getattr(details, "reasoning_tokens", None),
             finish_reason=choice.finish_reason if choice else None,
+            tool_calls=calls,
             provider=(r.model_extra or {}).get("provider"),
         )
 

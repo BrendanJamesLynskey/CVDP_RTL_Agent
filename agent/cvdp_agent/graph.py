@@ -19,7 +19,7 @@ from .llm import LOWER, ReasoningRejected
 from .parse import empty_reply, parse_decision, parse_edit, parse_plan
 from .trace import Tracer, redact, truncate
 
-MAX_TOKENS = {"plan": 4000, "edit": 32000, "reflect": 2000}  # room for the answer itself
+MAX_TOKENS = {"plan": 4000, "edit": 32000, "reflect": 2000, "agent": 32000}  # room for the answer itself
 # Room for reasoning on top of the answer's. Reasoning tokens count against max_tokens (with exclude: true too), so
 # without this a model that reasons at length fills the cap and returns an empty reply (finish_reason: length).
 REASONING_HEADROOM = {"off": 0, "low": 8000, "medium": 16000, "high": 24000, "default": 16000}
@@ -104,6 +104,7 @@ class Runtime:
         self.out_tokens = 0      # completion tokens and seconds of the calls so far, for the throughput clamp
         self.out_seconds = 0.0
         self.providers = {}      # the provider OpenRouter served each call from, with counts
+        self.summary_extra = {}  # fields only M3b settings add to summary.json (none for the M1-M3 agent)
         self.best = None        # snapshot of rtl/verif/docs after the last edit that compiled
         self.best_turn = None
         self.stop_reason = None
@@ -158,21 +159,22 @@ class Runtime:
             cap = min(cap, max(MIN_MAX_TOKENS, int(self.out_tokens / self.out_seconds * seconds * 0.9)))
         return cap
 
-    def _attempt(self, node, messages, level, state):
+    def _attempt(self, node, messages, level, state, tools=None):
         seconds = max(1.0, self.time_left() - DEADLINE_MARGIN_S)
         max_tokens = self.max_tokens_for(node, level, seconds)
         self.in_flight = 1
         checkpoint(self, state)  # if the harness kills us mid-call, the call shows as unreported
         try:
+            extra = {"tools": tools} if tools is not None else {}  # Deep Agents only
             r = run_with_deadline(lambda: self.llm.invoke(
                 node, messages, max_tokens=max_tokens, timeout=min(150.0, seconds), reasoning=level,
-                max_retries=0 if seconds < SHORT_CALL_S else None), seconds)
+                max_retries=0 if seconds < SHORT_CALL_S else None, **extra), seconds)
         finally:
             self.in_flight = 0
         r.max_tokens = max_tokens
         return r
 
-    def call(self, node, messages, state, reasoning=None, retry_of=None):
+    def call(self, node, messages, state, reasoning=None, retry_of=None, tools=None):
         """One LLM call, at `reasoning` (default: the problem's current level), with a hard deadline before the
         wall cap. If the model refuses the reasoning field, that is traced and the call is made again: at the
         problem's own level when only a retry's lower level was refused (say `off` on a model that must reason),
@@ -183,7 +185,7 @@ class Runtime:
         call_id = self.llm_calls
         try:
             try:
-                r = self._attempt(node, messages, level, state)
+                r = self._attempt(node, messages, level, state, tools)
             except ReasoningRejected as e:  # refused before generating anything: not billed, never fails the problem
                 self.reasoning_rejected += 1
                 fallback = self.reasoning if level != self.reasoning else "default"
@@ -194,7 +196,7 @@ class Runtime:
                 if fallback == "default":
                     self.reasoning = "default"
                 level = fallback
-                r = self._attempt(node, messages, level, state)
+                r = self._attempt(node, messages, level, state, tools)
         except Exception as e:  # provider errors and missed deadlines end the run; the best edit is still kept
             self.cost_unreported += 1  # an errored, timed-out or abandoned call may still have been billed
             self.tracer.log("llm", node=node, model=getattr(self.llm, "model", None), turn=state.get("turn", 0),
@@ -247,6 +249,23 @@ class Runtime:
                         empty=getattr(r, "empty", False), cost=r.cost, latency_s=round(r.latency_s, 3),
                         generation_id=r.generation_id, decision=decision, completion=truncate(r.text, 3000))
 
+    # ---------- lessons memory (M3b) ----------
+    def lessons_block(self, task):
+        """The plan prompt's lessons section, or "" with no memory. Retrieval is BM25 over the snapshot, queried
+        with the task and the problem's docs; the lessons retrieved are traced and named in the summary."""
+        if not self.cfg.memory:
+            return ""
+        from . import memory
+
+        snap = memory.load(self.cfg.memory)
+        docs = "\n".join(self.files.read(r) for r in self.files.list_files()
+                         if r.startswith("docs/") and os.path.splitext(r)[1] in TEXT_EXT)
+        got = memory.retrieve(snap["lessons"], f"{task}\n{docs}", k=self.cfg.memory_k)
+        self.summary_extra.update({"memory": snap["hash"], "lessons": [x["id"] for x, _ in got]})
+        self.tracer.log("lessons", memory=snap["hash"], k=self.cfg.memory_k,
+                        retrieved=[{"id": x["id"], "score": sc} for x, sc in got])
+        return prompts.LESSONS.format(lessons="\n".join(f"- {x['text']}" for x, _ in got)) if got else ""
+
     # ---------- context ----------
     def contents(self):
         parts, total = [], 0
@@ -292,6 +311,7 @@ def build(rt):
             task=state["task"], listing="\n".join(state["listing"]), contents=rt.contents(),
             tools=", ".join(k for k, v in rt.tools.items() if v) or "none",
             check_options=prompts.check_options(cfg, rt.tools))
+        msg += rt.lessons_block(state["task"])  # "" with no memory: the M1-M3 prompt, unchanged
         r = rt.ask("plan", [{"role": "system", "content": prompts.SYSTEM}, {"role": "user", "content": msg}], state)
         if r is None:
             return {"stop_reason": "llm_error"}
@@ -481,6 +501,10 @@ def write_summary(rt, summary):
 
 
 def make_summary(rt, state, stop, kept, compiled):
+    return {**_summary(rt, state, stop, kept, compiled), **rt.summary_extra}
+
+
+def _summary(rt, state, stop, kept, compiled):
     return {
         "provider": rt.cfg.provider,
         "model": sorted(rt.models)[0] if len(rt.models) == 1 else (sorted(rt.models) or rt.cfg.model or None),
@@ -568,6 +592,10 @@ def run(cfg, llm=None, **kw):
     from . import llm as llm_mod
 
     tracer = kw.pop("tracer", None) or Tracer(cfg.agent_out)
+    if cfg.harness == "deepagents":
+        from . import deep
+
+        return deep.run(cfg, llm or llm_mod.make(cfg), tracer=tracer, **kw)
     rt = Runtime(cfg, llm or llm_mod.make(cfg), tracer=tracer, **kw)
     rt.tracer.log("start", model=cfg.model or None, provider=cfg.provider, seed=cfg.seed or None,
                   switches=cfg.switches())

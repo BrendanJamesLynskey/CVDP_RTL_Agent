@@ -91,6 +91,14 @@ Decide what to do next. Reply with one JSON object only:
 Submit when the design compiles and your checks pass. Edit again if something you can fix failed.
 Give up only if you cannot make progress."""
 
+# M3b: the lessons memory's retrieved lessons, appended to the plan prompt (and the Deep Agents task) when a
+# snapshot is set. Nothing is appended without one.
+LESSONS = """
+
+# Lessons from other problems
+General advice learned on other problems (not on this one). Use what applies here:
+{lessons}"""
+
 # Added to the messages for the one retry after an empty reply, and after an unparseable reflect reply.
 ANSWER_ONLY = """Your last reply was empty. Reply now with the answer only, in the format asked for above, with no
 reasoning, no tool calls and nothing else."""
