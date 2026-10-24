@@ -2,6 +2,8 @@
 
 Made by `tools/reachable.py` from the dataset's hidden harness files and M3's 14 runs (`docs/reports/m3/runs/*.csv`). A problem is unreachable when a name the hidden testbench reads is given nowhere to the agent **and** M3 labels it `signal_missing_hidden` or `compile_fail_hidden` in at least half of its runs. 6 of 92 are excluded; the evaluation set is the other 86 (`tools/m3b_eval_ids.txt`).
 
+The exclusions rest on identifier-shaped names such as `hour_pulse` and `CLK_FREQ`: 6 of the 6 excluded problems read at least one the agent is not given. Common words such as `clk` and `hour` are also listed as not given when they appear only in prose, which may be too strict for them; no exclusion rests on them alone.
+
 | Problem | cid | Interface failures in M3 | Names the hidden testbench reads that the agent is not given (where read) |
 |---|---|---|---|
 | `digital_stopwatch_0001` | cid005 | 11/14 | `CLK_FREQ` (dut.CLK_FREQ, parameter); `beep` (dut.beep); `clk` (dut.clk); `hour` (dut.hour); `hour_pulse` (dut.hour_pulse); `minute_pulse` (dut.minute_pulse); `minutes` (dut.minutes); `reset` (dut.reset) and 3 more |

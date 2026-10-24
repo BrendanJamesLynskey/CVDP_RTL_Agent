@@ -253,6 +253,9 @@ Odd or worth knowing (none of it is a result: one run of 10 problems each):
 - **Summarization as shipped.** Deep Agents' summarization middleware is left as shipped; with 22 rounds and cut
   check output it should rarely trigger, and a summarizing call counts as a round. **[waits on runs]**: how often it
   ran.
+- **Common words count as not given.** `reachable.py` lists a plain word such as `clk` or `hour` as not given when
+  it appears only in prose, which may be too strict for it. The 6 exclusions do not depend on this: each also reads
+  an identifier-shaped name the agent is not given, such as `hour_pulse` or `CLK_FREQ` (`m3b/unreachable.md`).
 - **Rounds are not turns.** B and D's `turns` count model calls; A and C's count edit cycles. Compare the arms on
   cost and wall time, not on turns.
 

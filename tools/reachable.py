@@ -181,12 +181,18 @@ def check(records, label_counts, runs):
 def report_md(rows, runs):
     un = [r for r in rows if r["unreachable"]]
     flagged = [r for r in rows if not r["unreachable"] and r["interface_failures"] * 2 >= runs > 0]
+    n_id = sum(any(_ID_SHAPED.search(n) for n in r["missing"]) for r in un)
     lines = [f"# Unreachable agentic problems (M3b evaluation set)\n",
              f"Made by `tools/reachable.py` from the dataset's hidden harness files and M3's {runs} runs "
              f"(`docs/reports/m3/runs/*.csv`). A problem is unreachable when a name the hidden testbench reads is "
              f"given nowhere to the agent **and** M3 labels it `signal_missing_hidden` or `compile_fail_hidden` in "
              f"at least half of its runs. {len(un)} of {len(rows)} are excluded; the evaluation set is the other "
              f"{len(rows) - len(un)} (`tools/m3b_eval_ids.txt`).\n",
+             f"The exclusions rest on identifier-shaped names such as `hour_pulse` and `CLK_FREQ`: {n_id} of the "
+             f"{len(un)} excluded problems read at least one the agent is not given. Common words such as `clk` and "
+             f"`hour` are also listed as not given when they appear only in prose, which may be too strict for them; "
+             + ("no exclusion rests on them alone.\n" if n_id == len(un) else
+                f"{len(un) - n_id} exclusion(s) rest on them alone.\n"),
              "| Problem | cid | Interface failures in M3 | Names the hidden testbench reads that the agent is not given "
              "(where read) |", "|---|---|---|---|"]
     for r in un:
