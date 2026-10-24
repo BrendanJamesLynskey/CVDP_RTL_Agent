@@ -7,7 +7,7 @@
 <style>
 /* Layout concept: the page is a waveform viewer. Time runs down the page; a cursor line and a ns readout
    follow the scroll; each section is a signal group named in a left gutter, opened by a clock edge.
-   Light theme = a timing diagram printed on engineering paper. Dark theme = a four-channel scope screen. */
+   Light theme = a timing diagram printed on engineering paper. Dark theme = a monochrome scope screen, red only for failures. */
 :root {
   --paper: #f1f4f2;        /* engineering paper */
   --panel: #fafbfa;        /* plotted panels */
@@ -34,22 +34,22 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --paper: #090e13; --panel: #0d141b; --grid: #16222c; --grid-2: #243543;
-    --ink: #dbe4ec; --ink-2: #9aabb9; --ink-3: #6f8293;
-    --ch1: #f3d23c; --ch2: #3fcde2; --ch3: #e46fcb; --x: #ff6a4a;
-    --x-soft: rgba(255, 106, 74, .16); --ch1-soft: rgba(243, 210, 60, .13);
-    --ch2-soft: rgba(63, 205, 226, .13); --ch3-soft: rgba(228, 111, 203, .14);
-    --dim: .22; --glow: drop-shadow(0 0 2.5px currentColor);
+    --paper: #0b0b0b; --panel: #111111; --grid: #1c1c1c; --grid-2: #2e2e2e;
+    --ink: #e6e6e6; --ink-2: #a6a6a6; --ink-3: #777777;
+    --ch1: #f4f4f4; --ch2: #a8a8a8; --ch3: #7c7c7c; --x: #ff5a4a;
+    --x-soft: rgba(255, 90, 74, .16); --ch1-soft: rgba(255, 255, 255, .10);
+    --ch2-soft: rgba(255, 255, 255, .07); --ch3-soft: rgba(255, 255, 255, .05);
+    --dim: .22; --glow: none;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --paper: #090e13; --panel: #0d141b; --grid: #16222c; --grid-2: #243543;
-  --ink: #dbe4ec; --ink-2: #9aabb9; --ink-3: #6f8293;
-  --ch1: #f3d23c; --ch2: #3fcde2; --ch3: #e46fcb; --x: #ff6a4a;
-  --x-soft: rgba(255, 106, 74, .16); --ch1-soft: rgba(243, 210, 60, .13);
-  --ch2-soft: rgba(63, 205, 226, .13); --ch3-soft: rgba(228, 111, 203, .14);
-  --dim: .22; --glow: drop-shadow(0 0 2.5px currentColor);
+  --paper: #0b0b0b; --panel: #111111; --grid: #1c1c1c; --grid-2: #2e2e2e;
+  --ink: #e6e6e6; --ink-2: #a6a6a6; --ink-3: #777777;
+  --ch1: #f4f4f4; --ch2: #a8a8a8; --ch3: #7c7c7c; --x: #ff5a4a;
+  --x-soft: rgba(255, 90, 74, .16); --ch1-soft: rgba(255, 255, 255, .10);
+  --ch2-soft: rgba(255, 255, 255, .07); --ch3-soft: rgba(255, 255, 255, .05);
+  --dim: .22; --glow: none;
   color-scheme: dark;
 }
 
