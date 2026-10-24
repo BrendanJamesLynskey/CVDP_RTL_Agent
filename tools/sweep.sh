@@ -111,7 +111,7 @@ EOF
   export CVDP_AGENT_MOUNTS="$ledger:/ledger"
   if [ -n "$MEMORY" ]; then  # the snapshot, read-only, at /memory/<its name> in the agent's container
     export CVDP_MEMORY="/memory/$(basename "$MEMORY")"
-    export CVDP_AGENT_MOUNTS="$CVDP_AGENT_MOUNTS,$(cd "$(dirname "$MEMORY")" && pwd)/$(basename "$MEMORY"):$CVDP_MEMORY:ro"
+    export CVDP_AGENT_MOUNTS="$CVDP_AGENT_MOUNTS;$(cd "$(dirname "$MEMORY")" && pwd)/$(basename "$MEMORY"):$CVDP_MEMORY:ro"
   fi
   export CVDP_AGENT_ENV=CVDP_PROVIDER,CVDP_MODEL,CVDP_BUDGET_USD,CVDP_MAX_TURNS,CVDP_SELF_CHECK,CVDP_LINT,CVDP_LEDGER_DIR,CVDP_RUN_BUDGET_USD,CVDP_REASONING,CVDP_SEED,CVDP_PROVIDER_ORDER,CVDP_HARNESS,CVDP_MEMORY
   if [ "$CVDP_PROVIDER" = openrouter ]; then

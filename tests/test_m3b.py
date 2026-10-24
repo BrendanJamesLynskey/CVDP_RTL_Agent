@@ -324,7 +324,12 @@ def test_sweep_mounts_the_snapshot_read_only_and_passes_harness(tmp_path):
     assert r.returncode == 0, r.stdout + r.stderr
     seen = json.load(open(str(tmp_path / "seen.jsonl") + ".m"))
     name = os.path.basename(snap)
-    assert seen["mounts"].endswith(f"{name}:/memory/{name}:ro") and "CVDP_HARNESS" in seen["env"]
+    # parsed as the pinned harness parses it (dataset_processor._split/_parse_agent_mount_spec): ";" between mounts,
+    # source:target[:mode] in each, so the ledger mount and the snapshot mount both survive
+    specs = [x.strip().split(":") for x in seen["mounts"].split(";") if x.strip()]
+    assert all(2 <= len(x) <= 3 for x in specs), specs
+    assert [x[1] for x in specs] == ["/ledger", f"/memory/{name}"] and specs[1][2] == "ro"
+    assert os.path.exists(specs[1][0]) and "CVDP_HARNESS" in seen["env"]
     assert seen["memory"] == f"/memory/{name}"  # the path inside the agent's container
     rows = list(csv.DictReader(open(work / "results.csv")))
     assert rows[0]["memory"] == memory.load(snapshot_path())["hash"] and rows[0]["stop_reason"] == "submit"
