@@ -29,7 +29,8 @@ and every cost is provider-reported.
   - 56 stopped by a cap, 13 simulations that did not finish, 12 submitted after the agent's own testbench failed,
     and 5 with no edit.
 - **24 problems failed in all 20 full runs** (M2's 6 and M3's 14). For 10 of them, most failures are one of the
-  two interface labels above. Better RTL logic will not fix those; matching the hidden testbench's interface will.
+  two interface labels above. For 6 of the 9 problems with missing-signal errors, the name the hidden testbench
+  reads is not in the prompt or in any file the agent is given, so no agent can be expected to match it.
 - M3's 13 new runs cost **$8.2537** of provider-reported spend, with 1 call unreported.
 
 ## Arms and settings
@@ -280,11 +281,29 @@ never occurred in the real runs: `compile_fail_hidden` appears as a secondary fl
 
 - **M3b: the agent's interface, not its logic, blocks 10 of the 24 problems no run has solved.** Hidden
   testbenches read port names (`pclk`), internal registers (`state_ff`, `curr_state`), instance paths
-  (`poly_branches[0].u_poly_filter`) and parameters (`INDEX_WIDTH`). Some of these may be in the problem's
-  documents, and some may not. Before an agent change, M3b should check, for the 16 problems with an interface
-  label, whether the names the hidden testbench reads are stated in the prompt or `docs/`. If they are, an
-  interface check against the specification (ports, parameters, named internal signals) is the agent change with
-  the most room. If not, those problems are out of reach for any agent and should be reported as such.
+  (`poly_branches[0].u_poly_filter`) and parameters (`INDEX_WIDTH`).
+- **Many of those names are not given to the agent at all.** A word search of each problem's prompt and context
+  files (what the agent sees) for the names in `signal_missing_hidden` errors:
+
+  | Problem | Name the hidden testbench reads | In the prompt or context files? | Errors |
+  |---|---|---|---|
+  | `phase_rotation_0038` | `control_fsm.state_ff` | no | 840 |
+  | `phase_rotation_0031` | `detect_sequence.curr_state` | no | 550 |
+  | `phase_rotation_0010` | `phase_rotation_viterbi.data_i4_ff` | no | 234 |
+  | `poly_decimator_0001` | `poly_decimator.poly_branches` | no | 52 |
+  | `direct_map_cache_0001` | `direct_map_cache.INDEX_WIDTH` | yes | 48 |
+  | `ttc_lite_0001` | `ttc_counter_lite.enable` | yes (a common word; may not name the signal) | 24 |
+  | `digital_stopwatch_0001` | `dig_stopwatch_top.reset`, `.second_pulse`; `.hour` | no; yes for `hour` | 12, 4; 4 |
+  | `csr_using_apb_interface_0001` | `csr_apb_interface.pclk` | no | 2 |
+  | `dynamic_equalizer_0008` | `equalizer_top.uu_awgn_real`, `.uu_awgn_imag` | no | 1 each |
+
+  (Errors counts every `AttributeError` line over the 14 runs, so a parametrised test counts many times. The search
+  is the planner's, over the artifact's `work.problems.jsonl`; it is not a committed tool.) For 6
+  of the 9 problems the main name is not in anything the agent can read. Those failures are a property of the
+  benchmark items, and no agent change can fix them; M4 should report them separately. Where the name is given
+  (`INDEX_WIDTH`, `hour`), an interface check against the specification is the agent change with room to help.
+  M3b should do the same search for the 8 `compile_fail_hidden` problems, from the hidden command's `-s` top and
+  `-P` parameter names.
 - **M3b: self-check needs to check more, not run more often.** Running its testbench on more problems (C) did not
   raise the pass rate, and the last testbench passed in 61 of 73 failed submissions where one ran. A
   cross-problem lessons memory (M3b arms C and D) can be scored on exactly these two labels.
@@ -302,7 +321,8 @@ never occurred in the real runs: `compile_fail_hidden` appears as a secondary fl
   `iverilog` command and `CalledProcessError`, not the compiler's message. On `phase_rotation_0028` the hidden
   command passes `-P` overrides of parameters by name, so a missing or renamed parameter is a likely cause, but
   this is not shown for each problem.
-- **Is a name in the specification?** Not checked here (see M3b above).
+- **Whether a name is given to the agent** is a plain word search over the prompt and context files. It cannot
+  tell a signal from the same word in prose, and it is not done yet for `compile_fail_hidden`.
 - **The new label's rule was developed on the 15 cases it is scored on.** The hold-out set has no case of it.
 - **Both runs of each arm have seed 1.** They were dispatched before `seed_offset` existed. The model's sampling
   is not seeded by `CVDP_SEED`, so this changes only the label, not the independence of the runs.
