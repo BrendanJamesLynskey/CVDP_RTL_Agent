@@ -330,3 +330,31 @@ def test_sweep_mounts_the_snapshot_read_only_and_passes_harness(tmp_path):
     assert rows[0]["memory"] == memory.load(snapshot_path())["hash"] and rows[0]["stop_reason"] == "submit"
     run = json.load(open(str(work) + ".run.json"))
     assert (run["harness"], run["memory"]) == ("deepagents", snap)
+
+
+def test_ablate_ids_keeps_only_the_listed_problems(tmp_path):
+    import ablate
+
+    for name, passes in (("a", "1100"), ("b", "1111")):
+        with open(tmp_path / f"{name}.csv", "w") as f:
+            f.write("id,seed,pass,cid,cost_usd,cost_unreported_calls,wall_time_s,prompt_tokens,completion_tokens\n"
+                    + "".join(f"p{i},1,{p},cid003,0.01,0,10,1,1\n" for i, p in enumerate(passes)))
+    (tmp_path / "ids.txt").write_text("# two problems\np0\np2\n")
+    out = tmp_path / "out.csv"
+    ablate.main(["--arm", f"A={tmp_path / 'a.csv'}", "--arm", f"B={tmp_path / 'b.csv'}", "--base", "A",
+                 "--ids", str(tmp_path / "ids.txt"), "--pareto-csv", str(out)])
+    rows = {r["arm"]: r for r in csv.DictReader(open(out))}
+    assert float(rows["A"]["pass_rate"]) == 0.5 and float(rows["B"]["pass_rate"]) == 1.0
+
+
+def test_retrieval_report_counts_k_per_problem(tmp_path):
+    import retrieval
+
+    ds = tmp_path / "ds.jsonl"
+    ds.write_text("".join(json.dumps({"id": f"p{i}", "prompt": f"Design an APB block number {i} with ports",
+                                      "context": {"docs/spec.md": "parameters and ports"}}) + "\n" for i in range(4)))
+    snap = memory.load(snapshot_path())
+    picks = retrieval.from_dataset(snap, str(ds), {"p0", "p1", "p2"})
+    assert set(picks) == {"p0", "p1", "p2"} and all(len(v) == 5 for v in picks.values())
+    assert retrieval.from_dataset(snap, str(ds), {"p0"})["p0"] == picks["p0"]  # deterministic
+    assert "| L01 |" in retrieval.table(snap, picks)

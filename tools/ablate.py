@@ -17,7 +17,8 @@ The Pareto chart is pass rate against $ per problem; an arm is on the frontier i
 rate for at most its cost, and is strictly better on one. `--pareto-csv` and `--pareto-svg` write it (the SVG is
 written by this code; no external service).
 
-Usage: python3 tools/ablate.py [--arm NAME=a.csv,b.csv ...] [--base NAME] [--pareto-csv F] [--pareto-svg F] [csv ...]
+Usage: python3 tools/ablate.py [--arm NAME=a.csv,b.csv ...] [--base NAME] [--pareto-csv F] [--pareto-svg F]
+           [--ids FILE] [csv ...]
 """
 import argparse
 import csv
@@ -290,8 +291,13 @@ def main(argv=None):
     ap.add_argument("--base", help="the base arm's name")
     ap.add_argument("--pareto-csv")
     ap.add_argument("--pareto-svg")
+    ap.add_argument("--ids", help="a file of problem ids (one per line, # comments): keep only those problems, "
+                                  "e.g. tools/m3b_eval_ids.txt for M3b's evaluation set")
     a = ap.parse_args(argv)
     arms = arms_from(a.arm, a.csv)
+    if a.ids:
+        keep = {ln.strip() for ln in open(a.ids) if ln.strip() and not ln.startswith("#")}
+        arms = {n: [r for r in rows if r["id"] in keep] for n, rows in arms.items()}
     if len(arms) < 2:
         raise SystemExit("need at least two arms")
     base = pick_base(arms, a.base)
