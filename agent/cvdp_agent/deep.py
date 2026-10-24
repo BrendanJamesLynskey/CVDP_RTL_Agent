@@ -19,8 +19,9 @@ What Deep Agents adds, and what is on:
   goes through the same model and is counted as a round.
 
 Caps: the $ budget and the wall-time cap are the LangGraph agent's (`Runtime.llm_cap`). The turn cap becomes a cap
-on model calls (tool-call rounds), `cfg.max_rounds` = 22: the most LLM calls any M2 problem made in 10 turns
-(1 plan + 10 edits + 10 reflects = 21, plus one empty-reply retry). Hitting it stops the problem with
+on model calls (tool-call rounds), `cfg.max_rounds` = 22: the most LLM calls any M2 problem made in 10 turns.
+That one row is DeepSeek on x86, AES_encryption_decryption_0005: 1 plan + 10 edits + 10 reflects = 21, plus one
+reflect-parse retry. For openai/gpt-6-luna, the M3b model, M2's maximum is 21. Hitting it stops the problem with
 stop_reason `max_turns`, so the results tools read it as they always have. `turns` in the summary counts rounds.
 """
 import json

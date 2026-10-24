@@ -68,8 +68,10 @@ are the same.
 | Conversation summarization (part of its base stack) | as shipped; a summarizing call goes through the same model and counts as a round |
 
 **Round cap: 22.** The LangGraph agent's turn cap (10 edit–check–reflect cycles) has no direct meaning in a
-tool-call loop, so it becomes a cap on model calls. 22 is the most LLM calls any M2 problem made in 10 turns: 1 plan
-+ 10 edits + 10 reflects = 21, plus one empty-reply retry. Hitting it stops the problem with `stop_reason`
+tool-call loop, so it becomes a cap on model calls. 22 is the most LLM calls any M2 problem made in 10 turns. That
+one row is DeepSeek on x86, `AES_encryption_decryption_0005`: 1 plan + 10 edits + 10 reflects = 21, plus one
+**reflect-parse retry** (not an empty-reply retry). For `openai/gpt-6-luna`, the model of every M3b arm, M2's
+maximum is 21 (1 plan + 10 edits + 10 reflects, no retry). Hitting the cap stops the problem with `stop_reason`
 `max_turns`, so the results tools read it unchanged; `turns` in the summary counts rounds. The budget and wall-time
 caps are the LangGraph agent's, checked before every call.
 
