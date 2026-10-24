@@ -9,6 +9,7 @@ import xml.etree.ElementTree as ET
 import pytest
 
 import ablate
+import behaviour
 import collect
 import log_check
 import taxonomy
@@ -114,7 +115,7 @@ def test_each_label_fires_on_its_own_fixture_and_on_no_other(fixture_rows):
         own = fixture_rows[f"cvdp_agentic_tax_{lb}_0001"]
         assert own["_label"] == lb, (lb, own["_label"], own["_flags"])
         # the review-round-1 fixtures each test one of these labels again on a different input
-        extra = ("ambiguous", "partial", "harness_killed", "restored_best", "no_tests")
+        extra = ("ambiguous", "partial", "harness_killed", "restored_best", "no_tests", "signal_in_message")
         others = [i for i, r in fixture_rows.items() if r.get("_label") == lb and i != own["id"]
                   and not any(i.startswith(f"cvdp_agentic_tax_{e}") for e in extra)]
         assert others == [], (lb, others)
@@ -292,3 +293,19 @@ def test_log_check_collected_tests_and_no_summary_is_sim_incomplete():
             "platform linux -- Python 3.12.3, pytest-8.3.2\ncollected 3 items\n\nsrc/test_runner.py ")
     assert log_check.classify(head) == "sim_incomplete"  # pytest capturing output, then killed
     assert log_check.classify(head.replace("collected 3 items", "collected 0 items")) == "harness_error"
+
+
+def test_a_missing_signal_in_the_hidden_testbench_is_its_own_label(fixture_rows):
+    sig = fixture_rows["cvdp_agentic_tax_signal_missing_hidden_0001"]
+    assert (sig["log_class"], sig["_label"]) == ("signal_missing", "signal_missing_hidden")
+    # a plain assertion failure stays tests_failed, and so does a check whose f-string message reads a missing handle
+    assert fixture_rows["cvdp_agentic_tax_tests_failed_no_selfcheck_0001"]["log_class"] == "tests_failed"
+    msg = fixture_rows["cvdp_agentic_tax_signal_in_message_0001"]
+    assert (msg["log_class"], msg["_label"]) == ("tests_failed", "tests_failed_no_selfcheck")
+
+
+def test_behaviour_counts_testbench_use_and_one_turn_passes(tmp_path):
+    p = tmp_path / "r.csv"
+    p.write_text("id,pass,turns,stop_reason,selfcheck_runs\n"
+                 "a,1,1,submit,0\nb,0,1,submit,2\nc,1,3,submit,1\nd,0,10,max_turns,0\n")
+    assert behaviour.row("X", str(p)) == "| X | 2/4 | 2 | 2 | 1/2 | 1/2 | submit 3, max_turns 1 |"

@@ -1,0 +1,14 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-8.3.2, pluggy-1.5.0
+rootdir: /code/rundir
+collected 1 item
+
+src/test_runner.py      0.00ns INFO     cocotb.gpi                         Running on Icarus Verilog version 13.0
+     0.00ns INFO     cocotb                             Running tests
+     0.00ns INFO     cocotb.regression                  running test_regs (1/1)
+    assert dut.enable.value == 1, "[ERROR] Control register enable not set"
+    raise AttributeError(f"{self._path} contains no child object named {name}")
+AttributeError: ttc_counter_lite contains no child object named enable
+    80.00ns INFO     cocotb.regression                  TESTS=1 PASS=0 FAIL=1 SKIP=0
+FAILED src/test_runner.py::test_areg_param[0] - SystemExit: 1
+============================== 1 failed in 1.26s ===============================

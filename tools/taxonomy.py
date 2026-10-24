@@ -16,6 +16,10 @@ holds becomes a flag):
   compile_fail_own               the hidden tests' build failed, and so did the agent's own last compile
   compile_fail_hidden            the hidden tests' build failed although the agent's own compile passed: an
                                  interface or port mismatch with the hidden testbench
+  signal_missing_hidden          the hidden tests built and ran, but a check in the hidden testbench reads a port,
+                                 internal signal, instance or parameter the design does not have (cocotb: "contains
+                                 no child object named"): a name mismatch the agent's own compile cannot see. A
+                                 name only in an assert's f-string message does not count (the check failed first)
   tests_failed_selfcheck_passed  hidden tests failed; the agent's own last testbench passed (self-check too weak)
   tests_failed_selfcheck_failed  hidden tests failed; the agent's own last testbench failed and it submitted anyway
   tests_failed_no_selfcheck      hidden tests failed; the agent never ran a testbench of its own
@@ -55,9 +59,27 @@ sys.path.insert(0, os.path.join(HERE, "..", "agent"))
 import log_check  # noqa: E402
 
 LABELS = ["llm_error", "agent_error", "killed", "no_edit", "stopped_by_cap", "gave_up", "sim_incomplete",
-          "compile_fail_own", "compile_fail_hidden", "tests_failed_selfcheck_passed",
+          "compile_fail_own", "compile_fail_hidden", "signal_missing_hidden", "tests_failed_selfcheck_passed",
           "tests_failed_selfcheck_failed", "tests_failed_no_selfcheck", "harness_error"]
 EVIDENCE = ["rtl_changed", "own_compile_last", "selfcheck_runs", "selfcheck_last", "log_class"]
+# cocotb's error when a testbench reads a handle the design lacks
+_SIGNAL_MISSING = re.compile(r"AttributeError: .* contains no child object named (\w+)")
+_FSTRING = re.compile(r"""f(["'])(?:(?!\1).)*\1""")
+
+
+def _signal_missing(text):
+    """True when the hidden testbench's check itself reads a handle the design lacks. A name that appears only in
+    an assert's f-string message is the message failing after the check already failed: not counted."""
+    lines = text.splitlines()
+    for i, ln in enumerate(lines):
+        m = _SIGNAL_MISSING.search(ln)
+        if not m:
+            continue
+        name = re.compile(r"dut\.\S*\b" + re.escape(m.group(1)) + r"\b")
+        src = [x for x in lines[max(0, i - 12):i] if name.search(x)]
+        if src and name.search(_FSTRING.sub("", src[-1])):
+            return True
+    return False
 _TB_BAD = re.compile(r"(?i)\b(fail|failed|failure|error|fatal)\b")
 _LOG_ORDER = ["sim_incomplete", "build_failed", "tests_failed", "harness_error", "passed"]
 # log_class values that are not a classified log: the harness recorded no tests, or kept no log for them
@@ -97,8 +119,12 @@ def log_class(paths):
     """The worst class over the logs; "no_log" when there is none to read."""
     if not paths:
         return "no_log"
-    kinds = {log_check.classify(open(p, errors="replace").read()) for p in paths}
-    return next(k for k in _LOG_ORDER if k in kinds or k == "passed")
+    texts = [open(p, errors="replace").read() for p in paths]
+    kinds = {log_check.classify(t) for t in texts}
+    kind = next(k for k in _LOG_ORDER if k in kinds or k == "passed")
+    if kind == "tests_failed" and any(_signal_missing(t) for t in texts):
+        return "signal_missing"
+    return kind
 
 
 def read_trace(path):
@@ -192,6 +218,7 @@ def label(r):
         "sim_incomplete": has and log == "sim_incomplete",
         "compile_fail_own": has and log == "build_failed" and own in ("fail", "none"),
         "compile_fail_hidden": has and log == "build_failed" and own == "pass",
+        "signal_missing_hidden": has and log == "signal_missing",
         "tests_failed_selfcheck_passed": has and log == "tests_failed" and tb_last == "pass",
         "tests_failed_selfcheck_failed": has and log == "tests_failed" and tb_last == "fail",
         "tests_failed_no_selfcheck": has and log == "tests_failed" and tb_runs == 0,
