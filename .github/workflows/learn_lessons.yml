@@ -1,0 +1,78 @@
+# Learn lessons (M3b): builds a lessons-memory snapshot from the learning-set sweeps with tools/learn_lessons.py.
+# The script makes one LLM call per batch, so it needs the OpenRouter key, which lives only here as a secret. It
+# downloads the named sweep artifacts, runs the script (its guard refuses any agentic problem), checks the snapshot
+# for the key and uploads it as an artifact. The planner commits the snapshot under docs/reports/m3b/lessons/ by PR.
+name: Learn lessons
+
+on:
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: "Comma-separated Sweep run ids of the learning runs (arm A, heavy, in-roots ids)"
+        type: string
+      model:
+        description: "OpenRouter model ID that writes the lessons"
+        type: string
+        default: openai/gpt-6-luna
+      batch:
+        description: "Attempts per LLM call"
+        type: string
+        default: "15"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  learn:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install -q -r agent/requirements.txt
+
+      - name: Learning-run artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUNS: ${{ inputs.runs }}
+        run: |
+          # Each run's work dir is renamed learn_<run id>, so the snapshot's provenance names the runs it came from.
+          for id in $(echo "$RUNS" | tr ',' ' '); do
+            case "$id" in *[!0-9]*|'') echo "::error::bad run id '$id'"; exit 1;; esac
+            gh run download "$id" -R "$GITHUB_REPOSITORY" -n "sweep-heavy-$id" -D "dl/$id"
+            mv "dl/$id/work" "learn_$id"
+            echo "--work learn_$id" >> works.txt
+          done
+          cat works.txt
+
+      - name: Build the snapshot
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          MODEL: ${{ inputs.model }}
+          BATCH: ${{ inputs.batch }}
+        run: |
+          python3 tools/learn_lessons.py $(cat works.txt) --out-dir lessons --model "$MODEL" --batch "$BATCH" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Secret check on what gets uploaded
+        id: scan
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          if grep -rl -e 'sk-or-' lessons; then echo "::error::key-shaped string in snapshot"; exit 1; fi
+          if [ -n "$OPENROUTER_API_KEY" ] && grep -rlF -e "$OPENROUTER_API_KEY" lessons; then
+            echo "::error::key in snapshot"; exit 1
+          fi
+          echo "no key in snapshot"
+
+      - uses: actions/upload-artifact@v4
+        if: steps.scan.outcome == 'success'
+        with:
+          name: lessons-${{ github.run_id }}
+          path: lessons/*.json
+          if-no-files-found: error
