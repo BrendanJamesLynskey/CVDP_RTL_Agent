@@ -84,6 +84,9 @@ caps are the LangGraph agent's, checked before every call.
   each call's cost and any unreported cost. **[waits on runs]**: the snapshot, its hash and its build cost.
 - **The evaluation set is never seen.** The builder refuses any work dir that holds an evaluation-set problem
   (in `raw_result.json` or as a problem dir), before reading anything from it (`EvalLeak`; tested).
+- **Only the learning set is learned from.** By default (`--learn-ids`) the builder also refuses a work dir holding
+  any problem outside `tools/m3b_learn_in_roots_ids.txt` (`OutsideLearningSet`; tested), and the snapshot's
+  provenance names the learning set.
 - **Retrieval**: `cvdp_agent/memory.py`, deterministic BM25 (k1 = 1.2, b = 0.75, ties broken by snapshot order; no
   embedding API, no LLM). The query is the task prompt plus the problem's `docs/` text files; the top 5 lessons are
   appended to the plan prompt (LangGraph) or the task message (Deep Agents) under "Lessons from other problems".
@@ -93,8 +96,25 @@ caps are the LangGraph agent's, checked before every call.
 
 ## The two problem sets
 
-- **Learning set**: the heavy agentic split, 75 problems (`tools/m3b_learn_ids.txt`), none in the evaluation set.
-  The memory learns from arm A's configuration run on it: **[waits on runs]** (run ID, pass count, cost).
+- **Learning set**: the **29** heavy problems whose files to change all lie inside the agent's edit roots
+  (`tools/m3b_learn_in_roots_ids.txt`), none in the evaluation set. The same agent must learn and be scored: on
+  the other 46 heavy problems the reference change is to files outside `rtl/`, `verif/` and `docs/`, which the
+  agent's file policy refuses, so lessons learned from those failures would be about the policy. The agent is not
+  changed to reach them; the set is narrowed instead. "Files to change" are the keys of the dataset record's
+  `patch` (the files the reference solution changes); `tools/learn_in_roots.py` keeps a problem when every one
+  starts with an edit root, deterministically, from the dataset alone. For 27 of the 29 the hidden build's
+  `VERILOG_SOURCES` also lie inside the roots; the other 2 (`i2c_0046`, `i2c_0049`) list no sources there. The full
+  heavy split (75, `tools/m3b_learn_ids.txt`) is kept for the record.
+  - The memory learns from arm A's configuration run on the 29 with **3 seeds**:
+    ```
+    gh workflow run sweep.yml -f model=openai/gpt-6-luna -f split=heavy -f runner=ubuntu-24.04-arm \
+      -f reasoning=default -f seeds=3 -f ids=$(grep -v '^#' tools/m3b_learn_in_roots_ids.txt | paste -sd,)
+    python3 tools/learn_lessons.py --work <work dir> --out-dir docs/reports/m3b/lessons
+    ```
+    **[waits on runs]** (run ID, pass count per seed, cost).
+  - Three of the 29 (`i2c_0007`, `i2c_0046`, `i2c_0049`) gave no test output under the null agent in M1 and may not
+    be scorable. They stay in the set (the rule is the edit roots alone); if they fail without a test log in all 3
+    seeds, their attempts carry no outcome to learn from, and the report will say so.
 - **Evaluation set**: the 92 agentic problems minus 6 that no agent can be expected to pass, 86 problems
   (`tools/m3b_eval_ids.txt`). Committed before any scored run.
 
@@ -216,10 +236,14 @@ Odd or worth knowing (none of it is a result: one run of 10 problems each):
 
 ## Known gaps
 
-- **Heavy-split edit roots.** In 53 of the 75 heavy problems the files to change are outside `rtl/`, `verif/` and
-  `docs/`, which the agent's file policy refuses (the gap M1 noted). The learning-set runs therefore fail mostly for
-  that reason, and the lessons learned there are about what the agent could do. Not fixed here, so that arm A stays
-  M2's agent; the harness supports `CVDP_AGENT_WORKSPACE_ROOTS` if a later milestone widens it.
+- **Heavy-split edit roots.** In 46 of the 75 heavy problems the files to change are outside `rtl/`, `verif/` and
+  `docs/`, which the agent's file policy refuses (the gap M1 noted). The agent is not changed, so that arm A stays
+  M2's agent; the learning set is narrowed to the other 29 instead (above). M1 gave the count as 53, from a check
+  it did not commit; neither the reference patch nor the hidden build's `VERILOG_SOURCES` reproduces 53 (both give
+  46 outside), so this report uses 46 and the committed script. The harness supports `CVDP_AGENT_WORKSPACE_ROOTS`
+  if a later milestone widens the roots.
+- **A small learning set.** 29 problems × 3 seeds is at most 87 attempts, in 6 batches of 15. The memory may hold
+  fewer than 40 lessons.
 - **Shared dependency drift.** Pinning `deepagents` moved one shared transitive dependency, `tenacity` 9.2.1 →
   9.1.4. The LangGraph golden test passes unchanged on the new set.
 - **Summarization as shipped.** Deep Agents' summarization middleware is left as shipped; with 22 rounds and cut
@@ -241,7 +265,9 @@ Odd or worth knowing (none of it is a result: one run of 10 problems each):
 
 ## Decisions
 
-- The evaluation set and the exclusion list were committed before any scored run (`c00071a`).
+- Pre-registered before any scored run: the evaluation set and the exclusion list (`c00071a`); the learning set
+  (the 29 in-roots heavy problems, 3 seeds) and the guard's refused set (the 86 evaluation and the 6 excluded
+  agentic problems) with review round 1. No learning-set or scored run had been made when they were fixed.
 - The LangGraph agent is unchanged: a golden test of three fake-provider runs (requests, trace and summary, with
   volatile fields scrubbed) was committed before any agent change (`e136091`) and still passes.
 - Retrieval is BM25, not embeddings: deterministic, no API, no cost, the same lessons for the same problem in every

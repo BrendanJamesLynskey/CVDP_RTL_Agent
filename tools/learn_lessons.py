@@ -11,8 +11,13 @@ and written as a snapshot named by its content hash (`lessons_<hash>.json`).
 **The evaluation set is never seen.** A work dir that holds any problem in tools/m3b_eval_ids.txt is refused
 before anything is read from it.
 
+**Only the learning set is learned from**: by default tools/m3b_learn_in_roots_ids.txt, the heavy problems whose
+files to change lie inside the agent's edit roots (tools/learn_in_roots.py), so the agent that learns is the agent
+that is scored. A work dir holding any other problem is refused too (`--learn-ids ''` lifts this, for fixtures).
+
 Usage: OPENROUTER_API_KEY=... python3 tools/learn_lessons.py --work <dir> [--work <dir> ...]
            --out-dir docs/reports/m3b/lessons [--model openai/gpt-6-luna] [--batch 15] [--max-lessons 40]
+           [--learn-ids tools/m3b_learn_in_roots_ids.txt]
        (--provider fake --fake-script <json> for tests: no LLM)
 """
 import argparse
@@ -28,6 +33,7 @@ sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "..", "agent"))
 
 EVAL_IDS = os.path.join(HERE, "m3b_eval_ids.txt")
+LEARN_IDS = os.path.join(HERE, "m3b_learn_in_roots_ids.txt")
 MAX_WORDS, MAX_LESSONS = 60, 40
 PROMPT = """You are improving an AI agent that writes and fixes SystemVerilog RTL for a benchmark. Each problem gives it
 a task prompt and spec files under docs/; it edits rtl/, can compile, lint, synthesize and run its own testbench,
@@ -55,6 +61,10 @@ class EvalLeak(ValueError):
     """A learning work dir holds an evaluation-set problem."""
 
 
+class OutsideLearningSet(ValueError):
+    """A learning work dir holds a problem that is not in the learning set."""
+
+
 def eval_ids(path=EVAL_IDS):
     return {ln.strip() for ln in open(path) if ln.strip() and not ln.startswith("#")}
 
@@ -65,9 +75,11 @@ def seed_dirs(work):
     return dirs or [work]
 
 
-def guard(works, ids_path=EVAL_IDS):
-    """Refuse the whole build if any work dir holds an evaluation problem (raw_result.json or a problem dir)."""
+def guard(works, ids_path=EVAL_IDS, learn_path=None):
+    """Refuse the whole build if any work dir holds an evaluation problem (raw_result.json or a problem dir), or,
+    with `learn_path`, a problem outside the learning set."""
     forbidden = eval_ids(ids_path)
+    allowed = eval_ids(learn_path) if learn_path else None
     for w in works:
         for d in seed_dirs(w):
             seen = set()
@@ -82,6 +94,10 @@ def guard(works, ids_path=EVAL_IDS):
             if leak:
                 raise EvalLeak(f"{d} holds {len(leak)} evaluation-set problem(s) ({', '.join(leak[:5])}); "
                                "the lessons memory must never see an evaluation result")
+            if allowed is not None and seen - allowed:
+                out = sorted(seen - allowed)
+                raise OutsideLearningSet(f"{d} holds {len(out)} problem(s) outside the learning set {learn_path} "
+                                         f"({', '.join(out[:5])})")
 
 
 def digest(row):
@@ -134,12 +150,13 @@ def parse_list(text):
     return v if isinstance(v, list) else []
 
 
-def build(works, llm, model, batch=15, max_lessons=MAX_LESSONS, ids_path=EVAL_IDS):
-    """The snapshot dict for these work dirs (after the eval guard)."""
+def build(works, llm, model, batch=15, max_lessons=MAX_LESSONS, ids_path=EVAL_IDS, learn_path=None):
+    """The snapshot dict for these work dirs (after the guard: no evaluation problem, and with `learn_path` none
+    outside the learning set)."""
     import taxonomy
     from cvdp_agent.memory import canonical_hash
 
-    guard(works, ids_path)
+    guard(works, ids_path, learn_path)
     rows = []
     for w in works:
         rows += taxonomy.rows_from_work(os.path.basename(os.path.normpath(w)) or "work", w)
@@ -165,6 +182,8 @@ def build(works, llm, model, batch=15, max_lessons=MAX_LESSONS, ids_path=EVAL_ID
                            "passed": sum(r["pass"] == "1" for r in rows), "batches": n_batches,
                            "calls": calls, "cost_usd": round(sum(reported), 8) if reported else None,
                            "cost_unreported_calls": sum(c["cost_usd"] is None for c in calls)}}
+    if learn_path:
+        snap["provenance"]["learning_set"] = os.path.basename(learn_path)
     snap["hash"] = canonical_hash(snap)
     return snap
 
@@ -191,9 +210,10 @@ def main(argv=None):
     ap.add_argument("--batch", type=int, default=15)
     ap.add_argument("--max-lessons", type=int, default=MAX_LESSONS)
     ap.add_argument("--eval-ids", default=EVAL_IDS)
+    ap.add_argument("--learn-ids", default=LEARN_IDS, help="the learning set ('' for no check, e.g. fixtures)")
     a = ap.parse_args(argv)
     llm = llm_mod.make(Config(provider=a.provider, model=a.model, fake_script=a.fake_script))
-    snap = build(a.work, llm, a.model, a.batch, a.max_lessons, a.eval_ids)
+    snap = build(a.work, llm, a.model, a.batch, a.max_lessons, a.eval_ids, a.learn_ids or None)
     path = write(snap, a.out_dir)
     print(f"{len(snap['lessons'])} lessons from {snap['provenance']['attempts']} attempts -> {path} "
           f"(cost ${snap['provenance']['cost_usd']}, {snap['provenance']['cost_unreported_calls']} unreported)")

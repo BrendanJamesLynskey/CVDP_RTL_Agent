@@ -9,6 +9,7 @@ import pytest
 
 import collect
 import golden_langgraph
+import learn_in_roots
 import learn_lessons
 import reachable
 from conftest import ORIGINAL_RTL
@@ -199,6 +200,36 @@ def test_committed_eval_and_learning_sets_do_not_overlap():
     assert len(ev) == 86 and len(learn) == 75 and not ev & learn
 
 
+def test_in_roots_learning_set_is_a_subset_of_the_heavy_split_and_misses_the_eval_set():
+    ids = lambda f: [ln.strip() for ln in open(os.path.join(ROOT, "tools", f)) if ln.strip() and not ln.startswith("#")]
+    in_roots, learn = ids("m3b_learn_in_roots_ids.txt"), ids("m3b_learn_ids.txt")
+    assert len(in_roots) == 29 and len(set(in_roots)) == 29
+    assert set(in_roots) <= set(learn) and not set(in_roots) & learn_lessons.eval_ids()
+    assert in_roots == [i for i in learn if i in set(in_roots)]  # in the order of the full list
+    assert learn_lessons.LEARN_IDS.endswith("m3b_learn_in_roots_ids.txt")
+
+
+def test_learn_in_roots_keeps_problems_whose_patch_is_inside_the_edit_roots(tmp_path):
+    recs = [{"id": "h_0001", "patch": {"rtl/a.sv": "", "docs/x.md": ""}},
+            {"id": "h_0002", "patch": {"rtl/a.sv": "", "hardware/b.v": ""}},
+            {"id": "h_0003", "patch": {"verif/tb.sv": ""}},
+            {"id": "h_0004", "patch": {}},
+            {"id": "h_0005", "patch": {"rtlx/a.sv": ""}}]
+    data = tmp_path / "heavy.jsonl"
+    data.write_text("".join(json.dumps(r) + "\n" for r in recs))
+    order = tmp_path / "order.txt"
+    order.write_text("# all\nh_0003\nh_0001\nh_0002\nh_0004\nh_0005\n")
+    out = tmp_path / "in.txt"
+    learn_in_roots.main([str(data), "--learn-ids", str(order), "--out", str(out)])
+    first = out.read_text()
+    assert learn_in_roots.read_ids(str(out)) == ["h_0003", "h_0001"]
+    learn_in_roots.main([str(data), "--learn-ids", str(order), "--out", str(out)])
+    assert out.read_text() == first  # deterministic
+    order.write_text("h_0009\n")
+    with pytest.raises(ValueError):
+        learn_in_roots.main([str(data), "--learn-ids", str(order), "--out", str(out)])
+
+
 # ---------- lessons memory ----------
 
 def test_snapshot_builder_refuses_a_work_dir_with_an_evaluation_id(tmp_path):
@@ -214,6 +245,20 @@ def test_snapshot_builder_refuses_a_work_dir_with_an_evaluation_id(tmp_path):
     (work / repo / "harness" / str(int(n))).mkdir(parents=True)
     with pytest.raises(learn_lessons.EvalLeak):
         learn_lessons.guard([str(tmp_path / "work")])
+
+
+def test_snapshot_builder_refuses_a_problem_outside_the_learning_set(tmp_path):
+    work = tmp_path / "work" / "seed1"
+    work.mkdir(parents=True)
+    learn = tmp_path / "learn.txt"
+    learn.write_text("# set\ncvdp_agentic_heavy_rvx_0004\n")
+    (work / "raw_result.json").write_text(json.dumps({"cvdp_agentic_heavy_rvx_0004": {}}))
+    learn_lessons.guard([str(tmp_path / "work")], learn_path=str(learn))  # inside: fine
+    (work / "raw_result.json").write_text(json.dumps({"cvdp_agentic_heavy_rvx_0004": {},
+                                                      "cvdp_agentic_heavy_usb_cdc_0037": {}}))
+    with pytest.raises(learn_lessons.OutsideLearningSet):
+        learn_lessons.guard([str(tmp_path / "work")], learn_path=str(learn))
+    learn_lessons.guard([str(tmp_path / "work")])  # no learning set given: only the eval guard applies
 
 
 def test_snapshot_from_fixtures_is_reproducible_and_named_by_its_hash(tmp_path):
