@@ -19,8 +19,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "agent"))
 
 from cvdp_agent import memory  # noqa: E402
-
-TEXT_EXT = (".md", ".txt", ".sv", ".v", ".svh", ".vh", ".py", ".json", ".yml", ".yaml")
+from cvdp_agent.files import TEXT_EXT  # noqa: E402  (the agent's own list, so the query is the agent's)
 
 
 def from_dataset(snap, dataset, ids=None, k=5):
@@ -32,7 +31,7 @@ def from_dataset(snap, dataset, ids=None, k=5):
         if ids and rec["id"] not in ids:
             continue
         docs = "\n".join(v or "" for p, v in sorted((rec.get("context") or {}).items())
-                         if p.startswith("docs/") and p.endswith(TEXT_EXT))
+                         if p.startswith("docs/") and os.path.splitext(p)[1] in TEXT_EXT)
         out[rec["id"]] = [x["id"] for x, _ in memory.retrieve(snap["lessons"], f"{rec.get('prompt', '')}\n{docs}", k)]
     return out
 
