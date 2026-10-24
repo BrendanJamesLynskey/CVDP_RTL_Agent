@@ -82,8 +82,10 @@ caps are the LangGraph agent's, checked before every call.
   code-like is dropped. The snapshot is written to `docs/reports/m3b/lessons/lessons_<hash>.json`, where the hash
   is the SHA-256 (first 16 hex digits) of its canonical content; its provenance records the model, the attempts,
   each call's cost and any unreported cost. **[waits on runs]**: the snapshot, its hash and its build cost.
-- **The evaluation set is never seen.** The builder refuses any work dir that holds an evaluation-set problem
-  (in `raw_result.json` or as a problem dir), before reading anything from it (`EvalLeak`; tested).
+- **No agentic problem is ever seen.** The builder refuses any work dir that holds one of the 92 agentic problems,
+  the 86 of the evaluation set or the 6 excluded from it (`tools/m3b_excluded_ids.txt`, written by
+  `reachable.py`), in `raw_result.json` or as a problem dir, before reading anything from it (`EvalLeak`; tested
+  with an evaluation id and an excluded one).
 - **Only the learning set is learned from.** By default (`--learn-ids`) the builder also refuses a work dir holding
   any problem outside `tools/m3b_learn_in_roots_ids.txt` (`OutsideLearningSet`; tested), and the snapshot's
   provenance names the learning set.
@@ -116,7 +118,7 @@ caps are the LangGraph agent's, checked before every call.
     be scorable. They stay in the set (the rule is the edit roots alone); if they fail without a test log in all 3
     seeds, their attempts carry no outcome to learn from, and the report will say so.
 - **Evaluation set**: the 92 agentic problems minus 6 that no agent can be expected to pass, 86 problems
-  (`tools/m3b_eval_ids.txt`). Committed before any scored run.
+  (`tools/m3b_eval_ids.txt`; the 6 in `tools/m3b_excluded_ids.txt`). Committed before any scored run.
 
 **Exclusion rule** (`tools/reachable.py`, from the dataset's hidden harness files and M3's 14 runs): a problem is
 unreachable when a name the hidden testbench reads (a `dut.` handle, the top module, or a parameter it sets) is

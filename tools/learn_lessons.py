@@ -8,8 +8,9 @@ plan's approach, the hidden-test log's first error line). The digests go to the 
 batch, asking for general advice. The lessons are then cut to at most 60 words each and 40 in all, de-duplicated,
 and written as a snapshot named by its content hash (`lessons_<hash>.json`).
 
-**The evaluation set is never seen.** A work dir that holds any problem in tools/m3b_eval_ids.txt is refused
-before anything is read from it.
+**No agentic problem is ever seen.** A work dir that holds any of the 92 agentic problems, the 86 of the evaluation
+set (tools/m3b_eval_ids.txt) or the 6 excluded as unreachable (tools/m3b_excluded_ids.txt), is refused before
+anything is read from it.
 
 **Only the learning set is learned from**: by default tools/m3b_learn_in_roots_ids.txt, the heavy problems whose
 files to change lie inside the agent's edit roots (tools/learn_in_roots.py), so the agent that learns is the agent
@@ -33,6 +34,7 @@ sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "..", "agent"))
 
 EVAL_IDS = os.path.join(HERE, "m3b_eval_ids.txt")
+EXCLUDED_IDS = os.path.join(HERE, "m3b_excluded_ids.txt")
 LEARN_IDS = os.path.join(HERE, "m3b_learn_in_roots_ids.txt")
 MAX_WORDS, MAX_LESSONS = 60, 40
 PROMPT = """You are improving an AI agent that writes and fixes SystemVerilog RTL for a benchmark. Each problem gives it
@@ -58,7 +60,7 @@ Reply with a JSON list of strings only."""
 
 
 class EvalLeak(ValueError):
-    """A learning work dir holds an evaluation-set problem."""
+    """A learning work dir holds an agentic problem (evaluation set or excluded)."""
 
 
 class OutsideLearningSet(ValueError):
@@ -75,10 +77,15 @@ def seed_dirs(work):
     return dirs or [work]
 
 
-def guard(works, ids_path=EVAL_IDS, learn_path=None):
-    """Refuse the whole build if any work dir holds an evaluation problem (raw_result.json or a problem dir), or,
-    with `learn_path`, a problem outside the learning set."""
-    forbidden = eval_ids(ids_path)
+def forbidden_ids(ids_path=EVAL_IDS, excluded_path=EXCLUDED_IDS):
+    """Every agentic problem: the evaluation set and the problems excluded from it."""
+    return eval_ids(ids_path) | eval_ids(excluded_path)
+
+
+def guard(works, ids_path=EVAL_IDS, learn_path=None, excluded_path=EXCLUDED_IDS):
+    """Refuse the whole build if any work dir holds an agentic problem, evaluation or excluded (raw_result.json or
+    a problem dir), or, with `learn_path`, a problem outside the learning set."""
+    forbidden = forbidden_ids(ids_path, excluded_path)
     allowed = eval_ids(learn_path) if learn_path else None
     for w in works:
         for d in seed_dirs(w):
@@ -92,8 +99,8 @@ def guard(works, ids_path=EVAL_IDS, learn_path=None):
                              if n.isdigit()}
             leak = sorted(seen & forbidden)
             if leak:
-                raise EvalLeak(f"{d} holds {len(leak)} evaluation-set problem(s) ({', '.join(leak[:5])}); "
-                               "the lessons memory must never see an evaluation result")
+                raise EvalLeak(f"{d} holds {len(leak)} agentic problem(s), evaluation or excluded "
+                               f"({', '.join(leak[:5])}); the lessons memory must never see one")
             if allowed is not None and seen - allowed:
                 out = sorted(seen - allowed)
                 raise OutsideLearningSet(f"{d} holds {len(out)} problem(s) outside the learning set {learn_path} "
@@ -150,13 +157,14 @@ def parse_list(text):
     return v if isinstance(v, list) else []
 
 
-def build(works, llm, model, batch=15, max_lessons=MAX_LESSONS, ids_path=EVAL_IDS, learn_path=None):
+def build(works, llm, model, batch=15, max_lessons=MAX_LESSONS, ids_path=EVAL_IDS, learn_path=None,
+          excluded_path=EXCLUDED_IDS):
     """The snapshot dict for these work dirs (after the guard: no evaluation problem, and with `learn_path` none
     outside the learning set)."""
     import taxonomy
     from cvdp_agent.memory import canonical_hash
 
-    guard(works, ids_path, learn_path)
+    guard(works, ids_path, learn_path, excluded_path)
     rows = []
     for w in works:
         rows += taxonomy.rows_from_work(os.path.basename(os.path.normpath(w)) or "work", w)
@@ -210,10 +218,11 @@ def main(argv=None):
     ap.add_argument("--batch", type=int, default=15)
     ap.add_argument("--max-lessons", type=int, default=MAX_LESSONS)
     ap.add_argument("--eval-ids", default=EVAL_IDS)
+    ap.add_argument("--excluded-ids", default=EXCLUDED_IDS)
     ap.add_argument("--learn-ids", default=LEARN_IDS, help="the learning set ('' for no check, e.g. fixtures)")
     a = ap.parse_args(argv)
     llm = llm_mod.make(Config(provider=a.provider, model=a.model, fake_script=a.fake_script))
-    snap = build(a.work, llm, a.model, a.batch, a.max_lessons, a.eval_ids, a.learn_ids or None)
+    snap = build(a.work, llm, a.model, a.batch, a.max_lessons, a.eval_ids, a.learn_ids or None, a.excluded_ids)
     path = write(snap, a.out_dir)
     print(f"{len(snap['lessons'])} lessons from {snap['provenance']['attempts']} attempts -> {path} "
           f"(cost ${snap['provenance']['cost_usd']}, {snap['provenance']['cost_unreported_calls']} unreported)")

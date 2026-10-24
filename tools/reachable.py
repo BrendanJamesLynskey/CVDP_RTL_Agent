@@ -22,7 +22,8 @@ For each problem record (`harness` holds the hidden files, `prompt` and `context
    agent's fault, not the benchmark's.
 
 Usage: python3 tools/reachable.py <agentic.jsonl> --runs 'docs/reports/m3/runs/*.csv'
-           [--ids-out tools/m3b_eval_ids.txt] [--md-out docs/reports/m3b/unreachable.md]
+           [--ids-out tools/m3b_eval_ids.txt] [--excluded-out tools/m3b_excluded_ids.txt]
+           [--md-out docs/reports/m3b/unreachable.md]
 """
 import argparse
 import collections
@@ -207,6 +208,7 @@ def main(argv=None):
     ap.add_argument("dataset")
     ap.add_argument("--runs", default="docs/reports/m3/runs/*.csv")
     ap.add_argument("--ids-out")
+    ap.add_argument("--excluded-out", help="the unreachable ids (the lessons builder refuses these too)")
     ap.add_argument("--md-out")
     ap.add_argument("--json-out", help="every problem's handles check, for review")
     a = ap.parse_args(argv)
@@ -218,6 +220,11 @@ def main(argv=None):
             f.write("# M3b evaluation set: the agentic problems tools/reachable.py finds reachable "
                     f"({sum(not r['unreachable'] for r in rows)} of {len(rows)})\n")
             f.writelines(r["id"] + "\n" for r in rows if not r["unreachable"])
+    if a.excluded_out:
+        with open(a.excluded_out, "w") as f:
+            f.write("# M3b excluded agentic problems: the ones tools/reachable.py finds unreachable "
+                    f"({sum(r['unreachable'] for r in rows)} of {len(rows)}; see docs/reports/m3b/unreachable.md)\n")
+            f.writelines(r["id"] + "\n" for r in rows if r["unreachable"])
     md = report_md(rows, runs)
     if a.md_out:
         with open(a.md_out, "w") as f:

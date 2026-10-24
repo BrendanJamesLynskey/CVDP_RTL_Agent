@@ -2,6 +2,7 @@
 lessons memory (builder guard, retrieval, the memory column) and the sweep's new inputs. No test needs an LLM."""
 import csv
 import json
+import re
 import os
 import subprocess
 
@@ -245,6 +246,29 @@ def test_snapshot_builder_refuses_a_work_dir_with_an_evaluation_id(tmp_path):
     (work / repo / "harness" / str(int(n))).mkdir(parents=True)
     with pytest.raises(learn_lessons.EvalLeak):
         learn_lessons.guard([str(tmp_path / "work")])
+
+
+def test_snapshot_builder_refuses_an_excluded_agentic_problem_too(tmp_path):
+    excluded = learn_lessons.eval_ids(learn_lessons.EXCLUDED_IDS)
+    assert len(excluded) == 6 and not excluded & learn_lessons.eval_ids()
+    assert len(learn_lessons.forbidden_ids()) == 92  # all of the agentic split
+    pid = "cvdp_agentic_phase_rotation_0038"
+    assert pid in excluded
+    for how in ("raw", "dir"):
+        work = tmp_path / how / "work" / "seed1"
+        work.mkdir(parents=True)
+        if how == "raw":
+            (work / "raw_result.json").write_text(json.dumps({pid: {"tests": [{"result": 0}]}}))
+        else:
+            (work / "cvdp_agentic_phase_rotation" / "harness" / "38").mkdir(parents=True)
+        with pytest.raises(learn_lessons.EvalLeak):
+            learn_lessons.guard([str(tmp_path / how / "work")])
+
+
+def test_committed_excluded_ids_match_unreachable_md():
+    md = open(os.path.join(ROOT, "docs", "reports", "m3b", "unreachable.md")).read().split("**Kept")[0]
+    listed = {"cvdp_agentic_" + n for n in re.findall(r"^\| `([^`]+)` \|", md, re.M)}
+    assert listed == learn_lessons.eval_ids(learn_lessons.EXCLUDED_IDS)
 
 
 def test_snapshot_builder_refuses_a_problem_outside_the_learning_set(tmp_path):
