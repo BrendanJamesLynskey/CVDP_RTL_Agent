@@ -83,7 +83,13 @@ caps are the LangGraph agent's, checked before every call.
   of 15, for general lessons. Lessons are cut to at most 60 words, at most 40 in all, de-duplicated, and anything
   code-like is dropped. The snapshot is written to `docs/reports/m3b/lessons/lessons_<hash>.json`, where the hash
   is the SHA-256 (first 16 hex digits) of its canonical content; its provenance records the model, the attempts,
-  each call's cost and any unreported cost. **[waits on runs]**: the snapshot, its hash and its build cost.
+  each call's cost and any unreported cost. The snapshot used is
+  [`lessons_b783931cbf160595.json`](m3b/lessons/lessons_b783931cbf160595.json): 40 lessons (the cap) from 87
+  attempts (29 problems x 3 learning runs of arm A, 19 passed), 6 calls to `openai/gpt-6-luna`, $0.0031, none
+  unreported, built by the `learn_lessons.yml` workflow (run 40126242272) from sweeps 40120087602, 40120092696 and
+  40123128619. The lessons are general process advice (self-test before submitting, keep the specified interface,
+  fix the first diagnostic, rerun checks after the last edit) and several are near-duplicates that the exact-match
+  de-duplication keeps; the snapshot is used as built, not edited.
 - **No agentic problem is ever seen.** The builder refuses any work dir that holds one of the 92 agentic problems,
   the 86 of the evaluation set or the 6 excluded from it (`tools/m3b_excluded_ids.txt`, written by
   `reachable.py`), in `raw_result.json` or as a problem dir, before reading anything from it (`EvalLeak`; tested

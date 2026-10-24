@@ -1,0 +1,230 @@
+{
+ "hash": "b783931cbf160595",
+ "lessons": [
+  {
+   "id": "L01",
+   "text": "Treat compilation, lint, and synthesis as necessary but insufficient: run a focused self-test before submitting, especially after behavioral changes."
+  },
+  {
+   "id": "L02",
+   "text": "Build tests from the specification\u2019s corner cases, not just typical operation; check control-signal priority, reset behavior, stalls, and boundary conditions."
+  },
+  {
+   "id": "L03",
+   "text": "Use the interface documentation and existing instantiations to verify every required port, parameter, width, and connection before implementing or changing a module."
+  },
+  {
+   "id": "L04",
+   "text": "When a hidden test exposes a behavioral bug, trace the exact failing condition and add a regression for it; do not rely on a broad implementation plan alone."
+  },
+  {
+   "id": "L05",
+   "text": "For arithmetic and counters, verify operand widths, signedness, overflow, and wraparound explicitly rather than assuming the language infers the intended behavior."
+  },
+  {
+   "id": "L06",
+   "text": "For asynchronous or buffered designs, test empty/full transitions, simultaneous activity, pointer wraparound, and data integrity across clock domains."
+  },
+  {
+   "id": "L07",
+   "text": "If repeated tool checks fail, inspect the first diagnostic and resolve the underlying build issue before spending more turns on speculative edits."
+  },
+  {
+   "id": "L08",
+   "text": "Treat the first compile or lint failure as a blocker: inspect the full diagnostic, fix its root cause, and rerun the exact failing check before making more changes."
+  },
+  {
+   "id": "L09",
+   "text": "Read the specification and existing implementation before editing. Trace how the changed logic connects to surrounding modules, reset behavior, and handshakes instead of patching from a guessed symptom."
+  },
+  {
+   "id": "L10",
+   "text": "Preserve specified module interfaces and any externally observed hierarchy, signal, and parameter names; verify them against the spec before submitting."
+  },
+  {
+   "id": "L11",
+   "text": "Test the behavior hidden tests are likely to exercise, not just syntax: cover reset, boundary cases, transaction completion, and interactions across module boundaries."
+  },
+  {
+   "id": "L12",
+   "text": "Run a focused self-check after each meaningful change, then run the full available checks. A passing compile or a narrow test does not establish functional correctness."
+  },
+  {
+   "id": "L13",
+   "text": "When a test fails, use its first failing assertion to trace the expected behavior through the design and integration; do not assume a locally plausible implementation satisfies the system-level contract."
+  },
+  {
+   "id": "L14",
+   "text": "Use the available turn budget to converge: prefer a small, reviewable change and reserve time for a final compile, lint, and relevant behavioral test."
+  },
+  {
+   "id": "L15",
+   "text": "Treat the specification\u2019s interface as exact: preserve required ports, parameters, module names, and any hierarchy the testbench may inspect."
+  },
+  {
+   "id": "L16",
+   "text": "Derive behavior from the specification and existing design conventions; do not assume standard defaults or address and state interpretations."
+  },
+  {
+   "id": "L17",
+   "text": "Resolve compile and lint failures before submission. A passing synthesis run or local testbench does not make other build failures safe to ignore."
+  },
+  {
+   "id": "L18",
+   "text": "Make self-checks exercise boundary cases, reset and recovery, and simultaneous or invalid operations\u2014not just typical successful transactions."
+  },
+  {
+   "id": "L19",
+   "text": "Keep required source-file and submodule organization intact, and verify the design with the same kinds of build checks the submission harness is likely to use."
+  },
+  {
+   "id": "L20",
+   "text": "Work incrementally: make a focused change, run the relevant checks, and fix the first failure before adding more changes."
+  },
+  {
+   "id": "L21",
+   "text": "Budget time for validation; repeated failed tool runs without narrowing the cause are less useful than a minimal fix followed by a targeted test."
+  },
+  {
+   "id": "L22",
+   "text": "Treat synthesis failures as unresolved defects, even when compilation and lint pass. Do not submit until every required build check succeeds or you understand and justify a tool limitation."
+  },
+  {
+   "id": "L23",
+   "text": "Build a self-checking testbench before submission. Exercise the full behavioral contract, including corner cases, reset, stalls, and each supported operation\u2014not just compilation or a few typical inputs."
+  },
+  {
+   "id": "L24",
+   "text": "When a self-check fails, use the failing case to isolate the defect, then rerun the complete test suite after each fix. Do not submit with a known failing test."
+  },
+  {
+   "id": "L25",
+   "text": "For arithmetic and encoding logic, test boundary values and combinations that challenge ordering, alignment, signedness, rounding, and special cases against an independent reference."
+  },
+  {
+   "id": "L26",
+   "text": "Read the specification and existing project structure before editing. Preserve required interfaces, hierarchy, and externally inspected internal objects unless the task explicitly permits changing them."
+  },
+  {
+   "id": "L27",
+   "text": "Keep changes focused, and verify that reset behavior, handshakes, and state updates match the stated timing and polarity conventions."
+  },
+  {
+   "id": "L28",
+   "text": "Manage time for validation: reserve turns for resolving build and test failures rather than spending the entire budget on implementation."
+  },
+  {
+   "id": "L29",
+   "text": "Read the specification and interface tables before editing. Preserve exact port names, widths, parameters, and expected hierarchy; hidden tests may access them directly."
+  },
+  {
+   "id": "L30",
+   "text": "For a repair task, trace the existing implementation and its dependencies before changing it. Make the smallest targeted fix rather than rewriting surrounding logic."
+  },
+  {
+   "id": "L31",
+   "text": "Use related, working designs as references for protocol conventions, but verify that their behavior matches the current specification."
+  },
+  {
+   "id": "L32",
+   "text": "Treat compile, lint, and synthesis failures as blockers. Resolve warnings or tool incompatibilities that indicate questionable RTL before submitting."
+  },
+  {
+   "id": "L33",
+   "text": "Build self-checks around protocol corner cases, not just typical transfers: independent handshakes, backpressure, reset, simultaneous events, and boundary conditions."
+  },
+  {
+   "id": "L34",
+   "text": "After the final edit, rerun the checks and testbench. A passing test from before the last change does not validate the submitted design."
+  },
+  {
+   "id": "L35",
+   "text": "Check timing and accounting carefully: verify when state updates occur and that events arriving together, or while output is blocked, are neither lost nor duplicated."
+  },
+  {
+   "id": "L36",
+   "text": "Treat compiler and linter failures as blockers: inspect the first diagnostic, make a focused correction, and rerun checks before attempting further RTL changes."
+  },
+  {
+   "id": "L37",
+   "text": "Turn the specification and any failure description into a precise cycle-by-cycle expectation; do not rely on a plausible diagnosis without checking the surrounding control logic."
+  },
+  {
+   "id": "L38",
+   "text": "Run a focused testbench for the reported behavior, then add cases for reset, stalls, boundary conditions, and competing transactions where relevant."
+  },
+  {
+   "id": "L39",
+   "text": "Check timing as well as values: verify when state and counters advance, especially around valid/ready handshakes and phase transitions."
+  },
+  {
+   "id": "L40",
+   "text": "After the final edit, rerun compilation and the relevant tests; earlier passing checks do not validate later changes."
+  }
+ ],
+ "provenance": {
+  "attempts": 87,
+  "batches": 6,
+  "calls": [
+   {
+    "attempts": 15,
+    "batch": 0,
+    "completion_tokens": 330,
+    "cost_usd": 0.000472925,
+    "prompt_tokens": 2464,
+    "provider": "OpenAI"
+   },
+   {
+    "attempts": 15,
+    "batch": 1,
+    "completion_tokens": 377,
+    "cost_usd": 0.000505425,
+    "prompt_tokens": 2536,
+    "provider": "OpenAI"
+   },
+   {
+    "attempts": 15,
+    "batch": 2,
+    "completion_tokens": 504,
+    "cost_usd": 0.0005473,
+    "prompt_tokens": 2363,
+    "provider": "OpenAI"
+   },
+   {
+    "attempts": 15,
+    "batch": 3,
+    "completion_tokens": 468,
+    "cost_usd": 0.00054355,
+    "prompt_tokens": 2477,
+    "provider": "OpenAI"
+   },
+   {
+    "attempts": 15,
+    "batch": 4,
+    "completion_tokens": 372,
+    "cost_usd": 0.00049255,
+    "prompt_tokens": 2453,
+    "provider": "OpenAI"
+   },
+   {
+    "attempts": 12,
+    "batch": 5,
+    "completion_tokens": 483,
+    "cost_usd": 0.000509175,
+    "prompt_tokens": 2142,
+    "provider": "OpenAI"
+   }
+  ],
+  "cost_unreported_calls": 0,
+  "cost_usd": 0.00307092,
+  "learning_set": "m3b_learn_in_roots_ids.txt",
+  "model": "openai/gpt-6-luna",
+  "passed": 19,
+  "problems": 29,
+  "work_dirs": [
+   "learn_40120087602",
+   "learn_40120092696",
+   "learn_40123128619"
+  ]
+ }
+}
