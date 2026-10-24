@@ -203,8 +203,8 @@ with the fixture snapshot `0ceb24db0ad46853`. These check the harness and the me
 | C | 40089719945 | langgraph | fixture | 5/10 | $0.0637 | 0 | 418 | submit 10 |
 | D | 40089721671 | deepagents | fixture | 6/10 | $0.0636 | 0 | 520 | submit 8, max_turns 2 |
 
-Total **$0.1854** of the $1.50 allowed (the key's `usage` moved by the same amount over B's run: 18.369717 →
-18.427809).
+Total **$0.1855** of the $1.50 allowed: exactly $0.18545755, the sum of the 30 per-problem costs (the three run
+totals above are each rounded). The key's `usage` moved by the same amount over B's run (18.369717 → 18.427809).
 
 Per problem (pass, then model calls):
 
