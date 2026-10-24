@@ -107,6 +107,30 @@
    }
   ]
  },
+ "cvdp_agentic_tax_signal_missing_hidden_0001": {
+  "category": "cid003",
+  "difficulty": "medium",
+  "agent_status": "completed",
+  "tests": [
+   {
+    "result": 1,
+    "log": "/x/cvdp_agentic_tax_signal_missing_hidden/reports/1.txt",
+    "execution": 1.0
+   }
+  ]
+ },
+ "cvdp_agentic_tax_signal_in_message_0001": {
+  "category": "cid003",
+  "difficulty": "medium",
+  "agent_status": "completed",
+  "tests": [
+   {
+    "result": 1,
+    "log": "/x/cvdp_agentic_tax_signal_in_message/reports/1.txt",
+    "execution": 1.0
+   }
+  ]
+ },
  "cvdp_agentic_tax_tests_failed_selfcheck_passed_0001": {
   "category": "cid003",
   "difficulty": "medium",

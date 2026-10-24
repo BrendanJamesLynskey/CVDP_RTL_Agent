@@ -1,0 +1,14 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-8.3.2, pluggy-1.5.0
+rootdir: /code/rundir
+collected 1 item
+
+src/test_runner.py      0.00ns INFO     cocotb.gpi                         Running on Icarus Verilog version 13.0
+     0.00ns INFO     cocotb                             Running tests
+     0.00ns INFO     cocotb.regression                  running test_bcast (1/1)
+    assert dut.m_axis_tvalid_1.value == 1, f"[ERROR] m_axis_tvalid value is : {dut.m_axis_tvalid.value}"
+    raise AttributeError(f"{self._path} contains no child object named {name}")
+AttributeError: axis_broadcast contains no child object named m_axis_tvalid. Did you mean: 's_axis_tvalid'?
+    28.00ns INFO     cocotb.regression                  TESTS=1 PASS=0 FAIL=1 SKIP=0
+FAILED src/test_runner.py::test_axis_broadcast[0] - SystemExit: 1
+============================== 1 failed in 0.56s ===============================

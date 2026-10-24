@@ -33,6 +33,21 @@ LOGS = {
     "]' returned non-zero exit status 1.\n"
     "error: Unable to find the root module \"axis_to_uart_tx\" in the Verilog source.\n"
     "============================== 1 failed in 0.52s ===============================\n",
+    "signal_missing": SESSION + COCOTB.format(t="regs") +
+    "    assert dut.enable.value == 1, \"[ERROR] Control register enable not set\"\n"
+    "    raise AttributeError(f\"{self._path} contains no child object named {name}\")\n"
+    "AttributeError: ttc_counter_lite contains no child object named enable\n"
+    "    80.00ns INFO     cocotb.regression                  TESTS=1 PASS=0 FAIL=1 SKIP=0\n"
+    "FAILED src/test_runner.py::test_areg_param[0] - SystemExit: 1\n"
+    "============================== 1 failed in 1.26s ===============================\n",
+    # the check fails, then its f-string message reads a handle the design lacks: still tests_failed
+    "signal_in_message": SESSION + COCOTB.format(t="bcast") +
+    "    assert dut.m_axis_tvalid_1.value == 1, f\"[ERROR] m_axis_tvalid value is : {dut.m_axis_tvalid.value}\"\n"
+    "    raise AttributeError(f\"{self._path} contains no child object named {name}\")\n"
+    "AttributeError: axis_broadcast contains no child object named m_axis_tvalid. Did you mean: 's_axis_tvalid'?\n"
+    "    28.00ns INFO     cocotb.regression                  TESTS=1 PASS=0 FAIL=1 SKIP=0\n"
+    "FAILED src/test_runner.py::test_axis_broadcast[0] - SystemExit: 1\n"
+    "============================== 1 failed in 0.56s ===============================\n",
     "sim_incomplete": SESSION + COCOTB.format(t="fifo_full") +
     "   200.00ns INFO     cocotb.fifo                        writing 64 words\n"
     "   850.00ns INFO     cocotb.fifo                        waiting for full flag\n",
@@ -79,6 +94,9 @@ CASES = {
                          "build_failed", "compile_fail_own"),
     "compile_fail_hidden": ("submit", ["rtl/dut.sv"], True, [EDIT, compile_ev(0), tb_ev(True)], "build_failed",
                             "compile_fail_hidden"),
+    "signal_missing_hidden": ("submit", ["rtl/dut.sv"], True, [EDIT, compile_ev(0), tb_ev(True)],
+                              "signal_missing", ""),
+    "signal_in_message": ("submit", ["rtl/dut.sv"], True, [EDIT, compile_ev(0)], "signal_in_message", ""),
     "tests_failed_selfcheck_passed": ("submit", ["rtl/dut.sv"], True, [EDIT, compile_ev(0), tb_ev(True)],
                                       "tests_failed", "tests_failed_selfcheck_passed"),
     "tests_failed_selfcheck_failed": ("submit", ["rtl/dut.sv"], True, [EDIT, compile_ev(0), tb_ev(False)],

@@ -13,13 +13,15 @@ solved problem ($0.011 against $0.018–0.021); DeepSeek is about 10 problems be
 result between two identical runs, so gaps of a few problems mean nothing. The null agent passes none. All of M2
 cost $8.55. Milestone 1 report: [`docs/reports/M1_report.md`](docs/reports/M1_report.md).
 
-**M3** (in review, [`docs/reports/M3_report.md`](docs/reports/M3_report.md)): the ablation and failure tools.
-`tools/ablate.py` compares an agent configuration with the base on the same problems, as a paired effect with a
-problem-bootstrap interval and a sign test, and draws the cost/pass-rate Pareto chart. `tools/taxonomy.py` gives
-every failure one deterministic label from the harness log, the trace and the summary. The seven arms (gpt-6-luna,
-2 runs each) are being run; until they are in, the report's tables use M2's data. The noise floor is M2's two Luna
-runs, with the same settings on different runners, a conservative floor: no detectable effect, −1.1 points
-[−7.6, +5.4].
+**M3** (report in review, [`docs/reports/M3_report.md`](docs/reports/M3_report.md), 24 October 2026): six changes to
+the agent, 2 runs each on all 92 problems, compared with the base on the same problems. **None changed the pass
+rate by a detectable amount**: self-check off −1.1 points [−6.0, +4.3], lint off −1.6 [−6.5, +3.3], both off −1.6,
+5 turns −0.5, 20 turns +3.8 [−1.1, +9.2], a $0.02 budget −1.6. Lint off costs 38–59% more per solved problem.
+With self-check on, the agent ran its own testbench on only a third of the problems, and its testbench passed in
+61 of 73 failed submissions where it ran. Of 565 failures, 147 are interface mismatches with the hidden testbench
+(a hidden build failure, or a port, signal or parameter the design names differently); they cover 10 of the 24
+problems no run has solved. M3 cost $8.25. `tools/ablate.py` gives paired effects and the Pareto chart;
+`tools/taxonomy.py` gives each failure one deterministic label.
 
 **M2a** (merged, [`docs/reports/M2a_report.md`](docs/reports/M2a_report.md)): reasoning limits, a retry on empty
 replies and unreadable decisions, and seeds. On the same 10 problems on Arm64, DeepSeek at `reasoning=off` passed
@@ -212,7 +214,7 @@ empty (an old ledger and the harness's reuse of `raw_result.json` would make the
   `ablate.py` (paired comparison of arms against a base on the same problems: effect with a problem-bootstrap
   interval, better/worse counts, an exact sign test, and the Pareto CSV and SVG), `taxonomy.py` (one deterministic
   failure label per failed problem and run, from logs, trace and summary; `collect.py` writes it as
-  `failure_label`), `key_usage.py` (the key's `usage` only), `models.py` (whether OpenRouter model IDs exist, their prices, context and `reasoning` support, from the public model list), `pick_ids.py` (the seeded M1 sample, `m1_ids.txt`), `amba_scan.py` and `amba_ids.txt`,
+  `failure_label`), `behaviour.py` (testbench use, turns and stop reasons per run), `key_usage.py` (the key's `usage` only), `models.py` (whether OpenRouter model IDs exist, their prices, context and `reasoning` support, from the public model list), `pick_ids.py` (the seeded M1 sample, `m1_ids.txt`), `amba_scan.py` and `amba_ids.txt`,
   `inventory.py`.
 - [`tests/`](tests/): the graph with the fake provider (stop rules, path refusal, budget, best edit kept, switches),
   trace redaction, the results tools on a fixture, and the README graph drift test.
