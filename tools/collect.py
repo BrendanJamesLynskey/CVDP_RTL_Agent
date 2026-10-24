@@ -28,7 +28,9 @@ FIELDS = ["label", "id", "seed", "cid", "difficulty", "pass", "tests", "tests_pa
           "empty_retries", "reflect_parse_retries", "providers", "runner", "summary_found",
           # M3: the failure taxonomy's evidence (tools/taxonomy.py) and its label for a failed problem
           "rtl_changed", "own_compile_last", "selfcheck_runs", "selfcheck_last", "log_class", "failure_label",
-          "failure_flags"]
+          "failure_flags",
+          # M3b: the lessons snapshot's hash, blank with no memory (always the last column)
+          "memory"]
 
 
 import taxonomy  # noqa: E402  (after the path insert; taxonomy imports collect lazily)
@@ -123,6 +125,7 @@ def rows(work, dataset=None, runner="", model="", seed="", reasoning_hint=""):
             row["failure_label"], row["failure_flags"] = primary, "+".join(flags)
         else:
             row["failure_label"] = row["failure_flags"] = ""
+        row["memory"] = s.get("memory") or ""
     return out
 
 

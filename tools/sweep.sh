@@ -35,6 +35,8 @@ REASONING=${REASONING:-low}          # default | low | medium | high | off
 SEEDS=${SEEDS:-1}
 SEED_OFFSET=${SEED_OFFSET:-0}
 PROVIDER_ORDER=${PROVIDER_ORDER:-}   # OpenRouter providers, comma-separated, tried in order with no fallbacks
+HARNESS=${HARNESS:-langgraph}        # langgraph (the M1-M3 agent) | deepagents (M3b)
+MEMORY=${MEMORY:-}                   # a lessons snapshot in the repo (tools/learn_lessons.py); blank = none
 STEP_BUDGET_S=${STEP_BUDGET_S:-}
 SEED_PROBLEM_WORST_S=${SEED_PROBLEM_WORST_S:-660}
 T0=$(date +%s)
@@ -58,6 +60,11 @@ esac
 [ -z "$STEP_BUDGET_S" ] || int STEP_BUDGET_S "$STEP_BUDGET_S"
 int SEED_PROBLEM_WORST_S "$SEED_PROBLEM_WORST_S"
 [[ "$PROVIDER_ORDER" =~ ^[A-Za-z0-9\ ._,/-]*$ ]] || die "PROVIDER_ORDER has unexpected characters: '$PROVIDER_ORDER'"
+case "$HARNESS" in langgraph|deepagents) ;; *) die "HARNESS must be langgraph or deepagents, got '$HARNESS'" ;; esac
+if [ -n "$MEMORY" ]; then
+  [[ "$MEMORY" =~ ^[A-Za-z0-9._/-]+\.json$ ]] || die "MEMORY must be a path to a .json snapshot, got '$MEMORY'"
+  [ -f "$MEMORY" ] || die "MEMORY: no such file '$MEMORY'"
+fi
 [[ "$MODEL" =~ ^[A-Za-z0-9._:/-]+$ ]] || die "MODEL has unexpected characters: '$MODEL'"
 case "$PHASE" in all|run|collect) ;; *) die "phase must be all, run or collect" ;; esac
 
@@ -90,13 +97,23 @@ run_phase() {
     "$BUDGET_USD" "$n" "$SEEDS"); fi
   printf '{"problems": %s, "seeds": %s, "seed_offset": %s, "run_budget_usd": %s, "model": "%s", "reasoning": "%s", "provider_order": "%s"}\n' \
     "$n" "$SEEDS" "$SEED_OFFSET" "$guard" "$MODEL" "$REASONING" "$PROVIDER_ORDER" > "$work.run.json"
+  python3 - "$work.run.json" "$HARNESS" "$MEMORY" <<'EOF'
+import json, sys
+run = json.load(open(sys.argv[1]))
+run.update(harness=sys.argv[2], memory=sys.argv[3])
+json.dump(run, open(sys.argv[1], "w"))
+EOF
 
   if [ "$MODEL" = fake ]; then export CVDP_PROVIDER=fake; else export CVDP_PROVIDER=openrouter; fi
   export CVDP_MODEL="$MODEL" CVDP_BUDGET_USD="$BUDGET_USD" CVDP_MAX_TURNS="$MAX_TURNS" CVDP_SELF_CHECK="$SELF_CHECK" \
     CVDP_LINT="$LINT" CVDP_LEDGER_DIR=/ledger CVDP_RUN_BUDGET_USD="$guard" CVDP_REASONING="$REASONING" \
-    CVDP_PROVIDER_ORDER="$PROVIDER_ORDER"
+    CVDP_PROVIDER_ORDER="$PROVIDER_ORDER" CVDP_HARNESS="$HARNESS"
   export CVDP_AGENT_MOUNTS="$ledger:/ledger"
-  export CVDP_AGENT_ENV=CVDP_PROVIDER,CVDP_MODEL,CVDP_BUDGET_USD,CVDP_MAX_TURNS,CVDP_SELF_CHECK,CVDP_LINT,CVDP_LEDGER_DIR,CVDP_RUN_BUDGET_USD,CVDP_REASONING,CVDP_SEED,CVDP_PROVIDER_ORDER
+  if [ -n "$MEMORY" ]; then  # the snapshot, read-only, at /memory/<its name> in the agent's container
+    export CVDP_MEMORY="/memory/$(basename "$MEMORY")"
+    export CVDP_AGENT_MOUNTS="$CVDP_AGENT_MOUNTS;$(cd "$(dirname "$MEMORY")" && pwd)/$(basename "$MEMORY"):$CVDP_MEMORY:ro"
+  fi
+  export CVDP_AGENT_ENV=CVDP_PROVIDER,CVDP_MODEL,CVDP_BUDGET_USD,CVDP_MAX_TURNS,CVDP_SELF_CHECK,CVDP_LINT,CVDP_LEDGER_DIR,CVDP_RUN_BUDGET_USD,CVDP_REASONING,CVDP_SEED,CVDP_PROVIDER_ORDER,CVDP_HARNESS,CVDP_MEMORY
   if [ "$CVDP_PROVIDER" = openrouter ]; then
     test -n "${OPENROUTER_API_KEY:-}" || die "OPENROUTER_API_KEY is not set"
     export CVDP_AGENT_ENV="OPENROUTER_API_KEY,$CVDP_AGENT_ENV"

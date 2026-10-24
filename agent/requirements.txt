@@ -3,3 +3,6 @@ langchain-core==1.7.0
 langchain-openai==1.7.2
 openai==3.37.0
 httpx==0.28.1
+# M3b: the Deep Agents harness (CVDP_HARNESS=deepagents); imported only by that harness
+deepagents==0.7.32
+langchain==1.4.7
