@@ -314,6 +314,11 @@ never occurred in the real runs: `compile_fail_hidden` appears as a secondary fl
 - **M4 (write-up):** report the free split on its own terms. The published leaderboard rows are for full CVDP with
   commercial tools. M3's headline is that none of the agent's settings mattered on this split, and why: the
   failures sit in the interface and in weak self-checks.
+  **Correction (2026-10-25).** This is wrong: LBC-bench (https://lbc-bench.si2.org) has three rows on exactly
+  these 92 problems of release 1.1.0 (`agentic_code_generation_no_commercial`): 48, 52 and 53 of 92, one run each,
+  marked not independently verified ([leaderboards.json at b835413](https://github.com/si2org/lbc-bench.github.io/blob/b8354131ba89f915f5f940a3300a06777ebe1e98/data/leaderboards.json)).
+  They land in the same range as the sweeps here (41 to 56 of 92). The story page's "How this compares" section
+  sets them side by side with their caveats; the M3b report does too.
 
 ## Known gaps
 
