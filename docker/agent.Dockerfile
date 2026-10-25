@@ -20,7 +20,9 @@ RUN useradd --system --no-create-home --shell /usr/sbin/nologin cvdptool
 ENV CVDP_TOOL_USER=cvdptool
 
 COPY agent/cvdp_agent /opt/agent/cvdp_agent
+# M3c: the mutation gate needs Yosys' `mutate -ctrl` (core Yosys since 0.9); the interface check needs pyslang
 RUN command -v iverilog && command -v verilator && command -v yosys && python3 -c "import cocotb_tools" && \
+    yosys -h mutate | grep -q -- "-ctrl" && /opt/agent/venv/bin/python -c "import pyslang" && \
     cd /opt/agent && /opt/agent/venv/bin/python -m cvdp_agent --mermaid > /dev/null
 
 WORKDIR /code

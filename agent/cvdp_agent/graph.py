@@ -1,5 +1,9 @@
 """The agent graph: read_task -> plan -> edit -> check -> reflect -> (edit | finalize).
 
+M3c adds two fixed steps, each only when its switch is on: `interface` between edit and check (interface_check:
+the design's interface by elaboration against the given one, shown to reflect like lint), and `gate` between a
+submit and finalize (mutation_gate: the agent's own testbench must kill half of 12 mutants of its design).
+
 Stop rules are checked in code before every step: turn cap, per-problem budget (provider-reported cost), a call
 whose cost was not reported, and wall time. On any stop, and on a crash, finalize keeps the best edit so far (the
 last one that compiled), writes the summary and the ledger entry, and the process exits 0."""
@@ -73,6 +77,7 @@ class State(TypedDict, total=False):
     decision: str
     reason: str
     stop_reason: str
+    interface: dict  # M3c: the last interface check's result
 
 
 class Runtime:
@@ -113,6 +118,15 @@ class Runtime:
         self.finished = None    # set once finish() has written the summary
         self.ledger_name = f"{uuid.uuid4().hex}.json"  # one entry per problem, rewritten as the cost grows
         self.last_state = {}
+        # M3c: the interface check and the mutation gate, and what they did (summary fields only when on)
+        self.iface = None
+        self.iface_stats = {"interface_runs": 0, "interface_mismatch_runs": 0, "interface_kinds": {},
+                            "interface_engines": {}, "interface_blocks": 0, "interface_mismatch_unresolved": False}
+        self.iface_seen = {}     # mismatch set -> how many checks reported it
+        self.last_tb = None      # the testbench of the last testbench check that ran
+        self.gate_stats = {"gate_runs": 0, "gate_outcomes": [], "gate_failures": 0, "gate_overridden": False,
+                           "mutants_generated": 0, "mutants_compiled": 0, "mutants_killed": 0,
+                           "mutants_unfinished": 0, "gate_wall_s": 0.0, "gate_methods": []}
 
     # ---------- stop rules ----------
     def elapsed(self):
@@ -302,6 +316,19 @@ def build(rt):
         rt.tracer.log("tool", check="read_task", command="list /code", exit_code=0,
                       output=truncate("\n".join(listing), 3000), tools=rt.tools)
         out = {"task": task, "listing": listing, "turn": 0}
+        if cfg.interface_check:  # the given interface is read now, before any edit changes the original files
+            from .interface import InterfaceCheck
+
+            try:
+                rt.iface = InterfaceCheck(cfg.root, timeout_s=min(30.0, cfg.tool_timeout_s), env=checks_mod.tool_env(),
+                                          user=getattr(rt.checker, "user", None))
+                given = {m: {"source": v["source"], "ports": sorted(v["ports"]), "params": sorted(v["params"])}
+                         for m, v in rt.iface.given.items()}
+                rt.tracer.log("tool", check="interface_given", command="read prompt, docs/, rtl/, verif/",
+                              exit_code=0, output=truncate(json.dumps(given), 3000))
+            except Exception as e:  # the check is then skipped; the problem goes on
+                rt.tracer.log("tool", check="interface_given", command="read prompt, docs/, rtl/, verif/",
+                              exit_code=1, output=truncate(f"{type(e).__name__}: {e}", 1000))
         if run_budget_exhausted(cfg, rt.tracer):
             out["stop_reason"] = "run_budget_exhausted"
         return out
@@ -377,8 +404,39 @@ def build(rt):
         return {"turn": turn, "changed": changed, "edit_errors": errors, "requested": requested, "tb": tb,
                 "checked": False}
 
+    def interface(state):
+        """M3c: elaborate the RTL and compare its interface with the given one. Never blocks by itself."""
+        if rt.iface is None:
+            res = {"ok": None, "summary": "the given interface could not be read", "findings": [], "engine": None}
+        else:
+            try:
+                res = rt.iface.check()
+            except Exception as e:
+                res = {"ok": None, "summary": f"interface check failed: {type(e).__name__}", "findings": [],
+                       "engine": None}
+        st = rt.iface_stats
+        st["interface_runs"] += 1
+        eng = res.get("engine") or "none"
+        st["interface_engines"][eng] = st["interface_engines"].get(eng, 0) + 1
+        if res.get("findings"):
+            from .interface import mismatch_key
+
+            st["interface_mismatch_runs"] += 1
+            for f in res["findings"]:
+                st["interface_kinds"][f["kind"]] = st["interface_kinds"].get(f["kind"], 0) + 1
+            key = mismatch_key(res)
+            rt.iface_seen[key] = rt.iface_seen.get(key, 0) + 1
+        rt.tracer.log("tool", check="interface", command=f"elaborate rtl/ ({eng})", exit_code={True: 0, False: 1}.get(
+            res.get("ok")), turn=state.get("turn"), output=truncate(res.get("summary", ""), 3000),
+            findings=len(res.get("findings", [])), engine=res.get("engine"))
+        return {"interface": res}
+
     def check(state):
         results = rt.checker.run(state.get("requested", []), state.get("tb"))
+        if cfg.interface_check and state.get("interface"):
+            results["interface"] = {"ok": state["interface"].get("ok"), "summary": state["interface"]["summary"]}
+        if (results.get("testbench") or {}).get("ok") is not None:
+            rt.last_tb = state.get("tb")
         compiled = results.get("compile", {}).get("ok")
         if compiled:
             rt.best = rt.files.snapshot()
@@ -408,28 +466,98 @@ def build(rt):
                 return {"stop_reason": "llm_error"}
             d = parse_decision(r.text)
         rt.log_llm("reflect", r, state, decision=d["decision"])
+        if d["decision"] == "submit" and cfg.interface_check:
+            from .interface import mismatch_key
+
+            key = mismatch_key(state.get("interface"))
+            room = state.get("turn", 0) < cfg.max_turns and not rt.llm_cap()  # else the submit goes through
+            if key and rt.iface_seen.get(key, 0) < 2 and room:  # reported once: one more edit before submitting
+                rt.iface_stats["interface_blocks"] += 1
+                rt.tracer.log("tool", check="interface_block", command="submit", exit_code=1,
+                              output="interface mismatches reported once: edit again (submitting is allowed after "
+                                     "the same mismatches are reported twice)")
+                d = {"decision": "edit_again", "reason": "The interface check found mismatches with the given "
+                     "interface (above). Fix the names, ports, parameters or widths, or leave them if the task asks "
+                     "for them: submitting is allowed once the same mismatches are reported twice. "
+                     + d["reason"]}
         out = {"decision": d["decision"], "reason": d["reason"]}
         if d["decision"] in ("submit", "give_up"):
             out["stop_reason"] = d["decision"]
         return out
 
+    def gate(state):
+        """M3c: the mutation-score gate on a submit. A failure goes back to reflect with the survivors; after
+        cfg.gate_max_failures failures the agent submits anyway (gate_overridden)."""
+        st = rt.gate_stats
+        if st["gate_failures"] >= cfg.gate_max_failures:
+            st["gate_overridden"] = True
+            rt.tracer.log("tool", check="gate_override", command="submit", exit_code=0,
+                          output=f"the gate failed {st['gate_failures']} times: submitting anyway")
+            return {}
+        from .mutation import MutationGate
+
+        g = MutationGate(cfg.root, rt.tracer, rt.tools, n=cfg.gate_mutants, seed=cfg.gate_seed,
+                         threshold=cfg.gate_threshold, bound_s=cfg.gate_s, clock=rt.clock, time_left=rt.time_left,
+                         user=getattr(rt.checker, "user", None))
+        try:
+            res = g.run(rt.last_tb)
+        except Exception as e:  # a gate that breaks never blocks the submission
+            res = {"outcome": "skipped", "ok": None, "note": f"{type(e).__name__}: {e}",
+                   "summary": f"mutation gate: not applied ({type(e).__name__})", "generated": 0, "compiled": 0,
+                   "killed": 0, "unfinished": 0, "wall_s": 0.0, "method": None}
+            rt.tracer.log("error", error=truncate(redact(f"gate: {type(e).__name__}: {e}"), 2000))
+        st["gate_runs"] += 1
+        st["gate_outcomes"].append(res["outcome"])
+        for k in ("generated", "compiled", "killed", "unfinished"):
+            st[f"mutants_{k}"] += res.get(k, 0)
+        st["gate_wall_s"] = round(st["gate_wall_s"] + res.get("wall_s", 0.0), 2)
+        if res.get("method"):
+            st["gate_methods"].append(res["method"])
+        results = {**state.get("results", {}), "mutation_gate": {"ok": res["ok"], "summary": res["summary"]}}
+        if res["ok"] is False:
+            st["gate_failures"] += 1
+            if rt.llm_cap() or rt.elapsed() >= cfg.wall_s:  # no budget or time for another reflect: submit
+                st["gate_overridden"] = True
+                rt.tracer.log("tool", check="gate_override", command="submit", exit_code=0,
+                              output=f"the gate failed, and {rt.llm_cap() or 'wall_time'} leaves no room to "
+                                     "reflect again: submitting anyway")
+                return {"results": results}
+            return {"results": results, "stop_reason": "", "decision": "gate_failed",
+                    "reason": "The mutation gate failed (above)."}
+        return {"results": results}
+
     def finalize(state):
         return finish(rt, state)
 
     g = StateGraph(State)
-    for name, fn in (("read_task", read_task), ("plan", plan), ("edit", edit), ("check", check),
-                     ("reflect", reflect), ("finalize", finalize)):
+    nodes = [("read_task", read_task), ("plan", plan), ("edit", edit), ("check", check), ("reflect", reflect),
+             ("finalize", finalize)]
+    if cfg.interface_check:
+        nodes.insert(3, ("interface", interface))
+    if cfg.mutation_gate:
+        nodes.insert(-1, ("gate", gate))
+    for name, fn in nodes:
         g.add_node(name, fn)
+    after_edit = "interface" if cfg.interface_check else "check"
     g.add_edge(START, "read_task")
     g.add_conditional_edges("read_task", lambda s: "finalize" if s.get("stop_reason") else rt.go(s, "plan"),
                             ["plan", "finalize"])
     g.add_conditional_edges("plan", lambda s: "finalize" if s.get("stop_reason") else rt.go(s, "edit"),
                             ["edit", "finalize"])
-    g.add_conditional_edges("edit", lambda s: "finalize" if s.get("stop_reason") else rt.go(s, "check"),
-                            ["check", "finalize"])
+    g.add_conditional_edges("edit", lambda s: "finalize" if s.get("stop_reason") else rt.go(s, after_edit),
+                            [after_edit, "finalize"])
+    if cfg.interface_check:
+        g.add_conditional_edges("interface", lambda s: rt.go(s, "check"), ["check", "finalize"])
     g.add_conditional_edges("check", lambda s: rt.go(s, "reflect"), ["reflect", "finalize"])
-    g.add_conditional_edges("reflect", lambda s: "finalize" if s.get("stop_reason") else rt.go(s, "edit"),
-                            ["edit", "finalize"])
+    if cfg.mutation_gate:
+        g.add_conditional_edges("reflect", lambda s: (rt.go(s, "gate") if s.get("stop_reason") == "submit" else
+                                                      "finalize") if s.get("stop_reason") else rt.go(s, "edit"),
+                                ["edit", "gate", "finalize"])
+        g.add_conditional_edges("gate", lambda s: "finalize" if s.get("stop_reason") else rt.go(s, "reflect"),
+                                ["reflect", "finalize"])
+    else:
+        g.add_conditional_edges("reflect", lambda s: "finalize" if s.get("stop_reason") else rt.go(s, "edit"),
+                                ["edit", "finalize"])
     g.add_edge("finalize", END)
     return g.compile()
 
@@ -501,7 +629,13 @@ def write_summary(rt, summary):
 
 
 def make_summary(rt, state, stop, kept, compiled):
-    return {**_summary(rt, state, stop, kept, compiled), **rt.summary_extra}
+    extra = {}
+    if rt.cfg.interface_check:
+        rt.iface_stats["interface_mismatch_unresolved"] = bool((state.get("interface") or {}).get("findings"))
+        extra.update(json.loads(json.dumps(rt.iface_stats)))
+    if rt.cfg.mutation_gate:
+        extra.update(json.loads(json.dumps(rt.gate_stats)))
+    return {**_summary(rt, state, stop, kept, compiled), **rt.summary_extra, **extra}
 
 
 def _summary(rt, state, stop, kept, compiled):
@@ -602,7 +736,8 @@ def run(cfg, llm=None, **kw):
     graph = build(rt)
     state = {}
     try:
-        for state in graph.stream({}, {"recursion_limit": 10 * cfg.max_turns + 20}, stream_mode="values"):
+        limit = 10 * cfg.max_turns + (40 if cfg.mutation_gate or cfg.interface_check else 20)  # M3c: more steps
+        for state in graph.stream({}, {"recursion_limit": limit}, stream_mode="values"):
             pass
     except Exception as e:
         import traceback
@@ -615,10 +750,11 @@ def run(cfg, llm=None, **kw):
         return json.load(f)
 
 
-def mermaid():
-    """The compiled graph as mermaid, for the README (and its drift test)."""
+def mermaid(**switches):
+    """The compiled graph as mermaid, for the README (and its drift test). With M3c's switches
+    (mutation_gate=True, interface_check=True), the graph with their steps."""
     from .config import Config
     from .llm import FakeLLM
 
-    rt = Runtime(Config(root="/nonexistent", out_dir=""), FakeLLM(), tracer=Tracer(None), tools={})
+    rt = Runtime(Config(root="/nonexistent", out_dir="", **switches), FakeLLM(), tracer=Tracer(None), tools={})
     return build(rt).get_graph().draw_mermaid()

@@ -350,7 +350,9 @@ def test_memory_column_is_written_and_blank_without_memory(make_cfg, run_agent, 
         (work / "raw_result.json").write_text(json.dumps({"cvdp_agentic_adder_0001": {
             "category": "cid016", "difficulty": "easy", "tests": [{"result": 0, "log": "/x/1.txt"}]}}))
         rows = collect.rows(str(work))
-        assert collect.FIELDS[-1] == "memory" and rows[0]["memory"] == want
+        # memory was the last column in M3b; M3c's columns come after it, so an M3b CSV is a prefix of the new one
+        m3c = collect.FIELDS.index("mutation_gate")
+        assert collect.FIELDS[m3c - 1] == "memory" and rows[0]["memory"] == want
         (task_tree / "rtl" / "adder.sv").write_text(ORIGINAL_RTL)
 
 

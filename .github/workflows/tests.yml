@@ -16,7 +16,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Icarus Verilog (for the one test that runs real tools)
-        run: sudo apt-get update -q && sudo apt-get install -y -q iverilog
+      - name: Icarus Verilog and Yosys (for the tests that run real tools, M3c's mutation gate among them)
+        run: sudo apt-get update -q && sudo apt-get install -y -q iverilog yosys
       - run: pip install -q -r agent/requirements.txt pytest==8.3.2
       - run: python -m pytest -v tests

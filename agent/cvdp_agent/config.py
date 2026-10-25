@@ -34,6 +34,13 @@ class Config:
     max_rounds: int = 22                # deepagents: model calls (tool-call rounds); M2's worst case for 10 turns
     memory: str = ""                    # a lessons snapshot (JSON, tools/learn_lessons.py); blank = no memory
     memory_k: int = 5                   # lessons retrieved into the plan prompt
+    mutation_gate: bool = False         # M3c: a mutation-score gate on the agent's own testbench before submit
+    interface_check: bool = False       # M3c: the design's interface, by elaboration, against the given one
+    gate_mutants: int = 12              # mutants per gate run (Yosys mutate -list N)
+    gate_seed: int = 1                  # mutate -seed: the same mutants for the same design
+    gate_threshold: float = 0.5         # kill rate the gate needs (equivalent mutants make 1.0 unreachable)
+    gate_s: float = 60.0                # the gate's own wall time per run
+    gate_max_failures: int = 2          # gate failures per problem; after that, the agent submits anyway
     out_dir: str = ""                   # default <root>/rundir/agent_out
     fake_script: str = ""               # fake provider: a JSON file or inline JSON list of responses
     ledger_dir: str = ""                # whole-run spend guard: shared directory of per-problem costs
@@ -59,6 +66,9 @@ class Config:
             # M3b settings appear only when set, so an M1-M3 agent's summary keeps exactly its old fields
             **({"harness": self.harness, "max_rounds": self.max_rounds} if self.harness != "langgraph" else {}),
             **({"memory": self.memory} if self.memory else {}),
+            # M3c switches, likewise only when on
+            **({"mutation_gate": True} if self.mutation_gate else {}),
+            **({"interface_check": True} if self.interface_check else {}),
         }
 
 
@@ -95,6 +105,8 @@ def from_env():
         harness=_harness("CVDP_HARNESS"),
         max_rounds=_num("CVDP_MAX_ROUNDS", 22, int),
         memory=os.environ.get("CVDP_MEMORY", "").strip(),
+        mutation_gate=_flag("CVDP_MUTATION_GATE", False),
+        interface_check=_flag("CVDP_INTERFACE_CHECK", False),
         out_dir=os.environ.get("CVDP_OUT_DIR", ""),
         fake_script=os.environ.get("CVDP_FAKE_SCRIPT", ""),
         ledger_dir=os.environ.get("CVDP_LEDGER_DIR", ""),
