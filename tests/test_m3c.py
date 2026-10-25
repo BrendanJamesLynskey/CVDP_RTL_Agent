@@ -493,3 +493,15 @@ def test_sweep_refuses_m3c_switches_on_deep_agents_and_bad_values(tmp_path):
         r = subprocess.run(["bash", os.path.join(ROOT, "tools", "sweep.sh")], env=env, capture_output=True,
                            text=True)
         assert r.returncode == 2 and ("INTERFACE_CHECK" in r.stderr or "MUTATION_GATE" in r.stderr), r.stderr
+
+
+def test_interface_given_tool_counts_the_hidden_top(tmp_path):
+    import interface_given
+
+    rec = {"id": "cvdp_agentic_counter_0001", "categories": ["cid003", "easy"],
+           "prompt": "Design a `counter` module.", "context": {"docs/spec.md": SPEC},
+           "harness": {"src/.env": "TOPLEVEL=counter\n",
+                       "src/test_counter.py": "async def t(dut):\n    dut.rst.value = 1\n    x = dut.count.value\n"}}
+    rows = interface_given.rows([rec])
+    assert rows[0]["given"] and rows[0]["source"] == "doc" and (rows[0]["covered"], rows[0]["dut"]) == (2, 2)
+    assert "**1 of 1**" in interface_given.report(rows)

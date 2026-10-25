@@ -38,6 +38,15 @@ gain (B − A +4.3 [+0.0, +8.5], sign test p = 0.21); Deep Agents on top of the 
 interval excludes zero (D − C +5.8 [+1.9, +10.1]). Pooled pass@1 A 57.8%, B 62.0%, C 59.3%, D 65.1%, at $0.0106–0.0124
 per solved problem; $7.27 for the 12 sweeps.
 
+**M3c** (tooling PR; scored runs pending, report skeleton [`docs/reports/M3c_report.md`](docs/reports/M3c_report.md)):
+two deterministic, model-free checks, each a fixed step of the LangGraph graph behind a switch that is off by default,
+each aimed at one failure class M3 and M3b found. **Interface diff by elaboration** (`interface_check`): after every
+edit, the design is elaborated with pyslang (Yosys as the fallback) and its modules, ports, widths and parameters are
+compared with the interface the agent was given; the findings go to reflect like lint. **Mutation-score gate**
+(`mutation_gate`): before a submit, the agent's own testbench must detect at least half of 12 Yosys `mutate` mutants of
+its design, or the gate sends the survivors back to reflect (at most twice). Three arms, 3 runs each, on M3b's 86
+problems: A (neither), M (the gate), I (the interface check); M − A and I − A are pre-registered.
+
 **M2a** (merged, [`docs/reports/M2a_report.md`](docs/reports/M2a_report.md)): reasoning limits, a retry on empty
 replies and unreadable decisions, and seeds. On the same 10 problems on Arm64, DeepSeek at `reasoning=off` passed
 6/10 for $0.0867 with no empty replies; at `low` it passed 7/10 for $0.3546 with 14 empty replies.
@@ -127,6 +136,49 @@ graph TD;
 ```
 <!-- graph:end -->
 
+With M3c's switches on (`mutation_gate`, `interface_check`), the graph has two more fixed steps:
+
+<!-- graph-m3c:begin -->
+```mermaid
+---
+config:
+  flowchart:
+    curve: linear
+---
+graph TD;
+	__start__([<p>__start__</p>]):::first
+	read_task(read_task)
+	plan(plan)
+	edit(edit)
+	interface(interface)
+	check(check)
+	reflect(reflect)
+	gate(gate)
+	finalize(finalize)
+	__end__([<p>__end__</p>]):::last
+	__start__ --> read_task;
+	check -.-> finalize;
+	check -.-> reflect;
+	edit -.-> finalize;
+	edit -.-> interface;
+	gate -.-> finalize;
+	gate -.-> reflect;
+	interface -.-> check;
+	interface -.-> finalize;
+	plan -.-> edit;
+	plan -.-> finalize;
+	read_task -.-> finalize;
+	read_task -.-> plan;
+	reflect -.-> edit;
+	reflect -.-> finalize;
+	reflect -.-> gate;
+	finalize --> __end__;
+	classDef default fill:#f2f0ff,line-height:1.2
+	classDef first fill-opacity:0
+	classDef last fill:#bfb6fc
+```
+<!-- graph-m3c:end -->
+
 - **read_task** reads `/code/prompt.json`, lists the files and detects the tools.
 - **plan**: the LLM returns a JSON plan (files to change, approach, how it will check the result).
 - **edit**: the LLM returns whole files or unified diffs. The file tool writes only under `rtl/`, `verif/` and
@@ -136,6 +188,20 @@ graph TD;
   before the LLM sees it.
 - **reflect**: the LLM decides `edit_again`, `submit` or `give_up`. A reply that cannot be read as a decision is
   retried once, asking for the JSON decision only; if that cannot be read either, the agent submits.
+- **interface** (M3c, `interface_check`): elaborates `rtl/` with pyslang (`pyslang==12.0.0`; Yosys `read_verilog -sv;
+  hierarchy -top` if pyslang reports an error) and compares each module with the interface the agent was given, read
+  once at the start from the prompt, `docs/`, `rtl/` and `verif/` only: the original RTL of a module the context
+  holds, a module header in the prompt or docs, the docs' port tables and interface bullets, the ports a visible
+  testbench connects, and the modules the prompt names. It reports names missing from the design, names spelled
+  differently (case or underscores only) and width mismatches where both widths are constant. The result goes to
+  reflect as one more check. A submit with a mismatch set reported only once becomes one more edit; once the same
+  set has been reported twice, the agent may submit anyway.
+- **gate** (M3c, `mutation_gate`): on a submit, the agent's last testbench is re-run on its design, then on 12
+  mutants from Yosys `mutate -list 12 -seed 1`, all in one netlist (`mutate -ctrl`) behind a wrapper selected by
+  `+mutsel=<i>` (MCY's method), or one build per mutant if the wrapper cannot drive the testbench. It passes when at
+  least half of the mutants that compiled are detected; no testbench, a failing one, or a lower kill rate sends the
+  result (survivors by kind and location, never the mutated code) back to reflect. At most 60 s per run (unfinished
+  mutants count as not detected) and 2 failures per problem, then the agent submits anyway (`gate_overridden`).
 - **Reasoning and empty replies**: every call sends OpenRouter's `reasoning` field at the `CVDP_REASONING` level
   (`{effort, exclude: true}`; nothing for `default`), and the trace keeps the `reasoning_tokens` and the serving
   `provider` OpenRouter reports. Reasoning counts against `max_tokens`, so a call that may reason gets headroom on
@@ -191,6 +257,8 @@ column.
 | `CVDP_HARNESS` | `langgraph` | `langgraph` (the graph above) or `deepagents` |
 | `CVDP_MAX_ROUNDS` | 22 | model-call cap of the Deep Agents harness |
 | `CVDP_MEMORY` | | path of a lessons snapshot inside the container (the sweep mounts it read-only) |
+| `CVDP_MUTATION_GATE` | 0 | M3c: 1 runs the mutation-score gate before a submit (LangGraph harness only) |
+| `CVDP_INTERFACE_CHECK` | 0 | M3c: 1 runs the interface check after every edit (LangGraph harness only) |
 
 ## Running a sweep
 
@@ -200,7 +268,8 @@ budget, turn cap, self-check and lint switches, threads, runner (x86-64 or Arm64
 whole-run budget, `reasoning` (default `low`), `seeds` (default 1), `seed_offset`
 (default 0: seeds are numbered `seed_offset+1 … seed_offset+seeds`, so a second dispatch of the same settings
 pools with distinct seeds), `harness` (`langgraph` or `deepagents`), `memory` (blank, or a lessons snapshot path in
-the repo, e.g. `docs/reports/m3b/lessons/lessons_<hash>.json`, mounted read-only into the agent's container) and
+the repo, e.g. `docs/reports/m3b/lessons/lessons_<hash>.json`, mounted read-only into the agent's container),
+`mutation_gate` and `interface_check` (M3c, both default false, LangGraph only) and
 `provider_order` (blank: OpenRouter
 routes each call; the provider that served it is in the trace, and its price can differ from the list price).
 Tables and `results.csv` label each row with the model and its reasoning setting, e.g.
@@ -250,7 +319,7 @@ empty (an old ledger and the harness's reuse of `raw_result.json` would make the
   `ablate.py` (paired comparison of arms against a base on the same problems: effect with a problem-bootstrap
   interval, better/worse counts, an exact sign test, and the Pareto CSV and SVG; `--ids` keeps only the listed problems), `taxonomy.py` (one deterministic
   failure label per failed problem and run, from logs, trace and summary; `collect.py` writes it as
-  `failure_label`), `reachable.py` (problems whose hidden
+  `failure_label`), `interface_given.py` (M3c: how much of the hidden top module's interface the interface check is given), `reachable.py` (problems whose hidden
   testbench reads names the agent is never given; made the M3b evaluation set `m3b_eval_ids.txt`), `learn_lessons.py`
   (builds a lessons snapshot from learning-set work dirs, refusing any evaluation-set problem), `retrieval.py` (which
   lessons each problem gets), `behaviour.py` (testbench use, turns and stop reasons per run), `key_usage.py` (the key's `usage` only), `models.py` (whether OpenRouter model IDs exist, their prices, context and `reasoning` support, from the public model list), `pick_ids.py` (the seeded M1 sample, `m1_ids.txt`), `amba_scan.py` and `amba_ids.txt`,
@@ -268,6 +337,7 @@ empty (an old ledger and the harness's reuse of `raw_result.json` would make the
 | M2 | Sweep the free agentic split with two cheap models and one open-weights model |
 | M3 | Ablations: self-check on and off, lint on and off, turn and budget caps; failure taxonomy |
 | M3b | Harness against self-improvement: Deep Agents vs LangGraph, and a frozen lessons memory, on a fixed evaluation set |
+| M3c | Mutation testing and elaboration in the loop: a mutation-score gate before submit, an interface diff after each edit |
 | M4 | Write-up, logs packed for the Si2 LBC-bench leaderboard |
 | M5 | Open AMBA verification track: test plan, cocotb testbench with coverage, SVA with SymbiYosys; scored by seeded-bug kill rate and false alarms |
 
