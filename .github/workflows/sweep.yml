@@ -71,6 +71,14 @@ on:
         description: "Lessons snapshot in the repo, e.g. docs/reports/m3b/lessons/lessons_<hash>.json (blank = none)"
         type: string
         default: ""
+      mutation_gate:
+        description: "M3c: mutation-score gate on the agent's own testbench before submit (langgraph only)"
+        type: boolean
+        default: false
+      interface_check:
+        description: "M3c: interface diff by elaboration after each edit (langgraph only)"
+        type: boolean
+        default: false
       provider_order:
         description: "Pin OpenRouter providers, comma-separated, in order, no fallbacks (blank = OpenRouter routes)"
         type: string
@@ -103,6 +111,8 @@ env:
   PROVIDER_ORDER: ${{ github.event_name == 'pull_request' && '' || inputs.provider_order }}
   HARNESS: ${{ github.event_name == 'pull_request' && 'langgraph' || inputs.harness }}
   MEMORY: ${{ github.event_name == 'pull_request' && '' || inputs.memory }}
+  MUTATION_GATE: ${{ (github.event_name == 'workflow_dispatch' && inputs.mutation_gate) && '1' || '0' }}
+  INTERFACE_CHECK: ${{ (github.event_name == 'workflow_dispatch' && inputs.interface_check) && '1' || '0' }}
   RUNNER: ${{ github.event_name == 'pull_request' && 'ubuntu-24.04' || inputs.runner }}
   WORK: work
   REAL_MODEL: ${{ github.event_name == 'workflow_dispatch' && inputs.model != 'fake' }}

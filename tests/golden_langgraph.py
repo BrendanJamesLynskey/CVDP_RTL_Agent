@@ -51,7 +51,8 @@ def scrub(x, root):
     return x
 
 
-def run_all():
+def run_all(extra=None):
+    """Every scenario; `extra` adds settings to each one's Config (M3c: its switches, explicitly off)."""
     from conftest import ORIGINAL_RTL, FakeChecker, FakeClock
     from cvdp_agent.config import Config
     from cvdp_agent.graph import run
@@ -67,7 +68,7 @@ def run_all():
             json.dump({"prompt": "Fix the adder in rtl/adder.sv so y = a + b."}, open(os.path.join(root, "prompt.json"), "w"))
             open(os.path.join(root, "rtl", "adder.sv"), "w").write(ORIGINAL_RTL)
             open(os.path.join(root, "docs", "spec.md"), "w").write("# adder\ny = a + b\n")
-            cfg = Config(root=root, provider="fake", **kw)
+            cfg = Config(root=root, provider="fake", **kw, **(extra or {}))
             clock = FakeClock()
             llm = FakeLLM(json.loads(json.dumps(script)), clock=clock)
             summary = run(cfg, llm=llm, checker=FakeChecker(root, clock=clock),

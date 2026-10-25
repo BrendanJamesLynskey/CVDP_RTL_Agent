@@ -6,3 +6,5 @@ httpx==0.28.1
 # M3b: the Deep Agents harness (CVDP_HARNESS=deepagents); imported only by that harness
 deepagents==0.7.32
 langchain==1.4.7
+# M3c: the interface check elaborates the agent's RTL (manylinux wheels for x86-64 and aarch64)
+pyslang==12.0.0

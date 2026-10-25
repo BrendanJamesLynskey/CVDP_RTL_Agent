@@ -33,7 +33,9 @@ Adjusted from M2: `gave_up` (Haiku gave up 1–4 times per sweep), `agent_error`
 `tests_failed_selfcheck_failed` splits the case the brief's two self-check labels leave out.
 
 Secondary flags besides the other labels that hold: partial_pass (some hidden tests passed), single_turn,
-self_check_off, lint_off, empty_replies, best_edit_restored.
+self_check_off, lint_off, empty_replies, best_edit_restored; and M3c's gate_overridden (the mutation gate failed
+twice and the agent submitted anyway), gate_no_tb (the gate found no testbench of the agent's at least once) and
+interface_mismatch_unresolved (the last interface check before the end still reported a mismatch). No M3c label.
 
 Inputs: work dirs (`--work NAME=dir`, a sweep's work dir with seed*/ or a single harness prefix with
 raw_result.json), or collect.py CSVs (positional, or `--arm NAME=a.csv,b.csv`). CSVs written by collect.py since
@@ -244,6 +246,12 @@ def label(r):
         flags.append("empty_replies")
     if str(r.get("kept", "")).startswith("best_compiled"):
         flags.append("best_edit_restored")
+    if str(r.get("gate_overridden")) == "1":
+        flags.append("gate_overridden")
+    if "no_tb" in str(r.get("gate_outcomes") or "").split("+"):
+        flags.append("gate_no_tb")
+    if str(r.get("interface_unresolved")) == "1":
+        flags.append("interface_mismatch_unresolved")
     return primary, flags
 
 

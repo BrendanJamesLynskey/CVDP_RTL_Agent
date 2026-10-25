@@ -31,15 +31,16 @@ import csv
 import glob
 import io
 import json
+import os
 import re
 import sys
 import tokenize
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "agent"))
+
 LABELS = ("signal_missing_hidden", "compile_fail_hidden")
-CODE_EXT = (".sv", ".v", ".svh", ".vh", ".py", ".c", ".h", ".json", ".yml", ".yaml", ".tcl", ".mk")
 # attributes and methods of a cocotb handle, not names in the design
 NOT_HANDLES = {"value", "setimmediatevalue", "get", "set", "start", "kill", "handle", "log"}
-_ID_SHAPED = re.compile(r"_|\d|^.+[A-Z]")
 
 
 # ---------- handles the hidden testbench reads ----------
@@ -126,29 +127,10 @@ def handles(record):
 
 
 # ---------- what the agent is given ----------
-
-def _code_spans(text):
-    """Text inside backticks and fenced code blocks."""
-    fenced = re.findall(r"```.*?```", text, re.DOTALL)
-    rest = re.sub(r"```.*?```", " ", text, flags=re.DOTALL)
-    return "\n".join(fenced + re.findall(r"`([^`\n]+)`", rest))
-
-
-def given_texts(record):
-    """(code text, prose text, code spans of the prose) the agent can read."""
-    code, prose = [], [record.get("prompt") or ""]
-    for name, text in (record.get("context") or {}).items():
-        (code if name.lower().endswith(CODE_EXT) else prose).append(text or "")
-    prose_text = "\n".join(prose)
-    return "\n".join(code), prose_text, _code_spans(prose_text)
-
-
-def is_given(name, texts):
-    code, prose, spans = texts
-    word = re.compile(rf"(?<![\w$]){re.escape(name)}(?![\w$])")
-    if word.search(code) or word.search(spans):
-        return True
-    return bool(_ID_SHAPED.search(name)) and bool(word.search(prose))
+# The extraction lives in the agent package (cvdp_agent/given.py), shared with M3c's interface check.
+from cvdp_agent.given import CODE_EXT, given_texts, is_given  # noqa: E402,F401
+from cvdp_agent.given import ID_SHAPED as _ID_SHAPED  # noqa: E402
+from cvdp_agent.given import code_spans as _code_spans  # noqa: E402,F401
 
 
 # ---------- M3's labels ----------
