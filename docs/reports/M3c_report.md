@@ -214,12 +214,14 @@ rows are in each run's log (the Collect step prints `results.csv`).
 
 Total **$0.1853** of the $1.00 allowed (each the sum of its 10 per-problem provider-reported costs).
 
-**Gate (M)**: 14 gate runs on 10 problems: `pass` 4, `skipped` 6, `no_tb` 3, `fail` 1; no `timeout`, no
+**Gate (M)**: 14 gate runs on 10 problems: `pass` 4, `skipped` 5, `no_tb` 4, `fail` 1; no `timeout`, no
 `gate_overridden`. Where it ran to the end, the agent's testbench killed 12 of 12 mutants (`barrel_shifter_0002`),
 11 of 12 (`lfsr_0001`), 8 of 12 (`csr_using_apb_interface_0001`, `ttc_lite_0001`); 48 mutants generated in passing
-runs, 39 killed. Gate wall time per run was at most 2.0 s (bound 60 s): these designs are small. `no_tb` sent 3
-problems back to reflect; 2 of them (`axis_to_uart_0001`, which then passed, and `dynamic_equalizer_0004`) then
-ran a testbench and their second gate run was `skipped`.
+runs, 39 killed. Gate wall time per run was at most 2.0 s (bound 60 s): these designs are small. `no_tb` sent 4
+problems back to reflect; all 4 then ran a testbench. The second gate run was `skipped` on 3
+(`axis_to_uart_0001`, which then passed, `dynamic_equalizer_0004`, `phase_rotation_0010`) and `fail` on
+`phase_rotation_0028` (12 mutants generated, none compiled with its testbench, so a kill rate of 0; that problem then
+stopped on the turn cap).
 
 **Interface check (I)**: 31 checks on 10 problems, all elaborated by pyslang (no Yosys fallback, nothing that could
 not be elaborated); mismatches on one problem only, `phase_rotation_0010` (10 of 10 checks, 2 `missing_module`
@@ -228,7 +230,7 @@ each, unresolved at submit), one of M3b's 6 unreachable problems. No submit was 
 
 Odd, and fixed in this PR after the smoke runs (neither re-run; the scored runs use the fixed image):
 
-- **6 of 14 gate runs were `skipped`**, on `DES_0003`, `dual_port_memory_0001` and the second runs above. CVDP's
+- **5 of 14 gate runs were `skipped`**, on `DES_0003`, `dual_port_memory_0001` and the 3 second runs above. CVDP's
   own testbenches pass their parameters through their own (`parameter NBW_DATA = 'd64;` ... `.NBW_DATA(NBW_DATA)`),
   which the gate took as non-literal and skipped. The gate now resolves a testbench's literal `parameter` and
   `localparam` values (and integer arithmetic over them), sets them with `chparam`, and declares them on the
