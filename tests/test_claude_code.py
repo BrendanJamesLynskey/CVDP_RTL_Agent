@@ -89,3 +89,8 @@ def test_no_token_records_an_error(tmp_path, monkeypatch):
     monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN")
     s = claude_code.run(cfg)
     assert s["stop_reason"] == "error" and "not set" in s["error"]
+
+
+def test_api_error_is_an_llm_error_not_a_submit():
+    r = {"subtype": "success", "is_error": True, "terminal_reason": "api_error", "result": "Failed to authenticate."}
+    assert claude_code.stop_reason(r, False) == "llm_error"

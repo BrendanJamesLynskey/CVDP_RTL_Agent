@@ -88,6 +88,8 @@ def stop_reason(result, timed_out):
     if result is None:
         return "error"
     sub = result.get("subtype", "")
+    if result.get("is_error") or result.get("terminal_reason") == "api_error":
+        return "llm_error"
     if sub == "success":
         return "give_up" if "GIVE_UP" in str(result.get("result", "")).upper() else "submit"
     if sub == "error_max_turns":
@@ -134,8 +136,11 @@ def run(cfg):
         err = e.stderr.decode() if isinstance(e.stderr, bytes) else (e.stderr or "")
     lines = out.splitlines()
     with open(os.path.join(cfg.agent_out, "claude_stream.jsonl"), "w") as f:
-        for line in lines:
-            f.write(redact(line) + "\n")
+        for line in lines:  # redact parsed values, so a redaction cannot break the line's JSON
+            try:
+                f.write(json.dumps(redact(json.loads(line))) + "\n")
+            except ValueError:
+                f.write(json.dumps({"unparsed": redact(line)}) + "\n")
     result, tools, bash, models = parse_stream(lines)
     usage = (result or {}).get("usage") or {}
     summary.update(
@@ -153,5 +158,8 @@ def run(cfg):
         wall_time_s=round(time.time() - t0, 1),
     )
     if summary["stop_reason"] in ("error", "llm_error"):
-        summary["error"] = (err or "")[-2000:]
+        summary["error"] = ((err or "") + "\n" + str((result or {}).get("result", "")))[-2000:]
+        tok = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "")  # its shape only, never its value: for a 401
+        summary["token_shape"] = {"length": len(tok), "oat_prefix": tok.startswith("sk-ant-oat01-"),
+                                  "whitespace": any(c.isspace() for c in tok)}
     return _write(cfg, summary)
