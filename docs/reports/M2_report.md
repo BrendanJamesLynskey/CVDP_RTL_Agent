@@ -95,6 +95,11 @@ Haiku scores 50% on it against 57–61% on all 92. That is the draw of problems,
 - The heavy split (75 problems, 56 of them bug fixing) is not run in M2.
 - The plan's "leaderboard rows of 1.1.0" comparison is not here: the published rows are for full CVDP with
   commercial tools, not for the free split, and comparing them would mislead. M3 will say what is comparable.
+  **Correction (2026-10-25).** This is wrong: LBC-bench (https://lbc-bench.si2.org) has three rows on exactly
+  these 92 problems of release 1.1.0 (`agentic_code_generation_no_commercial`): 48, 52 and 53 of 92, one run each,
+  marked not independently verified ([leaderboards.json at b835413](https://github.com/si2org/lbc-bench.github.io/blob/b8354131ba89f915f5f940a3300a06777ebe1e98/data/leaderboards.json)).
+  They land in the same range as the sweeps here (41 to 56 of 92). The story page's "How this compares" section
+  sets them side by side with their caveats; the M3b report does too.
 - `tools/log_check.py` labels a log that ends inside a cocotb run with no pytest summary as `harness_error` (4
   in the first two sweeps). Those are simulations that hung or were killed, which the harness scores as failures.
   The pass rates are right; the label should say "simulation did not finish".
