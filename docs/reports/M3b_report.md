@@ -20,6 +20,9 @@ on a fixed evaluation set:
 Primary comparisons: **B − A** (harness) and **C − A** (memory). Secondary: **D − B** and **D − C** (does each add
 to the other).
 
+
+> **Confirming run (2026-10-25).** The harness effect was re-tested on 6 new runs per arm, pre-registered as a single test: **B − A = +4.7 [+1.0, +8.5]**, sign test p = 0.093. By the pre-registered rule this **confirms** the harness gain. See [`m3b/confirm_result.md`](m3b/confirm_result.md).
+
 ## In short
 
 Negative and null findings first. Evaluation set (86 problems), 3 runs an arm, effects in points of pass@1 with a
