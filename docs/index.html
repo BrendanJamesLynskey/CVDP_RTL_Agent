@@ -773,7 +773,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
       <li><b>M3b makes four comparisons with three runs an arm.</b> None of its sign tests passes a Bonferroni threshold of <span data-d="bonf">0.0125</span>, and the bootstrap intervals are not adjusted, so D &minus; C, the one interval that excludes zero, is a hypothesis for a confirming run (more seeds or another model), not a finding.</li>
       <li><b>M3b tests one memory snapshot.</b> <span data-d="les_n">40</span> generic lessons from <span data-d="les_att">87</span> attempts, only <span data-d="les_pass">19</span> of them passes, several near-duplicates, <span data-d="les_never">6</span> never retrieved. A null C &minus; A says this memory does not help, not that no memory could.</li>
       <li><b>M3b's caching claim is inferred.</b> Cached prompt tokens are not recorded per call, so the reading that Deep Agents' extra tokens are mostly cached rests on its cost per prompt token, not a measured cache-hit count. Its rounds are also not turns: compare the harnesses on cost and wall time, not on turns.</li>
-      <li><b>The M3b table on all 92 problems is not yet published.</b> Until it is, the M3b effects cover the 86 reachable problems only.</li>
+      <li><b>The M3b effects are paired on the 86 reachable problems.</b> <!-- src: docs/reports/M3b_report.md "All 92 problems, secondary" --> On all 92 the 6 excluded problems fail in all 72 of their runs, so every effect is a little smaller and no finding changes (B &minus; A +4.0, C &minus; A +1.4, D &minus; C +5.4 points).</li>
       <li><b>The hand-label hold-out had no <code>signal_missing_hidden</code> case</b>, so the new rule is checked only on the set it was developed on, and the same person wrote the rules and the labels.</li>
       <li><b>Problems are treated as exchangeable</b> by the bootstrap and the sign test. cid003 (34 problems) weighs most.</li>
       <li><b>Self-check pass or fail is read from truncated tool output</b> in the trace.</li>
@@ -812,7 +812,6 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
       <div class="ms plan"><span class="lz c3">OPEN &middot; FROM M3B</span>
         <!-- src: docs/reports/M3b_report.md "Known gaps" (four comparisons, three runs) -->
         <p>M3b's harness effect needs a confirming run, with more seeds or another model, before it is called a finding: D &minus; C <span data-d="e_DC">+5.8</span> <span data-d="ci_DC">[+1.9, +10.1]</span> is the one interval that excludes zero, and its sign test (p = <span data-d="p_DC">0.022</span>) does not pass a Bonferroni threshold of <span data-d="bonf">0.0125</span>.</p>
-        <p>The secondary M3b table on all 92 problems is not yet published.</p>
       </div>
     </div>
     <details class="why"><summary><span class="wk">WHY</span>Why the new checks are fixed steps, not tools</summary><div>
