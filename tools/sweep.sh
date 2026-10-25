@@ -35,7 +35,7 @@ REASONING=${REASONING:-low}          # default | low | medium | high | off
 SEEDS=${SEEDS:-1}
 SEED_OFFSET=${SEED_OFFSET:-0}
 PROVIDER_ORDER=${PROVIDER_ORDER:-}   # OpenRouter providers, comma-separated, tried in order with no fallbacks
-HARNESS=${HARNESS:-langgraph}        # langgraph (the M1-M3 agent) | deepagents (M3b)
+HARNESS=${HARNESS:-langgraph}        # langgraph (the M1-M3 agent) | deepagents (M3b) | claudecode (Claude Code, plan)
 MEMORY=${MEMORY:-}                   # a lessons snapshot in the repo (tools/learn_lessons.py); blank = none
 MUTATION_GATE=${MUTATION_GATE:-0}    # M3c: 1 = mutation-score gate before submit (langgraph only)
 INTERFACE_CHECK=${INTERFACE_CHECK:-0} # M3c: 1 = interface diff by elaboration after each edit (langgraph only)
@@ -63,7 +63,7 @@ esac
 [ -z "$STEP_BUDGET_S" ] || int STEP_BUDGET_S "$STEP_BUDGET_S"
 int SEED_PROBLEM_WORST_S "$SEED_PROBLEM_WORST_S"
 [[ "$PROVIDER_ORDER" =~ ^[A-Za-z0-9\ ._,/-]*$ ]] || die "PROVIDER_ORDER has unexpected characters: '$PROVIDER_ORDER'"
-case "$HARNESS" in langgraph|deepagents) ;; *) die "HARNESS must be langgraph or deepagents, got '$HARNESS'" ;; esac
+case "$HARNESS" in langgraph|deepagents|claudecode) ;; *) die "HARNESS must be langgraph, deepagents or claudecode, got '$HARNESS'" ;; esac
 if [ "$HARNESS" != langgraph ] && { [ "$MUTATION_GATE" = 1 ] || [ "$INTERFACE_CHECK" = 1 ]; }; then
   die "MUTATION_GATE and INTERFACE_CHECK are steps of the LangGraph graph: use HARNESS=langgraph"
 fi
@@ -112,7 +112,8 @@ if sys.argv[4] == "1" or sys.argv[5] == "1":  # M3c: named only when on, so an M
 json.dump(run, open(sys.argv[1], "w"))
 EOF
 
-  if [ "$MODEL" = fake ]; then export CVDP_PROVIDER=fake; else export CVDP_PROVIDER=openrouter; fi
+  if [ "$MODEL" = fake ]; then export CVDP_PROVIDER=fake; elif [ "$HARNESS" = claudecode ]; then export CVDP_PROVIDER=claude_plan
+  else export CVDP_PROVIDER=openrouter; fi
   export CVDP_MODEL="$MODEL" CVDP_BUDGET_USD="$BUDGET_USD" CVDP_MAX_TURNS="$MAX_TURNS" CVDP_SELF_CHECK="$SELF_CHECK" \
     CVDP_LINT="$LINT" CVDP_LEDGER_DIR=/ledger CVDP_RUN_BUDGET_USD="$guard" CVDP_REASONING="$REASONING" \
     CVDP_PROVIDER_ORDER="$PROVIDER_ORDER" CVDP_HARNESS="$HARNESS" CVDP_MUTATION_GATE="$MUTATION_GATE" \
@@ -126,6 +127,10 @@ EOF
   if [ "$CVDP_PROVIDER" = openrouter ]; then
     test -n "${OPENROUTER_API_KEY:-}" || die "OPENROUTER_API_KEY is not set"
     export CVDP_AGENT_ENV="OPENROUTER_API_KEY,$CVDP_AGENT_ENV"
+  fi
+  if [ "$CVDP_PROVIDER" = claude_plan ]; then  # Claude Code on the owner's plan: its token, never the OpenRouter key
+    test -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" || die "CLAUDE_CODE_OAUTH_TOKEN is not set"
+    export CVDP_AGENT_ENV="CLAUDE_CODE_OAUTH_TOKEN,$CVDP_AGENT_ENV"
   fi
   echo "run budget guard: \$$guard (all $SEEDS seed(s))"
 

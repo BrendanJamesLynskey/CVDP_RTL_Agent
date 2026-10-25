@@ -236,6 +236,12 @@ real task tree through the same path policy, and one `run_checks` tool for the c
 large-result eviction; conversation summarization is as shipped. The turn cap becomes a cap of 22 model calls
 (`CVDP_MAX_ROUNDS`; M2's most calls in 10 turns), stopping with `max_turns`. See `agent/cvdp_agent/deep.py`.
 
+**Claude Code comparison** (`CVDP_HARNESS=claudecode`): Claude Code itself, headless (`claude -p`, pinned in the
+image), on the same task tree and hidden tests, as an off-the-shelf reference agent rather than ours. It runs on a
+Claude plan (`CLAUDE_CODE_OAUTH_TOKEN`), so it has no billed cost: `cost_usd` stays blank and Claude Code's own
+API-rate figure is kept apart as `plan_cost_estimate_usd`. Web tools and network-fetching shell commands are not
+offered, and every shell command is audited (`network_flags`). See `agent/cvdp_agent/claude_code.py`.
+
 **Lessons memory** (M3b, `CVDP_MEMORY=<snapshot.json>`): a frozen snapshot of short general lessons (built by
 `tools/learn_lessons.py` from learning-set runs only), checked against its content hash on load. The top 5 by
 deterministic BM25 over the task prompt and `docs/` files are added to the plan prompt (or Deep Agents' task
@@ -254,8 +260,8 @@ column.
 | `CVDP_REASONING` | `default` (the sweep sends `low`) | `default`, `low`, `medium`, `high` or `off` (OpenRouter's `reasoning.effort`; `off` is `none`) |
 | `CVDP_SEED` | | the sweep's repeat number; a label in the trace and summary only (sampling is not seeded) |
 | `CVDP_PROVIDER_ORDER` | | OpenRouter providers, comma-separated, used in that order with no fallbacks |
-| `CVDP_HARNESS` | `langgraph` | `langgraph` (the graph above) or `deepagents` |
-| `CVDP_MAX_ROUNDS` | 22 | model-call cap of the Deep Agents harness |
+| `CVDP_HARNESS` | `langgraph` | `langgraph` (the graph above), `deepagents` or `claudecode` |
+| `CVDP_MAX_ROUNDS` | 22 | model-call cap of the Deep Agents harness (60: Claude Code's `--max-turns`) |
 | `CVDP_MEMORY` | | path of a lessons snapshot inside the container (the sweep mounts it read-only) |
 | `CVDP_MUTATION_GATE` | 0 | M3c: 1 runs the mutation-score gate before a submit (LangGraph harness only) |
 | `CVDP_INTERFACE_CHECK` | 0 | M3c: 1 runs the interface check after every edit (LangGraph harness only) |
@@ -267,7 +273,7 @@ From the Actions tab, **Sweep → Run workflow**, or `gh workflow run sweep.yml 
 budget, turn cap, self-check and lint switches, threads, runner (x86-64 or Arm64), an optional absolute
 whole-run budget, `reasoning` (default `low`), `seeds` (default 1), `seed_offset`
 (default 0: seeds are numbered `seed_offset+1 … seed_offset+seeds`, so a second dispatch of the same settings
-pools with distinct seeds), `harness` (`langgraph` or `deepagents`), `memory` (blank, or a lessons snapshot path in
+pools with distinct seeds), `harness` (`langgraph`, `deepagents` or `claudecode`), `memory` (blank, or a lessons snapshot path in
 the repo, e.g. `docs/reports/m3b/lessons/lessons_<hash>.json`, mounted read-only into the agent's container),
 `mutation_gate` and `interface_check` (M3c, both default false, LangGraph only) and
 `provider_order` (blank: OpenRouter
