@@ -25,15 +25,18 @@ With self-check on, the agent ran its own testbench on only a third of the probl
 problems no run has solved. M3 cost $8.25. `tools/ablate.py` gives paired effects and the Pareto chart;
 `tools/taxonomy.py` gives each failure one deterministic label.
 
-**M3b** (skeleton merged, scored runs pending, [`docs/reports/M3b_report.md`](docs/reports/M3b_report.md)): a
+**M3b** (report, [`docs/reports/M3b_report.md`](docs/reports/M3b_report.md)): a
 richer harness against a memory of lessons, at a fixed model (`openai/gpt-6-luna`). Four arms of 3 runs each:
 LangGraph and Deep Agents, each with and without a frozen lessons snapshot. They are scored on 86 of the 92 agentic
 problems; `tools/reachable.py` excludes 6 whose hidden testbench reads names the agent is never given
 (`digital_stopwatch_0001`, `phase_rotation_0010`, `0028`, `0031`, `0038`, `poly_decimator_0001`;
 [`docs/reports/m3b/unreachable.md`](docs/reports/m3b/unreachable.md)). The lessons are learned only from the 29
 heavy problems whose files to change lie inside the agent's edit roots (`tools/m3b_learn_in_roots_ids.txt`,
-3 seeds), never from an agentic problem. Unscored smoke runs on 10 problems: Deep Agents 4/10 (B), LangGraph with a
-fixture snapshot 5/10 (C), Deep Agents with it 6/10 (D), $0.1855 in all.
+3 seeds), never from an agentic problem. **Results** (12 scored sweeps, paired on the 86): the lessons memory has no
+detectable effect on the LangGraph agent (C − A +1.6 points [−3.1, +6.6]); Deep Agents is weak evidence of a small
+gain (B − A +4.3 [+0.0, +8.5], sign test p = 0.21); Deep Agents on top of the memory is the one comparison whose
+interval excludes zero (D − C +5.8 [+1.9, +10.1]). Pooled pass@1 A 57.8%, B 62.0%, C 59.3%, D 65.1%, at $0.0106–0.0124
+per solved problem; $7.27 for the 12 sweeps.
 
 **M2a** (merged, [`docs/reports/M2a_report.md`](docs/reports/M2a_report.md)): reasoning limits, a retry on empty
 replies and unreadable decisions, and seeds. On the same 10 problems on Arm64, DeepSeek at `reasoning=off` passed

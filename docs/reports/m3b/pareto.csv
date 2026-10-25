@@ -1,0 +1,5 @@
+arm,usd_per_problem,pass_rate,frontier,cost_lower_bound
+C,0.006693,0.593,1,0
+D,0.006915,0.6512,1,0
+A,0.007164,0.5775,0,0
+B,0.007396,0.6202,0,0

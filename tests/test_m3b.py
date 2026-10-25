@@ -432,3 +432,16 @@ def test_retrieval_report_counts_k_per_problem(tmp_path):
     assert set(picks) == {"p0", "p1", "p2"} and all(len(v) == 5 for v in picks.values())
     assert retrieval.from_dataset(snap, str(ds), {"p0"})["p0"] == picks["p0"]  # deterministic
     assert "| L01 |" in retrieval.table(snap, picks)
+
+
+def test_retrieval_runs_count_every_work_dir(tmp_path):
+    """Two arms' work dirs share seed paths (seed1/<problem>/...): both must be counted, not one over the other."""
+    import retrieval
+
+    rel = os.path.join("seed1", "cvdp_agentic_x", "harness", "1", "rundir", "agent_out")
+    for arm in ("C", "D"):
+        d = tmp_path / arm / rel
+        d.mkdir(parents=True)
+        (d / "summary.json").write_text(json.dumps({"lessons": ["L01", "L02"]}))
+    picks = retrieval.from_runs([str(tmp_path / "C"), str(tmp_path / "D")])
+    assert len(picks) == 2 and sum(len(v) for v in picks.values()) == 4
