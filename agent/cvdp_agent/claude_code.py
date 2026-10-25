@@ -18,6 +18,7 @@ import json
 import os
 import re
 import subprocess
+import tempfile
 import time
 
 from .graph import write_ledger
@@ -114,11 +115,19 @@ def run(cfg):
     if cfg.model:
         cmd += ["--model", cfg.model]
     os.makedirs(cfg.agent_out, exist_ok=True)
+    # Claude Code writes its settings under $HOME; the harness's user may have none it can write, so give it one.
+    env = dict(os.environ)
+    home = env.get("HOME", "")
+    if not home or not os.access(home, os.W_OK):
+        env["HOME"] = tempfile.mkdtemp(prefix="claude_home_")
     timed_out = False
     try:
         p = subprocess.run(cmd, cwd=cfg.root, capture_output=True, text=True, timeout=cfg.wall_s,
-                           stdin=subprocess.DEVNULL)
+                           stdin=subprocess.DEVNULL, env=env)
         out, err = p.stdout, p.stderr
+    except OSError as e:  # claude missing or not executable
+        summary.update(stop_reason="error", error=f"{type(e).__name__}: {e}", wall_time_s=round(time.time() - t0, 1))
+        return _write(cfg, summary)
     except subprocess.TimeoutExpired as e:
         timed_out = True
         out = e.stdout.decode() if isinstance(e.stdout, bytes) else (e.stdout or "")
