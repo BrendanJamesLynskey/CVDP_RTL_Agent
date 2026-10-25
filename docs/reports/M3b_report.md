@@ -45,8 +45,8 @@ Negative and null findings first. Evaluation set (86 problems), 3 runs an arm, e
 - **Where the harness differs.** Deep Agents leaves fewer problems untested (`tests_failed_no_selfcheck`: A 58, B 39,
   D 33 failed runs) but stops more often on its round cap (A 11, B 29, D 33). With the lessons, the LangGraph agent
   has more failures whose own testbench passed (C 21 against A 15); with both, fewest (D 8).
-- **Deep Agents resends the whole conversation each round**: about 5 times A's prompt tokens (45.7M against 8.9M
-  over 258 problem-runs) for about the same provider-reported cost. Its cost per million prompt tokens is about a
+- **Deep Agents resends the whole conversation each round**: about 6 times A's prompt tokens (43.6M against 6.9M
+  over 258 problem-runs; 45.7M against 8.9M counting completion tokens too) for about the same provider-reported cost. Its cost per million prompt tokens is about a
   sixth of A's ($0.044 against $0.268), which points to provider-side prompt caching; cached tokens are not
   recorded per call, so this is inferred, not measured.
 
@@ -191,7 +191,23 @@ Evaluation set (86 problems), primary ([`m3b/arms_paired_eval86.md`](m3b/arms_pa
 Pooled pass@1 per arm (258 problem-runs each): A 149 = 57.8% (runs 48, 51, 50 of 86), B 160 = 62.0% (54, 51, 55),
 C 153 = 59.3% (51, 51, 51), D 168 = 65.1% (52, 59, 57).
 
-**[waits on runs]** All 92 problems, secondary: the same table.
+All 92 problems, secondary ([`m3b/arms_paired_all92.md`](m3b/arms_paired_all92.md)): the 86 runs above plus one
+`seeds=3` sweep per arm on the 6 excluded problems ([`m3b/runs_excluded/`](m3b/runs_excluded/): A 40148663345,
+B 40148674078, C 40149695994, D 40149707990; $0.5254 in all). **All 72 of those problem-runs failed**, 66 of them on
+`signal_missing_hidden` or `compile_fail_hidden`, as the exclusion rule predicted, so adding them only dilutes
+every effect a little and changes no finding. (`ablate.py` lists each arm's excluded sweep as three more runs at
+0%; the pooled figures are per problem and correct.)
+
+| Comparison | Effect (points) | 95% CI | Better | Worse | Same | Sign test p |
+|---|---|---|---|---|---|---|
+| B − A (primary) | +4.0 | [+0.0, +8.3] | 15 | 8 | 69 | 0.21 |
+| C − A (primary) | +1.4 | [−2.9, +5.8] | 10 | 8 | 74 | 0.82 |
+| D − B (secondary) | +2.9 | [−0.4, +6.5] | 9 | 3 | 80 | 0.15 |
+| D − C (secondary) | +5.4 | [+1.8, +9.8] | 9 | 1 | 82 | 0.022 |
+| D − A (exploratory) | +6.9 | [+2.2, +12.0] | 14 | 4 | 74 | 0.031 |
+
+Pooled pass@1 on 92 (276 problem-runs each): A 54.0%, B 58.0%, C 55.4%, D 60.9%; $/solved $0.0132, $0.0128, $0.0122,
+$0.0113.
 
 ## Pareto
 
@@ -325,7 +341,7 @@ Odd or worth knowing (none of it is a result: one run of 10 problems each):
 - **One snapshot, generic lessons.** The memory is one snapshot from 87 attempts, 9 of them without a test outcome
   and only 19 passes; its lessons are general process advice, several near-duplicates, and 6 are never retrieved. A
   null C − A says this memory does not help, not that no memory could.
-- **Caching is inferred.** Cached prompt tokens are not recorded per call, so the claim that Deep Agents' 5× prompt
+- **Caching is inferred.** Cached prompt tokens are not recorded per call, so the claim that Deep Agents' 6× prompt
   tokens are mostly cached rests on the cost per prompt token, not on a measured cache-hit count.
 - **`retrieval.py --runs` miscounted across arms** before this report: it keyed summaries by their path inside a
   work dir, so C's and D's runs (which share `seed1/...` paths) overwrote each other and only 258 of 516 were
