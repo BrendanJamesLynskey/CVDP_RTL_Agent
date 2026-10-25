@@ -62,6 +62,35 @@ def _int_literal(v):
     return int(v) if re.fullmatch(r"\d+", v) else None
 
 
+def _resolve(val, consts):
+    """An override's value as an int: a literal, a testbench parameter or localparam with a literal value, or
+    integer arithmetic (+ - * / % parentheses) over those. None otherwise."""
+    v = _int_literal(val)
+    if v is not None:
+        return v
+    expr = re.sub(r"(?:\d+)?'[sS]?[bodhBODH][0-9a-fA-F_]+",  # sized literals first: 'd8 is not a name
+                  lambda m: str(_int_literal(m.group(0))) if _int_literal(m.group(0)) is not None else "?", val)
+    expr = re.sub(r"[A-Za-z_]\w*", lambda m: str(consts[m.group(0)]) if m.group(0) in consts else "?", expr)
+    if not re.fullmatch(r"[\d\s+\-*/%()]+", expr):
+        return None
+    try:
+        out = eval(compile(expr.replace("/", "//"), "<param>", "eval"), {"__builtins__": {}}, {})
+    except (SyntaxError, ZeroDivisionError, TypeError, ValueError):
+        return None
+    return out if isinstance(out, int) and out >= 0 else None
+
+
+def _consts(text):
+    """{name: int} of a testbench's parameters and localparams whose values resolve (in order of declaration)."""
+    out = {}
+    for name, val in re.findall(r"\b(?:local)?param(?:eter)?\s+(?:(?:int|integer|logic|bit)\s+)?"
+                                r"(?:\[[^\]]*\]\s*)?([A-Za-z_]\w*)\s*=\s*([^;,)]+)", text):
+        v = _resolve(val.strip(), out)
+        if v is not None:
+            out[name] = v
+    return out
+
+
 class MutationGate:
     def __init__(self, root, tracer, tools, n=12, seed=1, threshold=0.5, bound_s=60.0, clock=time.monotonic,
                  time_left=None, sim_python="python3", user=None):
@@ -132,13 +161,14 @@ class MutationGate:
             return (tb["top"] if tb["top"] in mods else None), {}
         text = "\n".join(open(os.path.join(self.root, f), errors="replace").read() for f in tb["files"])
         text = re.sub(r"//[^\n]*|/\*.*?\*/", " ", text, flags=re.DOTALL)
+        consts = _consts(text)
         for m in sorted(set(mods), key=len, reverse=True):
             hit = re.search(rf"(?<![\w.$]){re.escape(m)}\s*(#\s*\(((?:[^()]|\([^()]*\))*)\))?\s*[A-Za-z_]\w*\s*\(",
                             text)
             if hit:
                 params = {}
                 for name, val in re.findall(r"\.(\w+)\s*\(\s*([^()]*?)\s*\)", hit.group(2) or ""):
-                    v = _int_literal(val)
+                    v = _resolve(val, consts)
                     if v is None:
                         return m, None
                     params[name] = v
@@ -212,7 +242,23 @@ class MutationGate:
                 + [f"chparam -set {k} {v} {top}" for k, v in sorted(params.items())]
                 + [f"prep -flatten -top {top}"])
 
-    def _wrapper(self, top, ports):
+    @staticmethod
+    def _param_header(params):
+        """The `#(parameter ...)` a module needs so the testbench's overrides compile; the netlist is already
+        elaborated at these values (chparam), so they are only accepted, never used."""
+        return ("#(" + ", ".join(f"parameter {k} = {v}" for k, v in sorted(params.items())) + ") ") if params else ""
+
+    def _add_params(self, path, top, params):
+        if not params:
+            return
+        with open(path) as f:
+            text = f.read()
+        head = self._param_header(params)
+        text = re.sub(rf"(?m)^(module\s+{re.escape(top)})\s*\(", lambda m: f"{m.group(1)} {head}(", text, count=1)
+        with open(path, "w") as f:
+            f.write(text)
+
+    def _wrapper(self, top, ports, params=None):
         decl, conn = [], []
         for name, p in ports.items():
             if name == "mutsel":
@@ -221,7 +267,7 @@ class MutationGate:
             rng = f"[{w - 1}:0] " if w > 1 else ""
             decl.append(f"  {p['direction']} wire {rng}{name}")
             conn.append(f".{name}({name})")
-        return (f"module {top} (\n" + ",\n".join(decl) + "\n);\n  reg [7:0] mutsel;\n"
+        return (f"module {top} {self._param_header(params or {})}(\n" + ",\n".join(decl) + "\n);\n  reg [7:0] mutsel;\n"
                 "  initial if (!$value$plusargs(\"mutsel=%d\", mutsel)) mutsel = 8'd0;\n"
                 f"  {top}__mutsel u_mutsel ({', '.join(conn + ['.mutsel(mutsel)'])});\nendmodule\n")
 
@@ -333,7 +379,7 @@ class MutationGate:
             return False
         wrap = os.path.join(self.dir, "wrapper.v")
         with open(wrap, "w") as f:
-            f.write(self._wrapper(top, ports))
+            f.write(self._wrapper(top, ports, params))
         base, _ = self._sim("mutsel0", tb, [net, wrap], plusarg=0, timeout=per, build_tag="ctrl")
         if base == "time_up":
             self._timeout(res, muts, 1, "the gate's time ran out before the mutants ran")
@@ -355,6 +401,9 @@ class MutationGate:
         ok, _ = self._yosys("each", script)
         if not ok:
             return self._skip(res, "Yosys could not write the mutants")
+        for i in range(len(lines) + 1):
+            if os.path.exists(os.path.join(self.dir, f"m{i}.v")):
+                self._add_params(os.path.join(self.dir, f"m{i}.v"), top, params)
         base, _ = self._sim("m0", tb, [os.path.join(self.dir, "m0.v")], timeout=per, build_tag="m0")
         if base == "time_up":
             return self._timeout(res, muts, 1, "the gate's time ran out before the mutants ran")

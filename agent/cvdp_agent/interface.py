@@ -464,6 +464,11 @@ def given_interface(record):
         if owner in mods and mods[owner]["source"] == "doc":
             for n in re.findall(r"\b([A-Z][A-Z0-9_]*)\s*=\s*\d", prompt):
                 mods[owner]["params"].setdefault(n, False)
+    # A module is required (missing_module when the design lacks it) when the original RTL defines it, the prompt
+    # itself names it, or a visible testbench instantiates it; one only a document names is compared if it exists.
+    asked = set(_named_modules(prompt, [], existing=files))
+    for name, m in mods.items():
+        m["required"] = m["source"] in ("rtl", "testbench") or name in asked
     names = set(_IDENT.findall(code_spans("\n".join([prompt] + docs))))
     for m in mods.values():
         names |= set(m["ports"]) | set(m["params"])
@@ -486,7 +491,7 @@ def compare(given, given_names, design):
             dname = dnorm[norm(g)]
             out.append({"kind": "spelling", "module": dname, "name": dname,
                         "detail": f"module `{dname}` is spelled `{g}` in the given interface"})
-        elif gm.get("source") == "doc_sub":
+        elif gm.get("source") == "doc_sub" or not gm.get("required", True):
             continue
         else:
             out.append({"kind": "missing_module", "module": g, "name": g,

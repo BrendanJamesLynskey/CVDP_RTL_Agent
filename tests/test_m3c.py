@@ -293,6 +293,21 @@ def test_gate_falls_back_to_one_build_per_mutant(tmp_path):
     assert r["method"] == "per_mutant" and r["outcome"] in ("pass", "fail") and r["compiled"] > 0, r["summary"]
 
 
+@needs_tools
+@pytest.mark.parametrize("internal", [False, True])
+def test_gate_handles_parameters_the_testbench_sets_through_its_own_parameters(tmp_path, internal):
+    """CVDP testbenches pass their own parameters (`parameter W = 'd4;` ... `#(.WIDTH(W))`): resolved, applied
+    with chparam, and declared on the wrapper and on each per-mutant netlist so the testbench compiles."""
+    rtl = COUNTER.replace("count <= count + 1'b1", "count <= nxt").replace(
+        "  always_ff", "  logic [WIDTH-1:0] nxt;\n  assign nxt = count + 1'b1;\n  always_ff")
+    tb = STRONG_TB.replace("module tb;", "module tb;\n  parameter W = 'd8 / 2;").replace(
+        "counter dut(", "counter #(.WIDTH(W)) dut(")
+    if internal:
+        tb = tb.replace('if (errors == 0)', 'if (dut.nxt !== count + 4\'d1) errors = errors + 1;\n    if (errors == 0)')
+    r = gate(tree(tmp_path), tb, rtl=rtl)
+    assert r["outcome"] == "pass" and r["method"] == ("per_mutant" if internal else "wrapper"), r["summary"]
+
+
 def test_gate_without_a_testbench_fails_with_the_message(tmp_path):
     g = MutationGate(str(tree(tmp_path)), Tracer(None), {"yosys": True, "iverilog": True})
     r = g.run(None)
@@ -515,3 +530,13 @@ def test_interface_given_tool_counts_the_hidden_top(tmp_path):
     rows = interface_given.rows([rec])
     assert rows[0]["given"] and rows[0]["source"] == "doc" and (rows[0]["covered"], rows[0]["dut"]) == (2, 2)
     assert "**1 of 1**" in interface_given.report(rows)
+
+
+def test_interface_module_named_only_in_a_document_is_never_required(tmp_path):
+    spec = SPEC + "\n## Related\nA wider system may also use a `slicer_top` module (see `rtl/slicer_top.sv`).\n"
+    res = check_after(tree(tmp_path, spec=spec), {"counter.sv": COUNTER})
+    assert res["ok"] is True, res["summary"]
+    # but a module the prompt itself asks for is
+    res = check_after(tree(tmp_path / "b", prompt="Design a `counter` module and a `limiter` module."),
+                      {"counter.sv": COUNTER})
+    assert ("missing_module", "limiter") in kinds(res)

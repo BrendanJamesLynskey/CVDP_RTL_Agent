@@ -74,8 +74,12 @@ sweep now sends (`CVDP_MUTATION_GATE=0`, `CVDP_INTERFACE_CHECK=0`).
   after which the agent submits anyway with `gate_overridden`. The 480 s wall cap wins: the gate's bound is cut to
   the time left less 5 s, and a gate failure with no budget or time left for another reflect submits too
   (`gate_overridden`).
+- Parameters the testbench sets on the design are applied with `chparam` when they resolve to integers: literals,
+  the testbench's own literal `parameter`/`localparam` values, and integer arithmetic over them; the wrapper and the
+  per-mutant netlists declare them so the testbench's instantiation compiles.
 - Outcomes per run: `no_tb`, `pass`, `fail`, `timeout`, and `skipped` (Yosys could not read or mutate the design, the
-  testbench sets parameters to non-literal values, or no netlist could drive the testbench; never blocks).
+  testbench sets parameters to values that do not resolve to integers, or no netlist could drive the testbench;
+  never blocks).
 
 ### The interface check (`interface_check=true`)
 
@@ -96,6 +100,8 @@ sweep now sends (`CVDP_MUTATION_GATE=0`, `CVDP_INTERFACE_CHECK=0`).
   - the ports and parameters a visible testbench under `verif/` connects by name, for a module the prompt names;
   - a module the prompt names ("the module should be defined as `des_dec`"), even with no ports found.
   The names-given extraction is `tools/reachable.py`'s, moved into the agent package (`cvdp_agent/given.py`).
+- **Required modules**: `missing_module` only for a module the original RTL defines, the prompt names or a visible
+  testbench instantiates; a module only a document names is compared if the design has it, never required.
 - **Findings**: `missing_module`, `missing_port`, `missing_param` (a given name the design lacks; a given parameter
   may be a localparam), `spelling` (a design name the given interface spells differently, by case or underscores
   only) and `width` (only when both widths are constant).
@@ -197,8 +203,44 @@ read); the report counts them.
 
 ## Smoke runs (not scored)
 
-One sweep per new arm on the 10 problems of `tools/m1_ids.txt`, Arm64, 4 threads, `run_budget_usd=0.50`, one seed.
-They check the steps end to end, not the arms. Filled from the runs in the PR description.
+One sweep per new arm on the 10 problems of `tools/m1_ids.txt`, Arm64, 4 threads, `run_budget_usd=0.50`, one seed,
+dispatched from this PR's branch (agent image `526c621`). They check the steps end to end, not the arms; the per-problem
+rows are in each run's log (the Collect step prints `results.csv`).
+
+| Arm | Run | Passed | Provider-reported spend | Unreported calls | Harness wall s | Stop reasons |
+|---|---|---|---|---|---|---|
+| M | 40188841425 | 5/10 | $0.0826 | 0 | 452 | submit 9, max_turns 1 |
+| I | 40188844846 | 6/10 | $0.1027 | 0 | 428 | submit 10 |
+
+Total **$0.1853** of the $1.00 allowed (each the sum of its 10 per-problem provider-reported costs).
+
+**Gate (M)**: 14 gate runs on 10 problems: `pass` 4, `skipped` 6, `no_tb` 3, `fail` 1; no `timeout`, no
+`gate_overridden`. Where it ran to the end, the agent's testbench killed 12 of 12 mutants (`barrel_shifter_0002`),
+11 of 12 (`lfsr_0001`), 8 of 12 (`csr_using_apb_interface_0001`, `ttc_lite_0001`); 48 mutants generated in passing
+runs, 39 killed. Gate wall time per run was at most 2.0 s (bound 60 s): these designs are small. `no_tb` sent 3
+problems back to reflect; 2 of them (`axis_to_uart_0001`, which then passed, and `dynamic_equalizer_0004`) then
+ran a testbench and their second gate run was `skipped`.
+
+**Interface check (I)**: 31 checks on 10 problems, all elaborated by pyslang (no Yosys fallback, nothing that could
+not be elaborated); mismatches on one problem only, `phase_rotation_0010` (10 of 10 checks, 2 `missing_module`
+each, unresolved at submit), one of M3b's 6 unreachable problems. No submit was turned into an edit
+(`interface_blocks` 0: by the time the agent submitted, the same set had been reported more than twice).
+
+Odd, and fixed in this PR after the smoke runs (neither re-run; the scored runs use the fixed image):
+
+- **6 of 14 gate runs were `skipped`**, on `DES_0003`, `dual_port_memory_0001` and the second runs above. CVDP's
+  own testbenches pass their parameters through their own (`parameter NBW_DATA = 'd64;` ... `.NBW_DATA(NBW_DATA)`),
+  which the gate took as non-literal and skipped. The gate now resolves a testbench's literal `parameter` and
+  `localparam` values (and integer arithmetic over them), sets them with `chparam`, and declares them on the
+  wrapper and the per-mutant netlists so the testbench compiles (tested on both build methods). The artifact store
+  is not reachable from where this PR was built, so the skip reason is inferred from the testbenches in the
+  dataset, not read from the traces.
+- **The 2 `missing_module` findings on `phase_rotation_0010` were false**: `slicer_top` and `slicer` are named in a
+  document, not in the prompt, and the design does not need them. A module is now required only when the original
+  RTL defines it, the prompt names it or a visible testbench instantiates it; a module only a document names is
+  compared if it exists (tested).
+- Not odd: a gate wall time of 0.09 s for 12 mutants of the barrel shifter is real (locally, Yosys takes about
+  0.13 s and each `vvp` run 0.01 s on a counter).
 
 ## Known gaps
 
@@ -208,8 +250,8 @@ They check the steps end to end, not the arms. Filled from the runs in the PR de
   `missing_port`. The soft block lets the agent submit after the same mismatches are reported twice.
 - **A modification task's new ports.** For cid004 and cid016 the given interface is the original RTL, so a port the
   task adds is not checked, and a port the task removes or widens on purpose is a finding the agent must override.
-- **The gate sees parameters only as literals.** A testbench that sets a parameter to an expression is not mutated
-  (`skipped`); the mutants are elaborated at the testbench's literal values (`chparam`), otherwise at the defaults.
+- **The gate sees parameters only as integers.** A testbench parameter set from something that does not resolve to
+  an integer (a function call, `$clog2`, a string) is not mutated (`skipped`).
 - **Hierarchy.** The design is flattened before mutating; a testbench that reads internal signals through the
   hierarchy falls back to per-mutant builds, whose netlist keeps public wire names but not every internal name.
 - **Equivalent mutants.** Some mutants cannot change the design's outputs; they are survivors no testbench can
