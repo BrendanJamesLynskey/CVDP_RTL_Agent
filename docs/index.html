@@ -168,6 +168,7 @@ a.gl:hover { color: var(--ch3); }
 .hero h1 span { color: var(--ch1); filter: var(--glow); }
 .dek { font-size: 1.13rem; color: var(--ink-2); max-width: 64ch; }
 .meas { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0; border: 1px solid var(--grid-2); background: var(--panel); margin: 22px 0 8px; }
+@media (min-width: 861px) { .meas { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .meas > div { padding: 10px 14px; border-right: 1px solid var(--grid); border-bottom: 1px solid var(--grid); min-width: 0; }
 .meas .k { font: 600 10px/1.2 var(--f-mono); letter-spacing: .1em; color: var(--ink-3); text-transform: uppercase; }
 .meas .v { font: 700 1.35rem/1.25 var(--f-disp); color: var(--ch1); font-variant-numeric: tabular-nums; filter: var(--glow); }
@@ -256,6 +257,12 @@ pre.log .lx { color: var(--x); } pre.log .lt { color: var(--ink-3); } pre.log .l
 .ctx .v { font: 700 1rem var(--f-disp); color: var(--ch2); }
 .ctx .w { font-size: .9rem; color: var(--ink-2); }
 
+/* ---- M3b lessons ---- */
+.lessons { display: grid; gap: 10px; margin: 4px 0 18px; max-width: 76ch; }
+.lesson { border: 1px solid var(--grid-2); border-left: 3px solid var(--ch2); background: var(--panel); padding: 10px 14px; margin: 0; }
+.lesson .lh { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font: 500 11.5px/1.3 var(--f-mono); color: var(--ink-2); margin-bottom: 6px; }
+.lesson blockquote { margin: 0; font-size: .98rem; line-height: 1.5; color: var(--ink); }
+
 /* ---- faq and glossary ---- */
 .faq details { border-bottom: 1px solid var(--grid-2); max-width: 76ch; }
 .faq summary { cursor: pointer; padding: 12px 0; font-weight: 600; list-style: none; display: flex; gap: 12px; min-height: 44px; align-items: baseline; }
@@ -327,11 +334,11 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
 <section class="sec hero" id="top" data-sig="tb_top.cvdp_rtl_agent" data-val="RESET">
   <div class="gutter"><div class="clk"></div><div class="sticky"><span class="sig">tb_top.cvdp_rtl_agent</span><span class="lz c3">RESET</span><span class="stamp num" data-stamp>@ 0 ns</span></div></div>
   <div class="body">
-    <div class="edge"><span>22 to 24 October 2026</span><span>·</span><span>milestones M0 to M3, report in public</span></div>
+    <div class="edge"><span>22 to 25 October 2026</span><span>·</span><span>milestones M0 to M3b, report in public</span></div>
     <h1>CVDP RTL&nbsp;Agent: <span>what passes the hidden testbench</span></h1>
     <div class="ios"><span class="k">IN ONE SENTENCE</span>
       <!-- src: README.md status; docs/reports/M2_report.md; docs/reports/M3_report.md -->
-      <p>An open LangGraph agent writes and fixes SystemVerilog for the 92 free problems of NVIDIA's CVDP benchmark, checks its own work in simulation, and is scored only by hidden cocotb testbenches: it solves 52 to 56 of the 92, and none of six changes to how it checks its work moved that number by a detectable amount.</p>
+      <p>An open LangGraph agent writes and fixes SystemVerilog for the 92 free problems of NVIDIA's CVDP benchmark, checks its own work in simulation, and is scored only by hidden cocotb testbenches: it solves 52 to 56 of the 92, none of six changes to how it checks its work moved that number by a detectable amount, and neither did a frozen memory of lessons learned on other problems.</p>
     </div>
 
     <div class="meas" role="list">
@@ -343,8 +350,10 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
       <div role="listitem"><div class="k">identical-run flips</div><div class="v x num">10</div><div class="s">problems change result between two runs of Haiku</div></div>
       <!-- src: docs/reports/M3_report.md "Paired results" -->
       <div role="listitem"><div class="k">ablations with an effect</div><div class="v x num">0 of 6</div><div class="s">every 95% interval includes 0</div></div>
-      <!-- src: docs/reports/M3_report.md cost bookkeeping: M1 about $0.75, M2 $8.5539, M3 $8.2537 -->
-      <div role="listitem"><div class="k">LLM spend, M1&ndash;M3</div><div class="v num">&asymp; $17.56</div><div class="s">provider-reported; null agent passes 0</div></div>
+      <!-- src: docs/reports/M3b_report.md "In short" (C - A, docs/reports/m3b/arms_paired_eval86.md) -->
+      <div role="listitem"><div class="k">lessons memory, M3b</div><div class="v num"><span data-d="e_CA">+1.6</span> pts</div><div class="s">C &minus; A <span data-d="ci_CA">[−3.1, +6.6]</span> on <span data-d="m3b_n">86</span> problems: no detectable effect</div></div>
+      <!-- src: M1 about $0.75 (M3_report.md cost bookkeeping) + M2, M3 and M3b run CSVs, the M3b snapshot and smoke runs; summed by site/data/derive.py -->
+      <div role="listitem"><div class="k">LLM spend, M1&ndash;M3b</div><div class="v num">&asymp; $<span data-d="spend_all">28.43</span></div><div class="s">provider-reported; null agent passes 0</div></div>
     </div>
 
     <div class="scope player" id="p-hero" tabindex="0" aria-label="Animated waveform of one real problem's trace. Space plays or pauses; arrow keys step.">
@@ -424,13 +433,13 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
 </section>
 
 <!-- ================================================================== MILESTONES -->
-<section class="sec" id="milestones" data-sig="milestone[3:0]" data-val="M0..M3">
-  <div class="gutter"><div class="clk"></div><div class="sticky"><span class="sig">milestone[3:0]</span><span class="lz">M0..M3</span><span class="stamp num" data-stamp></span></div></div>
+<section class="sec" id="milestones" data-sig="milestone[3:0]" data-val="M0..M3B">
+  <div class="gutter"><div class="clk"></div><div class="sticky"><span class="sig">milestone[3:0]</span><span class="lz">M0..M3B</span><span class="stamp num" data-stamp></span></div></div>
   <div class="body">
     <div class="edge" data-edge></div>
-    <h2>Milestones, M0 to M3</h2>
+    <h2>Milestones, M0 to M3b</h2>
     <div class="ios"><span class="k">IN ONE SENTENCE</span>
-      <p>Each milestone asked one question and answered it with runs anyone can download: does the harness run (M0), does the agent work (M1), how do models and reasoning settings compare (M2a, M2), and do the agent's own checks pay for themselves (M3).</p>
+      <p>Each milestone asked one question and answered it with runs anyone can download: does the harness run (M0), does the agent work (M1), how do models and reasoning settings compare (M2a, M2), do the agent's own checks pay for themselves (M3), and does a richer harness or a memory of lessons help (M3b).</p>
     </div>
     <div class="bus" id="msbus">
       <!-- src: README.md M0 table -->
@@ -453,13 +462,14 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
       <div class="ms"><span class="lz">M3</span><span class="d">23&ndash;24 Oct</span>
         <div class="q"><b>ASKED</b>Do self-check, lint, turn caps or budget change the pass rate? Why does it fail?</div>
         <div class="a"><b>ANSWERED</b>No detectable effect from any of six changes. Of 565 failures, 147 are interface mismatches with the hidden testbench. $8.25.</div></div>
-      <!-- src: README.md milestones table; docs/reports/M3_report.md "What the failures say"; branch m3b-harness-memory (README.md, tools/reachable.py) -->
-      <div class="ms plan"><span class="lz c3">M3b</span><span class="d">in progress</span>
-        <div class="q"><b>ASKS</b>Does a different harness (Deep Agents) or a frozen lessons memory do better on the problems an agent can reach?</div>
-        <div class="a"><b>STATUS</b>Being built on branch <code>m3b-harness-memory</code>. No results yet.</div></div>
-      <div class="ms plan"><span class="lz c3">FORMAL</span><span class="d">planned</span>
-        <div class="q"><b>ASKS</b>Does a mutation-score gate on the agent's own testbench, and an interface diff by elaboration, fix the two failure modes M3 found?</div>
-        <div class="a"><b>STATUS</b>Planned after M3b. No results.</div></div>
+      <!-- src: docs/reports/M3b_report.md "In short" -->
+      <div class="ms"><span class="lz">M3b</span><span class="d">24&ndash;25 Oct</span>
+        <div class="q"><b>ASKED</b>At a fixed model, does a richer harness (Deep Agents) or a frozen lessons memory raise pass@1 on the <span data-d="m3b_n">86</span> problems an agent can reach?</div>
+        <div class="a"><b>ANSWERED</b>The memory: no detectable effect (<span data-d="e_CA">+1.6</span> <span data-d="ci_CA">[−3.1, +6.6]</span>). The harness: perhaps a few points, clearest on top of the memory (<span data-d="e_DC">+5.8</span> <span data-d="ci_DC">[+1.9, +10.1]</span>); none passes a Bonferroni correction. $<span data-d="m3b_total">10.87</span>.</div></div>
+      <!-- src: docs/reports/M3b_report.md "Known gaps"; M3c brief (sweep inputs mutation_gate, interface_check) -->
+      <div class="ms plan"><span class="lz c3">M3c</span><span class="d">planned</span>
+        <div class="q"><b>ASKS</b>Do a mutation-score gate on the agent's own testbench and an interface diff by elaboration, as fixed graph steps, beat base A on the same <span data-d="m3b_n">86</span> problems?</div>
+        <div class="a"><b>STATUS</b>Planned. No results.</div></div>
       <div class="ms plan"><span class="lz c3">M4 / M5</span><span class="d">planned</span>
         <div class="q"><b>ASKS</b>M4: the write-up and logs packed for the LBC-bench leaderboard. M5: an open AMBA verification track scored by seeded-bug kill rate.</div>
         <div class="a"><b>STATUS</b>Planned. No results.</div></div>
@@ -547,6 +557,72 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
   </div>
 </section>
 
+<!-- ================================================================== M3B -->
+<section class="sec" id="m3b" data-sig="results.m3b" data-val="4 ARMS">
+  <div class="gutter"><div class="clk"></div><div class="sticky"><span class="sig">results.m3b</span><span class="lz">4 ARMS</span><span class="stamp num" data-stamp></span></div></div>
+  <div class="body">
+    <div class="edge" data-edge></div>
+    <h2>M3b: a richer harness, or a memory of lessons?</h2>
+    <div class="ios"><span class="k">IN ONE SENTENCE</span>
+      <!-- src: docs/reports/M3b_report.md "In short"; numbers in data-d spans are written by site/data/derive.py -->
+      <p>At a fixed model, a frozen memory of <span data-d="les_n">40</span> lessons did not detectably change the pass rate; the Deep Agents harness may add a few points, most clearly on top of the memory (<span data-d="e_DC">+5.8</span> <span data-d="ci_DC">[+1.9, +10.1]</span>), but with four comparisons and <span data-d="m3b_runs_arm">3</span> runs an arm that is a hypothesis to confirm, not a finding.</p>
+    </div>
+    <!-- src: docs/reports/M3b_report.md "The question", "Arms and settings", "The two problem sets" -->
+    <p>M3b holds the model (gpt-6-luna), the Arm64 runner and every M2 default fixed, and changes two things in a 2&times;2 design: the harness that drives the model (M2's hand-built LangGraph graph, or <a class="gl" href="#g-deep">Deep Agents</a>), and whether the agent is given a frozen <a class="gl" href="#g-memory">lessons memory</a>. Each arm ran <span data-d="m3b_runs_arm">3</span> times on the <span data-d="m3b_n">86</span> problems of the evaluation set: the 92 minus 6 that no agent can reach, by a rule fixed before any scored run. Arm A is a fresh run of M2's agent on the same image, so all four arms share an image and a period.</p>
+    <div class="scope"><div class="hd"><span><b>four arms</b> · pooled pass@1 over <span data-d="m3b_pr_arm">258</span> problem-runs · $ per solved problem</span><span>arrows = paired effect [95%]</span></div>
+      <div class="plot" id="c-m3bgrid"></div>
+      <div class="ft"><!-- src: docs/reports/m3b/runs/*.csv (pass, cost_usd), recomputed by site/data/derive.py; intervals from docs/reports/m3b/arms_paired_eval86.md and arms_paired_secondary_eval86.md -->Under each arm: its passes in each of its three runs, of <span data-d="m3b_n">86</span>. A solid arrow is a comparison whose interval excludes zero; a dashed one includes it. Pre-registered primary comparisons: B &minus; A (harness) and C &minus; A (memory); secondary: D &minus; B and D &minus; C.</div>
+    </div>
+
+    <h3>The paired effects, null findings first</h3>
+    <div class="scope player" id="p-m3b" tabindex="0" aria-label="Forest plot of the four M3b comparisons and one exploratory comparison, against the noise floor. Space plays or pauses; arrow keys step.">
+      <div class="hd"><span><b>paired effect on pass rate</b>, points [95%] · <span data-d="m3b_n">86</span> problems, <span data-d="m3b_runs_arm">3</span> runs an arm</span><span>band = noise floor on the <span data-d="m3b_n">86</span>, M3's A2 vs A1</span></div>
+      <div class="plot" data-plot></div>
+      <div class="cap" data-cap aria-live="polite"></div>
+      <div class="ctl" data-ctl></div>
+    </div>
+    <p class="small"><!-- src: docs/reports/m3b/arms_paired_eval86.md, arms_paired_secondary_eval86.md; noise floor: docs/reports/M3b_report.md "In short" (point effect and counts recomputed from docs/reports/m3/runs/A1,A2 on tools/m3b_eval_ids.txt) -->Intervals are <code>tools/ablate.py</code>'s paired problem bootstrap as committed in <code>docs/reports/m3b/</code>; the point effects, the better / worse / same counts and the exact sign tests are recomputed from the run CSVs by <code>site/data/derive.py</code> and agree.</p>
+    <!-- src: docs/reports/M3b_report.md "In short" -->
+    <ul>
+      <li><strong>The lessons memory did not help.</strong> C &minus; A is <span data-d="e_CA">+1.6</span> <span data-d="ci_CA">[−3.1, +6.6]</span>: <span data-d="bws_CA">10 / 8 / 68</span> problems better / worse / the same, sign test p = <span data-d="p_CA">0.82</span>. C's three runs solved <span data-d="runs_C">51, 51, 51</span> of <span data-d="m3b_n">86</span>. On Deep Agents, D &minus; B is <span data-d="e_DB">+3.1</span> <span data-d="ci_DB">[−0.4, +7.0]</span>, p = <span data-d="p_DB">0.15</span>: not detectable either.</li>
+      <li><strong>The harness may help a little.</strong> B &minus; A is <span data-d="e_BA">+4.3</span> <span data-d="ci_BA">[+0.0, +8.5]</span>, p = <span data-d="p_BA">0.21</span>: the interval's lower end rounds to zero and the sign test is far from significant. On top of the memory the harness is clearer: D &minus; C is <span data-d="e_DC">+5.8</span> <span data-d="ci_DC">[+1.9, +10.1]</span>, <span data-d="bws_DC">9 / 1 / 76</span>, p = <span data-d="p_DC">0.022</span>, the one comparison whose interval excludes zero.</li>
+      <li><strong>Why that is a hypothesis, not a finding.</strong> With four pre-registered comparisons, a Bonferroni threshold of <span data-d="bonf">0.0125</span> on the sign tests passes none of them, and the bootstrap intervals are not adjusted. D &minus; A (<span data-d="e_DA">+7.4</span> <span data-d="ci_DA">[+2.3, +12.8]</span>) was not pre-registered, so it is exploratory only. For scale: on these <span data-d="m3b_n">86</span> problems the noise floor is <span data-d="floor_eff">−2.3</span> <span data-d="floor_ci">[−9.3, +3.5]</span>, and M3's largest effect (20 turns) is <span data-d="f20_eff">+4.1</span> <span data-d="f20_ci">[−0.6, +9.9]</span>.</li>
+    </ul>
+
+    <h3>Why Deep Agents differs: fewer untested failures, more round-cap stops</h3>
+    <div class="scope"><div class="hd"><span><b><span data-d="m3b_pr_arm">258</span> problem-runs per arm</b> · passed, then failures by label</span><span>labels from tools/taxonomy.py</span></div>
+      <div class="plot" id="c-m3bfail"></div>
+      <div class="legend" id="l-m3bfail" aria-hidden="true"></div>
+      <div class="ft"><!-- src: failure_label and stop_reason columns of docs/reports/m3b/runs/*.csv, counted by site/data/derive.py; match docs/reports/m3b/taxonomy_by_arm.md -->Counts are recomputed from the <code>failure_label</code> column of the committed CSVs and match <code>docs/reports/m3b/taxonomy_by_arm.md</code>.</div>
+    </div>
+    <!-- src: docs/reports/M3b_report.md "Failure taxonomy by arm", "Where the harness differs", "The Deep Agents harness" -->
+    <p>Deep Agents runs a free tool-call loop: the model calls compile, lint, synthesis and its own testbench as tools, as often as it likes, up to a cap of 22 model calls (the most any M2 problem made in 10 turns). It leaves far fewer failures untested (<code>tests_failed_no_selfcheck</code>: A <span data-d="nst_A">58</span>, B <span data-d="nst_B">39</span>, D <span data-d="nst_D">33</span>), but stops more often on its round cap (failures labelled <code>stopped_by_cap</code>: A <span data-d="cap_A">11</span>, B <span data-d="cap_B">29</span>, D <span data-d="cap_D">33</span>). A cap stop still submits the best edit kept so far, and some pass: B hit the cap <span data-d="capall_B">49</span> times and <span data-d="cappass_B">20</span> of those passed. With the lessons, the LangGraph agent has more failures whose own testbench passed (C <span data-d="stp_C">21</span> against A <span data-d="stp_A">15</span>); with both, the fewest (D <span data-d="stp_D">8</span>).</p>
+    <div class="scope"><div class="hd"><span><b>tokens and cost per arm</b>, relative to arm A</span><span><span data-d="m3b_pr_arm">258</span> problem-runs each</span></div>
+      <div class="plot" id="c-m3btok"></div>
+      <div class="ft"><!-- src: prompt_tokens, completion_tokens and cost_usd columns of docs/reports/m3b/runs/*.csv; docs/reports/M3b_report.md "Deep Agents resends the whole conversation each round" -->Deep Agents resends the whole conversation every round: <span data-d="tok_B">45.7</span> M tokens against A's <span data-d="tok_A">8.9</span> M (about <span data-d="tok_x">5</span>&times;; prompt tokens alone <span data-d="ptok_B">43.6</span> M against <span data-d="ptok_A">6.9</span> M), for about the same provider-reported cost. Its cost per million prompt tokens is $<span data-d="mp_B">0.044</span> against $<span data-d="mp_A">0.268</span>, which points to provider-side prompt caching. Cached tokens are not recorded per call, so that is inferred, not measured.</div>
+    </div>
+
+    <h3>What the memory learned</h3>
+    <!-- src: docs/reports/m3b/lessons/lessons_b783931cbf160595.json (lessons, provenance); docs/reports/m3b/retrieval_eval86.md; docs/reports/M3b_report.md "The lessons memory", "The lessons and how often each is retrieved" -->
+    <p>The builder read <span data-d="les_att">87</span> attempts by arm A on <span data-d="les_problems">29</span> heavy-split problems (none in the evaluation set; <span data-d="les_pass">19</span> of the attempts passed), asked the model for general lessons in batches, and froze <span data-d="les_n">40</span> of them into snapshot <code><span data-d="les_hash">b783931cbf160595</span></code> for $<span data-d="les_cost">0.0031</span>. At run time the agent gets the top 5 by <a class="gl" href="#g-bm25">BM25</a> over its task text, with no model in the retrieval. The lessons are generic process advice, several near-duplicates, and <span data-d="les_never">6</span> are never retrieved for any of the <span data-d="m3b_n">86</span> problems (<span data-d="les_never_ids">L07, L08, L17, L28, L30, L38</span>: about compile diagnostics and turn budgets, words the problem statements do not use). The four retrieved most often, quoted as built:</p>
+    <div class="lessons" id="m3b-lessons"></div>
+    <p>The interface lessons did not move the interface failures: <code>compile_fail_hidden</code> stays at <span data-d="cfh_range">12–13</span> and <code>signal_missing_hidden</code> at <span data-d="smh_range">2–3</span> on every arm. A null C &minus; A says that this memory does not help, not that no memory could.</p>
+
+    <h3>Cost</h3>
+    <!-- src: docs/reports/m3b/pareto.csv; docs/reports/m3b/arms_paired_eval86.md "Arms"; docs/reports/M3b_report.md "In short" -->
+    <p>All four arms cost about the same: $<span data-d="upp_lo">0.0067</span> to $<span data-d="upp_hi">0.0074</span> per problem-run, and $<span data-d="us_A">0.0124</span> (A), $<span data-d="us_B">0.0119</span> (B), $<span data-d="us_C">0.0113</span> (C) and $<span data-d="us_D">0.0106</span> (D) per solved problem, with no unreported call in any of the <span data-d="m3b_pr_all">1,032</span> problem-runs. The arms differ in pass rate, not in price. The scored sweeps cost $<span data-d="m3b_scored">7.27</span> in all, the learning runs at least $<span data-d="m3b_learn">3.41</span>.</p>
+
+    <details class="why"><summary><span class="wk">WHY</span>Why the evaluation set leaves out unreachable problems</summary><div>
+      <!-- src: docs/reports/M3b_report.md "The two problem sets", "Exclusion rule"; docs/reports/m3b/unreachable.md -->
+      <p>If the hidden testbench needs a name that appears nowhere in what the agent is given, no change to the agent can make that problem pass. Keeping it adds only noise and shrinks every effect towards zero. So the rule was committed before any scored run: a problem is unreachable when a name its hidden testbench reads is given nowhere to the agent <em>and</em> M3 labelled it an interface failure in at least half of its 14 runs. Both halves are needed: two problems read names the agent is not given but failed on them in only 1 of 14 runs, so they stay. Six problems are excluded, five of them for internal register or instance names and one whose context is empty.</p>
+    </div></details>
+    <details class="why"><summary><span class="wk">WHY</span>Why the memory is frozen, and learned only on other problems</summary><div>
+      <!-- src: docs/reports/M3b_report.md "The lessons memory", "The two problem sets", "Decisions" -->
+      <p>A memory that has seen the evaluation problems' outcomes or traces can carry their answers into the test. That is leakage, and it would make any gain meaningless. So the memory learns only from <span data-d="les_problems">29</span> heavy-split problems whose files to change all lie inside the agent's edit roots; the builder refuses, in code and under test, any work directory that holds one of the 92 agentic problems; the snapshot is built once in Actions, committed as built with no hand edits, mounted read-only and checked against its hash on load; and every result row names that hash. The memory does not grow during evaluation, so C &minus; A measures one fixed memory.</p>
+    </div></details>
+  </div>
+</section>
+
 <!-- ================================================================== WHY IT FAILS -->
 <section class="sec" id="fail" data-sig="hidden_tb.fail" data-val="565 X">
   <div class="gutter"><div class="clk"></div><div class="sticky"><span class="sig">hidden_tb.fail</span><span class="lz x">565 X</span><span class="stamp num" data-stamp></span></div></div>
@@ -613,7 +689,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
     <div class="edge" data-edge></div>
     <h2>Read as a verification engineer would</h2>
     <div class="ios"><span class="k">IN ONE SENTENCE</span>
-      <p>The agent's self-check is a testbench with no coverage and no quality measure, which is why it passed on code the hidden tests failed in 61 of 73 cases; the planned formal milestone answers that with a mutation-score gate on the agent's testbench and an interface diff by elaboration.</p>
+      <p>The agent's self-check is a testbench with no coverage and no quality measure, which is why it passed on code the hidden tests failed in 61 of 73 cases; the planned M3c milestone answers that with a mutation-score gate on the agent's testbench and an interface diff by elaboration.</p>
     </div>
     <p>The hidden cocotb tests play the role of a sign-off regression the designer cannot see. The agent's own testbench plays the designer's unit test. Mapped onto the usual verification concepts, here is what the project does and does not do.</p>
     <div class="tw"><table>
@@ -629,7 +705,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
           <td><span class="chip no">NOT MEASURED</span></td></tr>
         <tr><td><strong>Testbench quality</strong></td>
           <td>Measured indirectly, from outcomes: the own testbench passed in 61 of 73 failed submissions where it ran (84% false passes on those).</td>
-          <td>No direct measure yet. The formal milestone plans a mutation score: does the agent's testbench catch deliberately broken copies of its own design?</td>
+          <td>No direct measure yet. M3c plans a mutation score: does the agent's testbench catch deliberately broken copies of its own design?</td>
           <td><span class="chip part">INDIRECT</span></td></tr>
         <tr><td><strong>Constrained-random stimulus</strong></td>
           <td>Not asked of the agent; its prompt lists the checks it may run.</td>
@@ -641,7 +717,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
           <td><span class="chip plan">PLANNED (M5)</span></td></tr>
         <tr><td><strong>Formal: <a class="gl" href="#g-bmc">BMC</a>, <a class="gl" href="#g-equiv">equivalence</a>, <a class="gl" href="#g-mut">mutation</a></strong></td>
           <td>None run yet.</td>
-          <td>Planned: a mutation-score gate on the agent's testbench (Yosys <code>mutate</code> or MCY) and an interface diff by elaboration (pyslang or Yosys). Formal checks of SVA properties with SymbiYosys are planned for the M5 track. No equivalence checking is planned.</td>
+          <td>Planned for M3c: a mutation-score gate on the agent's testbench (Yosys <code>mutate</code>) and an interface diff by elaboration (pyslang), both fixed steps in the graph. Formal checks of SVA properties with SymbiYosys are planned for the M5 track. No equivalence checking is planned.</td>
           <td><span class="chip plan">PLANNED</span></td></tr>
         <tr><td><strong>Regression triage</strong></td>
           <td>Done: a deterministic label for each of 565 failures, checked against hand labels; a measured noise floor (flaky results: 10 problems flip between identical runs); a null-agent floor and a golden check (M0).</td>
@@ -661,7 +737,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
     <div class="ios"><span class="k">IN ONE SENTENCE</span>
       <p>Three published rows use exactly these 92 problems in the same release, and they land in the same range as ours (48 to 53 of 92 against our 41 to 56); everything else published on CVDP uses other problems, other modes or commercial tools, and is context only.</p>
     </div>
-    <p>Every number here was checked against its primary source on 24 October 2026. Our runs use only the free, open-tool split (92 problems, four categories), specific models, one run per setting and pass@1 from a single sample.</p>
+    <p>Every number here was checked against its primary source on 24 October 2026. Our runs use only the free, open-tool split (92 problems, four categories), specific models, one run per setting in M2 and pass@1 from a single sample.</p>
 
     <div class="grp"><div class="gh"><span class="chip done">COMPARABLE</span> Same 92 problems (agentic_code_generation_no_commercial), same release 1.1.0</div>
       <div class="gb">
@@ -671,6 +747,8 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
         <p>The plain reading: Haiku 5.5 and gpt-6-luna inside this agent (52 to 56) land where two frontier models land in a single turn on the same problems (52 and 53), and near Claude Code with Sonnet 4.6 (48). With one run each and intervals about 20 points wide, none of these differences is established.</p>
       </div></div>
 
+    <!-- src: docs/reports/m3b/arms_paired_eval86.md "Arms"; tools/m3b_eval_ids.txt -->
+    <p class="small">M3b's four arms (<span data-d="rate_A">57.8</span>% to <span data-d="rate_D">65.1</span>% pooled pass@1) are not drawn beside these rows: they were scored on <span data-d="m3b_n">86</span> problems, the 92 minus 6 that no agent can reach, so their rates are higher by construction and do not sit on the same 92 as the LBC-bench rows.</p>
     <div class="grp"><div class="gh"><span class="chip part">CONTEXT ONLY</span> Different problems, modes, tools or metrics</div>
       <div class="gb"><div id="ctx-list" class="ctx"></div></div></div>
     <p class="small">One further paper evaluates small models with an agentic framework on CVDP (Shankar et al., <a href="https://arxiv.org/abs/2512.05073">arXiv:2512.05073</a>); its abstract gives no pass rates, and none are quoted here.</p>
@@ -684,14 +762,18 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
     <div class="edge" data-edge></div>
     <h2>Threats to validity: what this does not show</h2>
     <div class="ios"><span class="k">IN ONE SENTENCE</span>
-      <p>These results hold for one cheap model per ablation arm, on 92 open-tool problems, at a resolution of about &plusmn;5 points; they say nothing about smaller effects, other models, the heavy or commercial splits, or verification-writing tasks.</p>
+      <p>These results hold for one cheap model per ablation arm, on 92 open-tool problems (86 in M3b), at a resolution of a few points; they say nothing about smaller effects, other models, the heavy or commercial splits, or verification-writing tasks.</p>
     </div>
     <ul class="threats">
       <!-- src: M3_report.md "Arms and settings", "Known gaps"; M2_report.md "Known gaps"; M1_report.md "Known gaps"; README.md -->
-      <li><b>One model per arm.</b> Every M3 arm uses gpt-6-luna. An ablation that does nothing for it may matter for another model.</li>
+      <li><b>One model per arm.</b> Every M3 and M3b arm uses gpt-6-luna. An ablation that does nothing for it may matter for another model.</li>
       <li><b>Sampling is not seeded.</b> <code>CVDP_SEED</code> is a label only; OpenRouter sampling cannot be seeded across providers. Both runs of every M3 arm carry the label seed 1.</li>
       <li><b>The free, open-tool split only.</b> 92 problems in four categories. The verification-writing categories (testbench stimulus, checkers, assertions: cid012&ndash;014) need Cadence Xcelium and are not run.</li>
-      <li><b>2 runs per arm resolve about &plusmn;5 points.</b> A real effect smaller than that would read as "no detectable effect". The null results are not evidence of no effect.</li>
+      <li><b>2 runs per arm resolve about &plusmn;5 points in M3</b>, and M3b's 3 runs on 86 problems do little better. A real effect smaller than that would read as "no detectable effect". The null results are not evidence of no effect.</li>
+      <li><b>M3b makes four comparisons with three runs an arm.</b> None of its sign tests passes a Bonferroni threshold of <span data-d="bonf">0.0125</span>, and the bootstrap intervals are not adjusted, so D &minus; C, the one interval that excludes zero, is a hypothesis for a confirming run (more seeds or another model), not a finding.</li>
+      <li><b>M3b tests one memory snapshot.</b> <span data-d="les_n">40</span> generic lessons from <span data-d="les_att">87</span> attempts, only <span data-d="les_pass">19</span> of them passes, several near-duplicates, <span data-d="les_never">6</span> never retrieved. A null C &minus; A says this memory does not help, not that no memory could.</li>
+      <li><b>M3b's caching claim is inferred.</b> Cached prompt tokens are not recorded per call, so the reading that Deep Agents' extra tokens are mostly cached rests on its cost per prompt token, not a measured cache-hit count. Its rounds are also not turns: compare the harnesses on cost and wall time, not on turns.</li>
+      <li><b>The M3b effects are paired on the 86 reachable problems.</b> <!-- src: docs/reports/M3b_report.md "All 92 problems, secondary" --> On all 92 the 6 excluded problems fail in all 72 of their runs, so every effect is a little smaller and no finding changes (B &minus; A +4.0, C &minus; A +1.4, D &minus; C +5.4 points).</li>
       <li><b>The hand-label hold-out had no <code>signal_missing_hidden</code> case</b>, so the new rule is checked only on the set it was developed on, and the same person wrote the rules and the labels.</li>
       <li><b>Problems are treated as exchangeable</b> by the bootstrap and the sign test. cid003 (34 problems) weighs most.</li>
       <li><b>Self-check pass or fail is read from truncated tool output</b> in the trace.</li>
@@ -699,7 +781,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
       <li><b>"Is the name given to the agent?" is a word search</b> over prompt and context files. It cannot tell a signal from the same word in prose, and it is not yet a committed tool or done for <code>compile_fail_hidden</code>.</li>
       <li><b>No per-category or AMBA effects.</b> On the 8 AMBA problems every run passed 3 or 4; two runs give no power on 8 problems.</li>
       <li><b>One run per runner in M2.</b> The seeds measure the noise on 30 problems, not on 92, and the reasoning setting for each model was picked from one run on 10 problems.</li>
-      <li><b>The heavy split (75 problems) is not run with the agent.</b> In 53 of them the hidden tests read files outside the agent's edit roots, and 3 (<code>i2c</code> 7, 46, 49) produced no test output even for the null agent.</li>
+      <li><b>The heavy split (75 problems) is never scored with the agent.</b> In 46 of them the files the reference solution changes lie outside the agent's edit roots (M1 gave 53 from a check it did not commit; M3b's committed <code>tools/learn_in_roots.py</code> gives 46). M3b runs the agent on the other <span data-d="les_problems">29</span> only to build its lessons memory, and 3 of those (<code>i2c</code> 7, 46, 49) gave no test output in any attempt.</li>
       <li><b>Costs are lower bounds in two places</b>: one unreported call in M2 (DeepSeek seeds) and one in M3 (arm C).</li>
       <li><b>Caps are soft by design</b>: wall time by up to about 40 s, the budget by up to one call.</li>
       <li><b>Model serving varies</b>: DeepSeek's calls went to 15&ndash;19 providers per sweep, so its cost and behaviour mix providers.</li>
@@ -709,41 +791,39 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
 </section>
 
 <!-- ================================================================== NEXT -->
-<section class="sec" id="next" data-sig="next_state" data-val="M3B | FORMAL">
-  <div class="gutter"><div class="clk"></div><div class="sticky"><span class="sig">next_state</span><span class="lz c3">M3B | FORMAL</span><span class="stamp num" data-stamp></span></div></div>
+<section class="sec" id="next" data-sig="next_state" data-val="M3C">
+  <div class="gutter"><div class="clk"></div><div class="sticky"><span class="sig">next_state</span><span class="lz c3">M3C</span><span class="stamp num" data-stamp></span></div></div>
   <div class="body">
     <div class="edge" data-edge></div>
     <h2>What's next</h2>
     <div class="ios"><span class="k">IN ONE SENTENCE</span>
-      <p>M3b, now being built, asks whether a different agent harness or a frozen lessons memory helps on the problems an agent can actually reach; a formal-methods milestone after it puts a mutation-score gate on the agent's testbench and an interface check in front of every submission.</p>
+      <p>M3c puts two model-free checks into the LangGraph agent as fixed steps, a mutation-score gate on its own testbench and an interface diff by elaboration, and scores each against base A on the same <span data-d="m3b_n">86</span> problems.</p>
     </div>
     <div class="two">
-      <div class="ms plan"><span class="lz c3">M3b &middot; IN PROGRESS</span>
-        <!-- src: branch m3b-harness-memory: README.md, tools/reachable.py, tools/retrieval.py, tools/learn_lessons.py; docs/reports/M3_report.md "M3b design" -->
-        <p>Four arms, same model and settings: A the current LangGraph graph; B the <a class="gl" href="#g-deep">Deep Agents</a> harness; C and D the same two with a frozen lessons memory. 3 runs per arm. Pre-registered primary effects: B &minus; A and C &minus; A.</p>
-        <p>The memory learns only from the 75-problem heavy split, then is frozen into a snapshot named by its content hash. At run time the agent gets the top 5 lessons by <a class="gl" href="#g-bm25">BM25</a> over the task text, with no model in the retrieval. The evaluation set is the 92 minus problems no agent can reach, by a pre-registered rule in <code>tools/reachable.py</code>. No results yet.</p>
-      </div>
-      <div class="ms plan"><span class="lz c3">FORMAL &middot; PLANNED</span>
-        <p>Two arms against the base on the M3b evaluation set, each a fixed step in the graph rather than a tool the LLM may skip:</p>
+      <div class="ms plan"><span class="lz c3">M3c &middot; PLANNED</span>
+        <!-- src: docs/reports/M3b_report.md and M3_report.md (the two failure classes); M3c design: arms A, M, I on tools/m3b_eval_ids.txt, 3 runs each -->
+        <p>Two arms against a fresh base A, each a fixed step in the graph rather than a tool the LLM may skip, on M3b's <span data-d="m3b_n">86</span> problems with 3 runs an arm. Pre-registered primary effects: M &minus; A and I &minus; A.</p>
         <ul>
-          <li>a mutation-score gate: the agent's own testbench must fail on mutated copies of its design (Yosys <code>mutate</code> or MCY) before it may submit;</li>
-          <li>an interface diff by elaboration (pyslang or Yosys): the design's ports, parameters and hierarchy against the specification.</li>
+          <li><strong>M, a <a class="gl" href="#g-mut">mutation</a>-score gate</strong> before submit: Yosys <code>mutate</code> makes mutated copies of the agent's RTL, and its own testbench must fail on enough of them. No testbench, no submit.</li>
+          <li><strong>I, an interface diff by elaboration</strong> after every edit: pyslang elaborates the design, and its top module, ports, widths and parameters are compared with the interface the agent was given. It never reads the hidden testbench.</li>
         </ul>
         <p>No results yet.</p>
       </div>
+      <div class="ms plan"><span class="lz c3">OPEN &middot; FROM M3B</span>
+        <!-- src: docs/reports/M3b_report.md "Known gaps" (four comparisons, three runs) -->
+        <p>M3b's harness effect needs a confirming run, with more seeds or another model, before it is called a finding: D &minus; C <span data-d="e_DC">+5.8</span> <span data-d="ci_DC">[+1.9, +10.1]</span> is the one interval that excludes zero, and its sign test (p = <span data-d="p_DC">0.022</span>) does not pass a Bonferroni threshold of <span data-d="bonf">0.0125</span>.</p>
+      </div>
     </div>
-    <details class="why"><summary><span class="wk">WHY</span>Why the evaluation set leaves out unreachable problems</summary><div>
-      <p>If the hidden testbench needs a name that appears nowhere in what the agent is given, no change to the agent can make that problem pass. Keeping it adds only noise and shrinks every effect towards zero. So M3b fixes the rule before any scored run: a problem is unreachable when a handle its hidden testbench needs is given nowhere and M3 labelled it an interface failure in at least half of its 14 runs. The lists are committed first, and the effect on all 92 is still reported as a secondary table.</p>
-    </div></details>
-    <details class="why"><summary><span class="wk">WHY</span>Why the lessons memory is frozen and learned only on the heavy split</summary><div>
-      <p>A memory that has seen the evaluation problems' outcomes or traces can carry their answers into the test. That is leakage, and it would make any gain meaningless. So the memory learns only from the 75 heavy-split problems, which do not overlap the 92; it is frozen into one content-hashed snapshot; every result row names that hash; and the snapshot builder refuses, in code and under test, any work directory that contains an evaluation problem.</p>
+    <details class="why"><summary><span class="wk">WHY</span>Why the new checks are fixed steps, not tools</summary><div>
+      <!-- src: docs/reports/m3/behaviour.md (Ran own testbench column); docs/reports/m3b/taxonomy_by_arm.md -->
+      <p>A check the model may skip is a check it often skips. In M3, with self-check available as a tool, the agent ran its own testbench on only 31&ndash;32 of 92 problems, and the largest failure label in M3b is still "hidden tests failed, no testbench of its own" (<span data-d="nst_A">58</span> of arm A's failures). So M3c's checks run in code at fixed points of the graph; the model sees their results but does not decide whether they run.</p>
     </div></details>
   </div>
 </section>
 
 <!-- ================================================================== FAQ -->
-<section class="sec" id="faq" data-sig="reviewer.q[17:0]" data-val="18 Q">
-  <div class="gutter"><div class="clk"></div><div class="sticky"><span class="sig">reviewer.q[17:0]</span><span class="lz">18 Q</span><span class="stamp num" data-stamp></span></div></div>
+<section class="sec" id="faq" data-sig="reviewer.q[19:0]" data-val="20 Q">
+  <div class="gutter"><div class="clk"></div><div class="sticky"><span class="sig">reviewer.q[19:0]</span><span class="lz">20 Q</span><span class="stamp num" data-stamp></span></div></div>
   <div class="body">
     <div class="edge" data-edge></div>
     <h2>Questions a reviewer might ask</h2>
@@ -783,7 +863,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
 <script>
 (function () {
 "use strict";
-const D = /*DATA:BEGIN*/{"m2":[{"label":"Haiku 5.5 (low)","runner":"x86-64","run":"39967302029","k":52,"n":92,"rate":56.5,"lo":46.3,"hi":66.2,"cost":1.1123,"per_solved":0.0214},{"label":"Haiku 5.5 (low)","runner":"Arm64","run":"39975578761","k":56,"n":92,"rate":60.9,"lo":50.7,"hi":70.2,"cost":1.03,"per_solved":0.0184},{"label":"gpt-6-luna (default)","runner":"x86-64","run":"39967317698","k":52,"n":92,"rate":56.5,"lo":46.3,"hi":66.2,"cost":0.5455,"per_solved":0.0105},{"label":"gpt-6-luna (default)","runner":"Arm64","run":"39981444074","k":53,"n":92,"rate":57.6,"lo":47.4,"hi":67.2,"cost":0.5776,"per_solved":0.0109},{"label":"DeepSeek V4.1 Flash (off)","runner":"x86-64","run":"39975562293","k":43,"n":92,"rate":46.7,"lo":36.9,"hi":56.9,"cost":1.0314,"per_solved":0.024},{"label":"DeepSeek V4.1 Flash (off)","runner":"Arm64","run":"39981458867","k":41,"n":92,"rate":44.6,"lo":34.8,"hi":54.7,"cost":0.9763,"per_solved":0.0238}],"m2_flips":{"Haiku 5.5 (low)":10,"gpt-6-luna (default)":9,"DeepSeek V4.1 Flash (off)":12},"m2_never":28,"m2_always":29,"never_all_20":24,"m3_runs":[{"tag":"A1","run":"39981444074","k":53,"n":92,"cost":0.5776,"unreported":0,"own_tb":31},{"tag":"A2","run":"40031838020","k":51,"n":92,"cost":0.5282,"unreported":0,"own_tb":32},{"tag":"B1","run":"40027264043","k":54,"n":92,"cost":0.4848,"unreported":0,"own_tb":0},{"tag":"B2","run":"40033844068","k":48,"n":92,"cost":0.5872,"unreported":0,"own_tb":0},{"tag":"C1","run":"40027278575","k":50,"n":92,"cost":0.7265,"unreported":1,"own_tb":67},{"tag":"C2","run":"40035587883","k":51,"n":92,"cost":0.7523,"unreported":0,"own_tb":67},{"tag":"D1","run":"40037217462","k":50,"n":92,"cost":0.8529,"unreported":0,"own_tb":0},{"tag":"D2","run":"40040753269","k":51,"n":92,"cost":0.8531,"unreported":0,"own_tb":0},{"tag":"E1","run":"40042570422","k":53,"n":92,"cost":0.5516,"unreported":0,"own_tb":39},{"tag":"E2","run":"40045515591","k":50,"n":92,"cost":0.5636,"unreported":0,"own_tb":34},{"tag":"F1","run":"40046195564","k":57,"n":92,"cost":0.5996,"unreported":0,"own_tb":39},{"tag":"F2","run":"40048975297","k":54,"n":92,"cost":0.5653,"unreported":0,"own_tb":39},{"tag":"G1","run":"40049462265","k":50,"n":92,"cost":0.5993,"unreported":0,"own_tb":41},{"tag":"G2","run":"40052189876","k":51,"n":92,"cost":0.5893,"unreported":0,"own_tb":39}],"m3_effects":{"C":{"finding":"no detectable effect","eff":-1.6,"lo":-6.5,"hi":3.3,"better":9,"worse":11,"same":72,"p":0.824},"D":{"finding":"no detectable effect","eff":-1.6,"lo":-6.0,"hi":2.7,"better":5,"worse":9,"same":78,"p":0.424},"G":{"finding":"no detectable effect","eff":-1.6,"lo":-7.1,"hi":3.8,"better":7,"worse":11,"same":74,"p":0.481},"B":{"finding":"no detectable effect","eff":-1.1,"lo":-6.0,"hi":4.3,"better":8,"worse":11,"same":73,"p":0.648},"E":{"finding":"no detectable effect","eff":-0.5,"lo":-4.9,"hi":4.3,"better":5,"worse":7,"same":80,"p":0.774},"F":{"finding":"no detectable effect","eff":3.8,"lo":-1.1,"hi":9.2,"better":9,"worse":5,"same":78,"p":0.424}},"m3_point_check":{"B":-1.1,"C":-1.6,"D":-1.6,"E":-0.5,"F":3.8,"G":-1.6},"m3_better_worse_check":{"B":[8,11,73],"C":[9,11,72],"D":[5,9,78],"E":[5,7,80],"F":[9,5,78],"G":[7,11,74]},"noise_floor":{"finding":"no detectable effect","eff":-2.2,"lo":-8.7,"hi":4.3,"better":3,"worse":5,"same":84,"p":0.727},"noise_point_check":-2.2,"pareto":[{"arm":"B","usd":0.005826,"rate":0.5543,"frontier":1,"lb":0},{"arm":"A","usd":0.00601,"rate":0.5652,"frontier":1,"lb":0},{"arm":"E","usd":0.006061,"rate":0.5598,"frontier":0,"lb":0},{"arm":"F","usd":0.006331,"rate":0.6033,"frontier":1,"lb":0},{"arm":"G","usd":0.00646,"rate":0.5489,"frontier":0,"lb":0},{"arm":"C","usd":0.008037,"rate":0.5489,"frontier":0,"lb":1},{"arm":"D","usd":0.009272,"rate":0.5489,"frontier":0,"lb":0}],"taxonomy":{"tests_failed_no_selfcheck":271,"compile_fail_hidden":74,"signal_missing_hidden":73,"tests_failed_selfcheck_passed":61,"stopped_by_cap":56,"sim_incomplete":13,"tests_failed_selfcheck_failed":12,"no_edit":5},"taxonomy_total":565,"taxonomy_by_cid":{"stopped_by_cap":{"cid003":14,"cid016":8,"cid004":23,"cid005":11},"tests_failed_selfcheck_failed":{"cid004":5,"cid016":4,"cid005":1,"cid003":2},"tests_failed_no_selfcheck":{"cid016":27,"cid004":100,"cid005":47,"cid003":97},"tests_failed_selfcheck_passed":{"cid016":24,"cid005":16,"cid003":13,"cid004":8},"compile_fail_hidden":{"cid003":45,"cid005":29},"signal_missing_hidden":{"cid003":30,"cid005":32,"cid004":11},"sim_incomplete":{"cid004":11,"cid005":1,"cid016":1},"no_edit":{"cid016":3,"cid004":2}},"problems_per_label":{"compile_fail_hidden":8,"signal_missing_hidden":9,"tests_failed_selfcheck_passed":26},"own_tb_ran_failed":73,"raster":{"ids":["64b66b_codec_0001","AES_encryption_decryption_0003","AES_encryption_decryption_0005","AES_encryption_decryption_0009","AES_encryption_decryption_0012","AES_encryption_decryption_0018","DES_0001","DES_0003","DES_0005","DES_0007","Min_Hamming_Distance_Finder_0001","PCIe_endpoint_0001","arithmetic_progression_generator_0001","async_fifo_compute_ram_application_0001","async_fifo_compute_ram_application_0006","async_filo_0001","axi4lite_to_pcie_config_0003","axis_broadcaster_0001","axis_to_uart_0001","axis_to_uart_0004","barrel_shifter_0001","barrel_shifter_0002","bcd_adder_0004","binary_search_tree_algorithms_0001","binary_search_tree_algorithms_0014","binary_to_gray_0003","byte_enable_ram_0002","cache_controller_0001","caesar_cipher_0001","cellular_automata_0002","cic_decimator_0001","cipher_0001","cont_adder_0001","csr_using_apb_interface_0001","custom_fifo_0004","digital_stopwatch_0001","direct_map_cache_0001","direct_map_cache_0003","dma_xfer_engine_0001","door_lock_0001","dual_port_memory_0001","dual_port_memory_0004","dynamic_equalizer_0001","dynamic_equalizer_0004","dynamic_equalizer_0008","elevator_control_0004","ethernet_mii_0004","ethernet_mii_0006","event_scheduler_0001","event_scheduler_0004","event_storing_0001","fixed_arbiter_0010","gcd_0007","hdbn_codec_0001","jpeg_runlength_enc_0001","lfsr_0001","lfsr_0005","low_power_channel_0001","monte_carlo_0006","multiplexer_0001","nbit_swizzling_0001","nmea_gps_0008","phase_rotation_0010","phase_rotation_0013","phase_rotation_0015","phase_rotation_0019","phase_rotation_0028","phase_rotation_0031","phase_rotation_0038","poly_decimator_0001","prbs_0001","programmable_fsm_dynamic_state_encoding_0001","queue_0001","rc5_0001","rgb_color_space_conversion_0001","rgb_color_space_conversion_0004","secure_apb_history_shift_register_0001","sigma_delta_audio_0001","signed_comparator_0001","sorter_0009","sorter_0016","sorter_0026","spi_complex_mult_0002","swizzler_0001","swizzler_0005","sync_serial_communication_0001","systolic_array_0001","thermostat_secure_0001","traffic_light_controller_0001","ttc_lite_0001","universal_shift_reg_0001","universal_shift_reg_0003"],"cid":["cid005","cid016","cid016","cid004","cid004","cid005","cid003","cid004","cid005","cid005","cid005","cid003","cid016","cid003","cid005","cid003","cid004","cid016","cid003","cid003","cid016","cid004","cid004","cid004","cid005","cid003","cid003","cid003","cid016","cid003","cid003","cid003","cid003","cid003","cid016","cid005","cid003","cid004","cid003","cid003","cid016","cid004","cid003","cid004","cid005","cid004","cid003","cid003","cid003","cid004","cid005","cid004","cid005","cid005","cid005","cid016","cid016","cid005","cid016","cid003","cid003","cid004","cid005","cid004","cid004","cid004","cid005","cid004","cid003","cid005","cid005","cid004","cid003","cid003","cid003","cid004","cid004","cid003","cid003","cid004","cid005","cid005","cid003","cid003","cid005","cid003","cid005","cid004","cid004","cid003","cid003","cid004"],"cols":["Haiku x86-64","Haiku Arm64","gpt-6-luna x86-64","gpt-6-luna Arm64","DeepSeek x86-64","DeepSeek Arm64","M3 A2","M3 B1","M3 B2","M3 C1","M3 C2","M3 D1","M3 D2","M3 E1","M3 E2","M3 F1","M3 F2","M3 G1","M3 G2"],"bits":["1111011111111111111","0111001101111111101","1111011110111101111","0111001111111111111","0111001101110101101","1111001111111111111","0000000000100000000","1110000000110001111","1111101111111111111","0001000001000010000","1111101111111111111","1111111111111111111","0000000000000000000","0011101111111111111","1111011111111111111","1111111111111111111","1111111011101011001","1100000000100000000","1111111111111111111","1111111111111111111","1111111111111111111","1111111111111111111","1111111111111111111","0000000000000000000","0000000000000000000","1111111111111111111","1111111111111111111","0100000000000000000","1111111011111111111","1111111111111111111","1111101111111111111","1111111111111111111","1111111111111111111","0000000000000000000","0100111101110000100","0000000000000000000","1111110110111011111","1111111111111111111","1111111111111111111","0001010000000000110","1101101111011111111","1111111111111111111","0000000000000000000","1110100111011111111","0000000000000000000","0000000000000000000","0111001101011111110","1000000000000000000","1111111111111111111","0010111111010111010","1111111111111111111","1111111100101111111","1111110011111101111","0000000000000000000","0000000100001000000","1111111111111111111","0000000000000001000","1100111111101111111","1100110000000000001","1111111111111111111","0111111111111111111","0000000000000000000","0000000000000000000","0001100000000101101","0000000010000000000","1111001101110111110","0000000000000000000","0000000000000000000","0000000000000000000","0000000000000000000","1111001110011101111","1111011111111111111","0000000000000000000","0000000000000000000","1110000100100101100","1101111100111001001","0000000000000000000","0000000000000000000","1111111111111111111","1011001111011111010","1111001111001111100","1011001110101111001","0000000000000000000","1100110101000110110","1111111111111111111","0000000000000000000","1111111111111111111","0000000000000000000","0000000000000000000","0000000000000000000","1111111111111111111","1111111111111111111"]},"hero":{"pass":"0","cost_usd":"0.00242347","llm_calls":"3","tool_calls":"3","turns":"1","wall_time_s":"52.61","harness_agent_s":"55.21","stop_reason":"submit","failure_label":"signal_missing_hidden","own_compile_last":"pass","selfcheck_runs":"0","prompt_tokens":"3163","completion_tokens":"4094","cid":"cid003","difficulty":"medium"},"cost_m2":8.5539,"cost_m3":8.2537,"external":{"_note":"Published CVDP results, each checked against its primary source on 2026-10-24. derive.py adds Wilson 95% intervals to the same_92 rows. Nothing here is from memory.","lbc_source":"https://lbc-bench.si2.org","lbc_data":"https://github.com/si2org/lbc-bench.github.io/blob/b8354131ba89f915f5f940a3300a06777ebe1e98/data/leaderboards.json","same_92":[{"who":"Claude Code + Claude Sonnet 4.6 (medium effort)","mode":"agentic, multi-turn","k":48,"n":92,"release":"1.1.0","runs":1,"date":"2026-05-13","checked":false,"quote":"48/92 agentic_code_generation_no_commercial","source":"LBC-bench, code-generation-limited-context, row 5f3b37eb (notes field)","rate":52.2,"lo":42.1,"hi":62.1},{"who":"GPT-5.6 Sol, single turn","mode":"agentic split run non-agentically (--force-copilot)","k":52,"n":92,"release":"1.1.0","runs":1,"date":"2026-07-26","checked":false,"quote":"agentic_code_generation_no_commercial evaluated non-agentically via --force-copilot per Si2 guidance, 92 problems, 52 passed (56.52%)","source":"LBC-bench, code-generation-limited-context, row 5697ab4a (notes field)","rate":56.5,"lo":46.3,"hi":66.2},{"who":"Claude Fable 5, single turn","mode":"agentic split run non-agentically (--force-copilot)","k":53,"n":92,"release":"1.1.0","runs":1,"date":"2026-07-26","checked":false,"quote":"agentic_code_generation_no_commercial evaluated non-agentically via --force-copilot per Si2 guidance, 92 problems, 53 passed (57.61%)","source":"LBC-bench, code-generation-limited-context, row 14cf89d9 (notes field)","rate":57.6,"lo":47.4,"hi":67.2}],"context":[{"who":"Claude Code + Claude Opus 4.8 (xhigh), heavy split","value":"53/75 = 70.67%","source":"LBC-bench, code-generation-heavy-context, row b999bda5","url":"https://lbc-bench.si2.org","why_not":"The 75-problem heavy split. This project has not run the agent on it yet."},{"who":"Paper, Table 3: Claude 3.7 Sonnet, agentic problems in single-turn form","value":"29.0% overall; cid03 49.0, cid04 42.0, cid05 24.0, cid16 53.0","source":"Pinckney et al., arXiv:2506.14074 v1 (17 June 2025), Table 3","url":"https://arxiv.org/abs/2506.14074","why_not":"No agent loop (the paper converted agentic problems to single-turn prompts); pass@1 from n=5 samples; all 166 agentic problems of the first release, including cid12-14, which need Cadence Xcelium; the paper's agentic set had 100 problems in these four categories, against 92 in release 1.1.0's open-tool split; 2025 models."},{"who":"Paper, Table 3: GPT 4.1 / Claude 3.5 Haiku / Llama 3.1 405B, same setting","value":"21.0% / 20.0% / 21.0% overall","source":"Pinckney et al., arXiv:2506.14074 v1, Table 3","url":"https://arxiv.org/abs/2506.14074","why_not":"As above."},{"who":"ACE-RTL agent + Nemotron 3 Ultra (NVIDIA technical blog, 26 July 2026)","value":"97.1% average over nine CVDP categories; cid016 65.7% standalone, 100.0% with ACE-RTL","source":"NVIDIA technical blog; method in arXiv:2602.10218","url":"https://developer.nvidia.com/blog/nvidia-nemotron-3-ultra-leads-open-models-on-accuracy-and-efficiency-in-agentic-rtl-coding/","why_not":"The nine categories include cid012-014 (commercial simulator); the figure is an average of category rates; the post does not state the split, the problem count or the number of runs; a different agent with an RTL-specialised model."}]}}/*DATA:END*/;
+const D = /*DATA:BEGIN*/{"m2":[{"label":"Haiku 5.5 (low)","runner":"x86-64","run":"39967302029","k":52,"n":92,"rate":56.5,"lo":46.3,"hi":66.2,"cost":1.1123,"per_solved":0.0214},{"label":"Haiku 5.5 (low)","runner":"Arm64","run":"39975578761","k":56,"n":92,"rate":60.9,"lo":50.7,"hi":70.2,"cost":1.03,"per_solved":0.0184},{"label":"gpt-6-luna (default)","runner":"x86-64","run":"39967317698","k":52,"n":92,"rate":56.5,"lo":46.3,"hi":66.2,"cost":0.5455,"per_solved":0.0105},{"label":"gpt-6-luna (default)","runner":"Arm64","run":"39981444074","k":53,"n":92,"rate":57.6,"lo":47.4,"hi":67.2,"cost":0.5776,"per_solved":0.0109},{"label":"DeepSeek V4.1 Flash (off)","runner":"x86-64","run":"39975562293","k":43,"n":92,"rate":46.7,"lo":36.9,"hi":56.9,"cost":1.0314,"per_solved":0.024},{"label":"DeepSeek V4.1 Flash (off)","runner":"Arm64","run":"39981458867","k":41,"n":92,"rate":44.6,"lo":34.8,"hi":54.7,"cost":0.9763,"per_solved":0.0238}],"m2_flips":{"Haiku 5.5 (low)":10,"gpt-6-luna (default)":9,"DeepSeek V4.1 Flash (off)":12},"m2_never":28,"m2_always":29,"never_all_20":24,"m3_runs":[{"tag":"A1","run":"39981444074","k":53,"n":92,"cost":0.5776,"unreported":0,"own_tb":31},{"tag":"A2","run":"40031838020","k":51,"n":92,"cost":0.5282,"unreported":0,"own_tb":32},{"tag":"B1","run":"40027264043","k":54,"n":92,"cost":0.4848,"unreported":0,"own_tb":0},{"tag":"B2","run":"40033844068","k":48,"n":92,"cost":0.5872,"unreported":0,"own_tb":0},{"tag":"C1","run":"40027278575","k":50,"n":92,"cost":0.7265,"unreported":1,"own_tb":67},{"tag":"C2","run":"40035587883","k":51,"n":92,"cost":0.7523,"unreported":0,"own_tb":67},{"tag":"D1","run":"40037217462","k":50,"n":92,"cost":0.8529,"unreported":0,"own_tb":0},{"tag":"D2","run":"40040753269","k":51,"n":92,"cost":0.8531,"unreported":0,"own_tb":0},{"tag":"E1","run":"40042570422","k":53,"n":92,"cost":0.5516,"unreported":0,"own_tb":39},{"tag":"E2","run":"40045515591","k":50,"n":92,"cost":0.5636,"unreported":0,"own_tb":34},{"tag":"F1","run":"40046195564","k":57,"n":92,"cost":0.5996,"unreported":0,"own_tb":39},{"tag":"F2","run":"40048975297","k":54,"n":92,"cost":0.5653,"unreported":0,"own_tb":39},{"tag":"G1","run":"40049462265","k":50,"n":92,"cost":0.5993,"unreported":0,"own_tb":41},{"tag":"G2","run":"40052189876","k":51,"n":92,"cost":0.5893,"unreported":0,"own_tb":39}],"m3_effects":{"C":{"finding":"no detectable effect","eff":-1.6,"lo":-6.5,"hi":3.3,"better":9,"worse":11,"same":72,"p":0.824},"D":{"finding":"no detectable effect","eff":-1.6,"lo":-6.0,"hi":2.7,"better":5,"worse":9,"same":78,"p":0.424},"G":{"finding":"no detectable effect","eff":-1.6,"lo":-7.1,"hi":3.8,"better":7,"worse":11,"same":74,"p":0.481},"B":{"finding":"no detectable effect","eff":-1.1,"lo":-6.0,"hi":4.3,"better":8,"worse":11,"same":73,"p":0.648},"E":{"finding":"no detectable effect","eff":-0.5,"lo":-4.9,"hi":4.3,"better":5,"worse":7,"same":80,"p":0.774},"F":{"finding":"no detectable effect","eff":3.8,"lo":-1.1,"hi":9.2,"better":9,"worse":5,"same":78,"p":0.424}},"m3_point_check":{"B":-1.1,"C":-1.6,"D":-1.6,"E":-0.5,"F":3.8,"G":-1.6},"m3_better_worse_check":{"B":[8,11,73],"C":[9,11,72],"D":[5,9,78],"E":[5,7,80],"F":[9,5,78],"G":[7,11,74]},"noise_floor":{"finding":"no detectable effect","eff":-2.2,"lo":-8.7,"hi":4.3,"better":3,"worse":5,"same":84,"p":0.727},"noise_point_check":-2.2,"pareto":[{"arm":"B","usd":0.005826,"rate":0.5543,"frontier":1,"lb":0},{"arm":"A","usd":0.00601,"rate":0.5652,"frontier":1,"lb":0},{"arm":"E","usd":0.006061,"rate":0.5598,"frontier":0,"lb":0},{"arm":"F","usd":0.006331,"rate":0.6033,"frontier":1,"lb":0},{"arm":"G","usd":0.00646,"rate":0.5489,"frontier":0,"lb":0},{"arm":"C","usd":0.008037,"rate":0.5489,"frontier":0,"lb":1},{"arm":"D","usd":0.009272,"rate":0.5489,"frontier":0,"lb":0}],"taxonomy":{"tests_failed_no_selfcheck":271,"compile_fail_hidden":74,"signal_missing_hidden":73,"tests_failed_selfcheck_passed":61,"stopped_by_cap":56,"sim_incomplete":13,"tests_failed_selfcheck_failed":12,"no_edit":5},"taxonomy_total":565,"taxonomy_by_cid":{"stopped_by_cap":{"cid003":14,"cid016":8,"cid004":23,"cid005":11},"tests_failed_selfcheck_failed":{"cid004":5,"cid016":4,"cid005":1,"cid003":2},"tests_failed_no_selfcheck":{"cid016":27,"cid004":100,"cid005":47,"cid003":97},"tests_failed_selfcheck_passed":{"cid016":24,"cid005":16,"cid003":13,"cid004":8},"compile_fail_hidden":{"cid003":45,"cid005":29},"signal_missing_hidden":{"cid003":30,"cid005":32,"cid004":11},"sim_incomplete":{"cid004":11,"cid005":1,"cid016":1},"no_edit":{"cid016":3,"cid004":2}},"problems_per_label":{"compile_fail_hidden":8,"signal_missing_hidden":9,"tests_failed_selfcheck_passed":26},"own_tb_ran_failed":73,"raster":{"ids":["64b66b_codec_0001","AES_encryption_decryption_0003","AES_encryption_decryption_0005","AES_encryption_decryption_0009","AES_encryption_decryption_0012","AES_encryption_decryption_0018","DES_0001","DES_0003","DES_0005","DES_0007","Min_Hamming_Distance_Finder_0001","PCIe_endpoint_0001","arithmetic_progression_generator_0001","async_fifo_compute_ram_application_0001","async_fifo_compute_ram_application_0006","async_filo_0001","axi4lite_to_pcie_config_0003","axis_broadcaster_0001","axis_to_uart_0001","axis_to_uart_0004","barrel_shifter_0001","barrel_shifter_0002","bcd_adder_0004","binary_search_tree_algorithms_0001","binary_search_tree_algorithms_0014","binary_to_gray_0003","byte_enable_ram_0002","cache_controller_0001","caesar_cipher_0001","cellular_automata_0002","cic_decimator_0001","cipher_0001","cont_adder_0001","csr_using_apb_interface_0001","custom_fifo_0004","digital_stopwatch_0001","direct_map_cache_0001","direct_map_cache_0003","dma_xfer_engine_0001","door_lock_0001","dual_port_memory_0001","dual_port_memory_0004","dynamic_equalizer_0001","dynamic_equalizer_0004","dynamic_equalizer_0008","elevator_control_0004","ethernet_mii_0004","ethernet_mii_0006","event_scheduler_0001","event_scheduler_0004","event_storing_0001","fixed_arbiter_0010","gcd_0007","hdbn_codec_0001","jpeg_runlength_enc_0001","lfsr_0001","lfsr_0005","low_power_channel_0001","monte_carlo_0006","multiplexer_0001","nbit_swizzling_0001","nmea_gps_0008","phase_rotation_0010","phase_rotation_0013","phase_rotation_0015","phase_rotation_0019","phase_rotation_0028","phase_rotation_0031","phase_rotation_0038","poly_decimator_0001","prbs_0001","programmable_fsm_dynamic_state_encoding_0001","queue_0001","rc5_0001","rgb_color_space_conversion_0001","rgb_color_space_conversion_0004","secure_apb_history_shift_register_0001","sigma_delta_audio_0001","signed_comparator_0001","sorter_0009","sorter_0016","sorter_0026","spi_complex_mult_0002","swizzler_0001","swizzler_0005","sync_serial_communication_0001","systolic_array_0001","thermostat_secure_0001","traffic_light_controller_0001","ttc_lite_0001","universal_shift_reg_0001","universal_shift_reg_0003"],"cid":["cid005","cid016","cid016","cid004","cid004","cid005","cid003","cid004","cid005","cid005","cid005","cid003","cid016","cid003","cid005","cid003","cid004","cid016","cid003","cid003","cid016","cid004","cid004","cid004","cid005","cid003","cid003","cid003","cid016","cid003","cid003","cid003","cid003","cid003","cid016","cid005","cid003","cid004","cid003","cid003","cid016","cid004","cid003","cid004","cid005","cid004","cid003","cid003","cid003","cid004","cid005","cid004","cid005","cid005","cid005","cid016","cid016","cid005","cid016","cid003","cid003","cid004","cid005","cid004","cid004","cid004","cid005","cid004","cid003","cid005","cid005","cid004","cid003","cid003","cid003","cid004","cid004","cid003","cid003","cid004","cid005","cid005","cid003","cid003","cid005","cid003","cid005","cid004","cid004","cid003","cid003","cid004"],"cols":["Haiku x86-64","Haiku Arm64","gpt-6-luna x86-64","gpt-6-luna Arm64","DeepSeek x86-64","DeepSeek Arm64","M3 A2","M3 B1","M3 B2","M3 C1","M3 C2","M3 D1","M3 D2","M3 E1","M3 E2","M3 F1","M3 F2","M3 G1","M3 G2"],"bits":["1111011111111111111","0111001101111111101","1111011110111101111","0111001111111111111","0111001101110101101","1111001111111111111","0000000000100000000","1110000000110001111","1111101111111111111","0001000001000010000","1111101111111111111","1111111111111111111","0000000000000000000","0011101111111111111","1111011111111111111","1111111111111111111","1111111011101011001","1100000000100000000","1111111111111111111","1111111111111111111","1111111111111111111","1111111111111111111","1111111111111111111","0000000000000000000","0000000000000000000","1111111111111111111","1111111111111111111","0100000000000000000","1111111011111111111","1111111111111111111","1111101111111111111","1111111111111111111","1111111111111111111","0000000000000000000","0100111101110000100","0000000000000000000","1111110110111011111","1111111111111111111","1111111111111111111","0001010000000000110","1101101111011111111","1111111111111111111","0000000000000000000","1110100111011111111","0000000000000000000","0000000000000000000","0111001101011111110","1000000000000000000","1111111111111111111","0010111111010111010","1111111111111111111","1111111100101111111","1111110011111101111","0000000000000000000","0000000100001000000","1111111111111111111","0000000000000001000","1100111111101111111","1100110000000000001","1111111111111111111","0111111111111111111","0000000000000000000","0000000000000000000","0001100000000101101","0000000010000000000","1111001101110111110","0000000000000000000","0000000000000000000","0000000000000000000","0000000000000000000","1111001110011101111","1111011111111111111","0000000000000000000","0000000000000000000","1110000100100101100","1101111100111001001","0000000000000000000","0000000000000000000","1111111111111111111","1011001111011111010","1111001111001111100","1011001110101111001","0000000000000000000","1100110101000110110","1111111111111111111","0000000000000000000","1111111111111111111","0000000000000000000","0000000000000000000","0000000000000000000","1111111111111111111","1111111111111111111"]},"hero":{"pass":"0","cost_usd":"0.00242347","llm_calls":"3","tool_calls":"3","turns":"1","wall_time_s":"52.61","harness_agent_s":"55.21","stop_reason":"submit","failure_label":"signal_missing_hidden","own_compile_last":"pass","selfcheck_runs":"0","prompt_tokens":"3163","completion_tokens":"4094","cid":"cid003","difficulty":"medium"},"cost_m2":8.5539,"cost_m3":8.2537,"external":{"_note":"Published CVDP results, each checked against its primary source on 2026-10-24. derive.py adds Wilson 95% intervals to the same_92 rows. Nothing here is from memory.","lbc_source":"https://lbc-bench.si2.org","lbc_data":"https://github.com/si2org/lbc-bench.github.io/blob/b8354131ba89f915f5f940a3300a06777ebe1e98/data/leaderboards.json","same_92":[{"who":"Claude Code + Claude Sonnet 4.6 (medium effort)","mode":"agentic, multi-turn","k":48,"n":92,"release":"1.1.0","runs":1,"date":"2026-05-13","checked":false,"quote":"48/92 agentic_code_generation_no_commercial","source":"LBC-bench, code-generation-limited-context, row 5f3b37eb (notes field)","rate":52.2,"lo":42.1,"hi":62.1},{"who":"GPT-5.6 Sol, single turn","mode":"agentic split run non-agentically (--force-copilot)","k":52,"n":92,"release":"1.1.0","runs":1,"date":"2026-07-26","checked":false,"quote":"agentic_code_generation_no_commercial evaluated non-agentically via --force-copilot per Si2 guidance, 92 problems, 52 passed (56.52%)","source":"LBC-bench, code-generation-limited-context, row 5697ab4a (notes field)","rate":56.5,"lo":46.3,"hi":66.2},{"who":"Claude Fable 5, single turn","mode":"agentic split run non-agentically (--force-copilot)","k":53,"n":92,"release":"1.1.0","runs":1,"date":"2026-07-26","checked":false,"quote":"agentic_code_generation_no_commercial evaluated non-agentically via --force-copilot per Si2 guidance, 92 problems, 53 passed (57.61%)","source":"LBC-bench, code-generation-limited-context, row 14cf89d9 (notes field)","rate":57.6,"lo":47.4,"hi":67.2}],"context":[{"who":"Claude Code + Claude Opus 4.8 (xhigh), heavy split","value":"53/75 = 70.67%","source":"LBC-bench, code-generation-heavy-context, row b999bda5","url":"https://lbc-bench.si2.org","why_not":"The 75-problem heavy split. This project has not run the agent on it yet."},{"who":"Paper, Table 3: Claude 3.7 Sonnet, agentic problems in single-turn form","value":"29.0% overall; cid03 49.0, cid04 42.0, cid05 24.0, cid16 53.0","source":"Pinckney et al., arXiv:2506.14074 v1 (17 June 2025), Table 3","url":"https://arxiv.org/abs/2506.14074","why_not":"No agent loop (the paper converted agentic problems to single-turn prompts); pass@1 from n=5 samples; all 166 agentic problems of the first release, including cid12-14, which need Cadence Xcelium; the paper's agentic set had 100 problems in these four categories, against 92 in release 1.1.0's open-tool split; 2025 models."},{"who":"Paper, Table 3: GPT 4.1 / Claude 3.5 Haiku / Llama 3.1 405B, same setting","value":"21.0% / 20.0% / 21.0% overall","source":"Pinckney et al., arXiv:2506.14074 v1, Table 3","url":"https://arxiv.org/abs/2506.14074","why_not":"As above."},{"who":"ACE-RTL agent + Nemotron 3 Ultra (NVIDIA technical blog, 26 July 2026)","value":"97.1% average over nine CVDP categories; cid016 65.7% standalone, 100.0% with ACE-RTL","source":"NVIDIA technical blog; method in arXiv:2602.10218","url":"https://developer.nvidia.com/blog/nvidia-nemotron-3-ultra-leads-open-models-on-accuracy-and-efficiency-in-agentic-rtl-coding/","why_not":"The nine categories include cid012-014 (commercial simulator); the figure is an average of category rates; the post does not state the split, the problem count or the number of runs; a different agent with an RTL-specialised model."}]},"m3b":{"arms":{"A":{"harness":"LangGraph","memory":"none","runs":[{"tag":"A1","run":"40126423704","k":48,"n":86},{"tag":"A2","run":"40130180594","k":51,"n":86},{"tag":"A3","run":"40133554684","k":50,"n":86}],"k":149,"n":258,"rate":57.8,"cost":1.8484,"usd_problem":0.0072,"usd_solved":0.0124,"prompt_tokens":6894167,"tokens":8878176,"usd_per_mprompt":0.268,"cap_stops":18,"cap_stops_passed":7,"unreported":0,"labels":{"stopped_by_cap":11,"tests_failed_selfcheck_passed":15,"tests_failed_no_selfcheck":58,"compile_fail_hidden":12,"signal_missing_hidden":3,"sim_incomplete":4,"tests_failed_selfcheck_failed":4,"no_edit":2},"fails":109},"B":{"harness":"Deep Agents","memory":"none","runs":[{"tag":"B1","run":"40126434731","k":54,"n":86},{"tag":"B2","run":"40130193595","k":51,"n":86},{"tag":"B3","run":"40133940001","k":55,"n":86}],"k":160,"n":258,"rate":62.0,"cost":1.9081,"usd_problem":0.0074,"usd_solved":0.0119,"prompt_tokens":43573697,"tokens":45667940,"usd_per_mprompt":0.044,"cap_stops":49,"cap_stops_passed":20,"unreported":0,"labels":{"stopped_by_cap":29,"tests_failed_selfcheck_passed":13,"tests_failed_no_selfcheck":39,"compile_fail_hidden":13,"signal_missing_hidden":2,"killed":1,"sim_incomplete":1},"fails":98},"C":{"harness":"LangGraph","memory":"lessons","runs":[{"tag":"C1","run":"40139315526","k":51,"n":86},{"tag":"C2","run":"40142158409","k":51,"n":86},{"tag":"C3","run":"40144901339","k":51,"n":86}],"k":153,"n":258,"rate":59.3,"cost":1.7268,"usd_problem":0.0067,"usd_solved":0.0113,"prompt_tokens":6267727,"tokens":8159082,"usd_per_mprompt":0.276,"cap_stops":8,"cap_stops_passed":4,"unreported":0,"labels":{"tests_failed_selfcheck_failed":4,"stopped_by_cap":6,"tests_failed_selfcheck_passed":21,"tests_failed_no_selfcheck":55,"compile_fail_hidden":12,"signal_missing_hidden":2,"sim_incomplete":4,"no_edit":1},"fails":105},"D":{"harness":"Deep Agents","memory":"lessons","runs":[{"tag":"D1","run":"40139331557","k":52,"n":86},{"tag":"D2","run":"40142529849","k":59,"n":86},{"tag":"D3","run":"40145267040","k":57,"n":86}],"k":168,"n":258,"rate":65.1,"cost":1.7841,"usd_problem":0.0069,"usd_solved":0.0106,"prompt_tokens":41193904,"tokens":43215570,"usd_per_mprompt":0.043,"cap_stops":44,"cap_stops_passed":11,"unreported":0,"labels":{"stopped_by_cap":33,"tests_failed_no_selfcheck":33,"sim_incomplete":2,"compile_fail_hidden":12,"tests_failed_selfcheck_passed":8,"signal_missing_hidden":2},"fails":90}},"effects":{"C-A":{"finding":"no detectable effect","eff":1.6,"lo":-3.1,"hi":6.6,"better":10,"worse":8,"same":68,"p":0.815,"role":"primary"},"B-A":{"finding":"better than base","eff":4.3,"lo":0.0,"hi":8.5,"better":15,"worse":8,"same":63,"p":0.21,"role":"primary"},"D-A":{"finding":"better than base","eff":7.4,"lo":2.3,"hi":12.8,"better":14,"worse":4,"same":68,"p":0.0309,"role":"exploratory"},"D-B":{"finding":"no detectable effect","eff":3.1,"lo":-0.4,"hi":7.0,"better":9,"worse":3,"same":74,"p":0.146,"role":"secondary"},"D-C":{"finding":"better than base","eff":5.8,"lo":1.9,"hi":10.1,"better":9,"worse":1,"same":76,"p":0.0215,"role":"secondary"}},"bonferroni":0.0125,"bonf_pass":[],"floor":{"eff":-2.3,"lo":-9.3,"hi":3.5,"better":3,"worse":5,"same":78},"f20":{"eff":4.1,"lo":-0.6,"hi":9.9},"lessons":{"hash":"b783931cbf160595","n":40,"attempts":87,"passed":19,"problems":29,"cost":0.00307092,"never":["L07","L08","L17","L28","L30","L38"],"top":[{"id":"L03","count":50,"text":"Use the interface documentation and existing instantiations to verify every required port, parameter, width, and connection before implementing or changing a module."},{"id":"L02","count":40,"text":"Build tests from the specification\u2019s corner cases, not just typical operation; check control-signal priority, reset behavior, stalls, and boundary conditions."},{"id":"L37","count":36,"text":"Turn the specification and any failure description into a precise cycle-by-cycle expectation; do not rely on a plausible diagnosis without checking the surrounding control logic."},{"id":"L06","count":33,"text":"For asynchronous or buffered designs, test empty/full transitions, simultaneous activity, pointer wraparound, and data integrity across clock domains."}]},"learning":[{"run":"40120087602","k":6,"n":29,"cost":1.0713,"unreported":2},{"run":"40120092696","k":7,"n":29,"cost":1.1807,"unreported":1},{"run":"40123128619","k":6,"n":29,"cost":1.1629,"unreported":0}],"cost_scored":7.2674,"cost_learning":3.4149,"cost_smoke":0.1855,"cost_total":10.8709,"n_eval":86,"prose":{"spend_all":"28.43","m3b_n":"86","m3b_runs_arm":"3","m3b_pr_arm":"258","m3b_pr_all":"1,032","m3b_scored":"7.27","m3b_learn":"3.41","m3b_total":"10.87","bonf":"0.0125","floor_eff":"\u22122.3","floor_ci":"[\u22129.3, +3.5]","f20_eff":"+4.1","f20_ci":"[\u22120.6, +9.9]","les_n":"40","les_att":"87","les_pass":"19","les_never":"6","les_never_ids":"L07, L08, L17, L28, L30, L38","les_cost":"0.0031","les_problems":"29","les_hash":"b783931cbf160595","tok_A":"8.9","tok_B":"45.7","ptok_A":"6.9","ptok_B":"43.6","tok_x":"5","ptok_x":"6","mp_A":"0.268","mp_B":"0.044","upp_lo":"0.0067","upp_hi":"0.0074","e_CA":"+1.6","ci_CA":"[\u22123.1, +6.6]","p_CA":"0.82","bws_CA":"10 / 8 / 68","e_BA":"+4.3","ci_BA":"[+0.0, +8.5]","p_BA":"0.21","bws_BA":"15 / 8 / 63","e_DA":"+7.4","ci_DA":"[+2.3, +12.8]","p_DA":"0.031","bws_DA":"14 / 4 / 68","e_DB":"+3.1","ci_DB":"[\u22120.4, +7.0]","p_DB":"0.15","bws_DB":"9 / 3 / 74","e_DC":"+5.8","ci_DC":"[+1.9, +10.1]","p_DC":"0.022","bws_DC":"9 / 1 / 76","rate_A":"57.8","k_A":"149","us_A":"0.0124","cap_A":"11","nst_A":"58","stp_A":"15","capall_A":"18","cappass_A":"7","runs_A":"48, 51, 50","rate_B":"62.0","k_B":"160","us_B":"0.0119","cap_B":"29","nst_B":"39","stp_B":"13","capall_B":"49","cappass_B":"20","runs_B":"54, 51, 55","rate_C":"59.3","k_C":"153","us_C":"0.0113","cap_C":"6","nst_C":"55","stp_C":"21","capall_C":"8","cappass_C":"4","runs_C":"51, 51, 51","rate_D":"65.1","k_D":"168","us_D":"0.0106","cap_D":"33","nst_D":"33","stp_D":"8","capall_D":"44","cappass_D":"11","runs_D":"52, 59, 57","cfh_range":"12\u201313","smh_range":"2\u20133","top_L03":"50","top_L02":"40","top_L37":"36","top_L06":"33"}}}/*DATA:END*/;
 const NS = "http://www.w3.org/2000/svg";
 const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -1192,6 +1272,160 @@ function forestCap(k) {
   return `<b>${ARMN[a]}</b>: ${f1(e.eff)} [${f1(e.lo)}, ${f1(e.hi)}] points; ${e.better} problems better, ${e.worse} worse, ${e.same} the same; sign test p = ${e.p}. ${e.finding}.`;
 }
 
+/* ---------------------------------------------------------- M3b: 2x2 arms with effect arrows */
+// src: docs/reports/m3b/runs/*.csv via site/data/derive.py (D.m3b); intervals from docs/reports/m3b/arms_paired*_eval86.md
+const M = D.m3b;
+const f1s = q => (q > 0 ? "+" : q < 0 ? "−" : "+") + Math.abs(q).toFixed(1);
+const ciS = e => `[${f1s(e.lo)}, ${f1s(e.hi)}]`;
+function m3bGridDraw() {
+  const host = document.getElementById("c-m3bgrid"); const W = widthOf(host), narrow = W < 560;
+  const gx = narrow ? 84 : 170, gy = 58, top = 22, cw = Math.min(260, (W - gx) / 2), ch = narrow ? 116 : 116;
+  const x0 = (W - (2 * cw + gx)) / 2, Hh = top + 2 * ch + gy + 6;
+  const v = svgIn(host, W, Hh, "Two by two grid of the four M3b arms with the paired effects between them");
+  const pos = { A: [0, 0], B: [1, 0], C: [0, 1], D: [1, 1] };
+  const X = c => x0 + c * (cw + gx), Y = r => top + r * (ch + gy);
+  s("text", { x: X(0) + cw / 2, y: top - 8, "font-size": 10.5, "text-anchor": "middle", class: "t-3" }, v, "harness: LangGraph");
+  s("text", { x: X(1) + cw / 2, y: top - 8, "font-size": 10.5, "text-anchor": "middle", class: "t-3" }, v, "harness: Deep Agents");
+  Object.entries(pos).forEach(([a, [c, r]]) => {
+    const z = M.arms[a], x = X(c), y = Y(r), best = a === "D";
+    s("rect", { x, y, width: cw, height: ch, rx: 2, class: "fpanel" }, v);
+    s("rect", { x, y, width: cw, height: ch, rx: 2, class: z.memory === "none" ? "s1" : "s2", "stroke-width": 1 }, v);
+    s("text", { x: x + 10, y: y + 22, "font-size": 17, class: "t-ink", "font-weight": 700 }, v, a);
+    s("text", { x: x + 30, y: y + 21, "font-size": narrow ? 9.5 : 10.5, class: "t-3" }, v, z.memory === "none" ? "no memory" : "lessons memory");
+    s("text", { x: x + 10, y: y + 50, "font-size": narrow ? 17 : 20, class: z.memory === "none" ? "t-c1" : "t-c2", "font-weight": 700 }, v, z.rate.toFixed(1) + "%");
+    s("text", { x: x + 10, y: y + 67, "font-size": narrow ? 9.5 : 10.5, class: "t-ink" }, v, `${z.k}/${z.n}` + (narrow ? "" : " problem-runs"));
+    // one mini waveform per run: a lozenge holding the run's passes of 86
+    const rw = (cw - 20) / 3;
+    z.runs.forEach((rr, i) => {
+      const lx = x + 10 + i * rw;
+      s("path", { d: lozPath(lx, lx + rw - 4, y + ch - 30, 8), class: z.memory === "none" ? "s1" : "s2" }, v);
+      s("text", { x: lx + (rw - 4) / 2, y: y + ch - 26.5, "font-size": 9.5, "text-anchor": "middle", class: "t-ink" }, v, String(rr.k));
+    });
+    s("text", { x: x + 10, y: y + ch - 8, "font-size": narrow ? 9 : 10, class: "t-3" }, v, usd(z.usd_solved) + " / solved");
+  });
+  const arrow = (key, x1, y1, x2, y2, lx, ly, anchor, off2) => {
+    const e = M.effects[key], sure = e.lo > 0 || e.hi < 0;
+    s("path", { d: `M${x1},${y1} L${x2},${y2}`, class: sure ? "trace3" : "grid2", "stroke-width": sure ? 2 : 1.6, "stroke-dasharray": sure ? null : "5 4" }, v);
+    const dx = Math.sign(x2 - x1), dy = Math.sign(y2 - y1);
+    s("path", { d: `M${x2},${y2} l${-6 * dx - 4 * dy},${-6 * dy - 4 * dx} M${x2},${y2} l${-6 * dx + 4 * dy},${-6 * dy + 4 * dx}`, class: sure ? "trace3" : "grid2", "stroke-width": sure ? 2 : 1.6 }, v);
+    const nm = key.replace("-", " − ");
+    s("text", { x: lx, y: ly, "font-size": narrow ? 9.5 : 10.5, "text-anchor": anchor, class: sure ? "t-c3" : "t-ink", "font-weight": 600 }, v, nm + " " + f1s(e.eff));
+    s("text", { x: lx, y: ly + (off2 || 13), "font-size": narrow ? 9 : 10, "text-anchor": anchor, class: "t-3" }, v, ciS(e));
+  };
+  const midY0 = Y(0) + ch / 2 - 10, midY1 = Y(1) + ch / 2 - 10;
+  arrow("B-A", X(0) + cw + 4, midY0 + 18, X(1) - 4, midY0 + 18, X(0) + cw + gx / 2, midY0 + 11, "middle", 22);
+  arrow("D-C", X(0) + cw + 4, midY1 + 18, X(1) - 4, midY1 + 18, X(0) + cw + gx / 2, midY1 + 11, "middle", 22);
+  arrow("C-A", X(0) + 22, Y(0) + ch + 4, X(0) + 22, Y(1) - 4, X(0) + 32, Y(0) + ch + gy / 2 - 3, "start");
+  arrow("D-B", X(1) + 22, Y(0) + ch + 4, X(1) + 22, Y(1) - 4, X(1) + 32, Y(0) + ch + gy / 2 - 3, "start");
+}
+
+/* ---------------------------------------------------------- M3b forest: null findings first */
+const M3BF = ["floor", "C-A", "D-B", "B-A", "D-C", "D-A"];
+const M3BN = { "C-A": "C − A memory", "D-B": "D − B memory", "B-A": "B − A harness", "D-C": "D − C harness", "D-A": "D − A both" };
+function m3bForestDraw(host, k) {
+  const W = widthOf(host), narrow = W < 560;
+  const left = narrow ? 104 : 176, right = narrow ? 50 : 128, top = 22, rowH = 32;
+  const Hh = top + M3BF.length * rowH + 34;
+  const v = svgIn(host, W, Hh, "Paired effects with 95% intervals for the M3b comparisons and the noise floor");
+  const lo = -10, hi = 14, x = p => left + (W - left - right) * (p - lo) / (hi - lo);
+  const fl = M.floor;
+  s("rect", { x: x(fl.lo), y: top - 6, width: x(fl.hi) - x(fl.lo), height: M3BF.length * rowH + 4, fill: "url(#hatch3)", opacity: 0.55 }, v);
+  for (let t = lo; t <= hi; t += 2) { s("line", { x1: x(t), x2: x(t), y1: top - 6, y2: Hh - 28, class: t === 0 ? "grid2" : "grid", "stroke-width": t === 0 ? 1.5 : 1 }, v); if (!narrow || t % 4 === 0) s("text", { x: x(t), y: Hh - 14, "font-size": 10, "text-anchor": "middle", class: "t-3" }, v, (t > 0 ? "+" : "") + t); }
+  s("text", { x: x(hi), y: Hh - 2, "font-size": 9.5, "text-anchor": "end", class: "t-3" }, v, "points of pass rate");
+  M3BF.forEach((a, r) => {
+    const e = a === "floor" ? fl : M.effects[a], expl = a !== "floor" && e.role === "exploratory";
+    const y = top + r * rowH + rowH / 2, on = r === k, past = r <= k;
+    const g = s("g", { class: past ? "" : "dim" }, v);
+    if (expl) s("line", { x1: 0, x2: W, y1: y - rowH / 2, y2: y - rowH / 2, class: "grid2", "stroke-dasharray": "2 3" }, g);
+    const nm = a === "floor" ? (narrow ? "noise floor" : "noise floor A2 vs A1") : (narrow ? a.replace("-", " − ") + (expl ? " expl." : "") : M3BN[a] + (expl ? " (expl.)" : ""));
+    s("text", { x: 0, y: y + 4, "font-size": narrow ? 10 : 11.5, class: a === "floor" || on ? "t-c3" : "t-ink", "font-weight": on ? 700 : 500 }, g, nm);
+    if (!narrow && a !== "floor") s("text", { x: 0, y: y + 15, "font-size": 9, class: "t-3" }, g, e.role);
+    const cl = a === "floor" || on ? "trace3" : "trace";
+    s("path", { d: `M${x(e.lo)},${y - 6} V${y + 6} M${x(e.lo)},${y} H${x(e.hi)} M${x(e.hi)},${y - 6} V${y + 6}`, class: cl, "stroke-width": on ? 2.4 : 1.8, "stroke-dasharray": expl ? "4 3" : null }, g);
+    if (expl) s("rect", { x: x(e.eff) - 5, y: y - 5, width: 10, height: 10, class: "fpanel", stroke: on ? "var(--ch3)" : "var(--ch1)", "stroke-width": 2 }, g);
+    else s("rect", { x: x(e.eff) - 5, y: y - 5, width: 10, height: 10, class: a === "floor" || on ? "f3" : "f1" }, g);
+    const lab = f1s(e.eff) + (narrow ? "" : "  " + ciS(e));
+    s("text", { x: W - right + 8, y: y + 4, "font-size": 10.5, class: on ? "t-c3" : "t-ink" }, g, lab);
+  });
+}
+function m3bForestCap(k) {
+  const a = M3BF[k];
+  if (a === "floor") { const f = M.floor; return `<b>Noise floor on the ${M.n_eval}</b>: M3's base run twice on the same runner, nothing changed. ${f1s(f.eff)} points ${ciS(f)}, ${f.better} better, ${f.worse} worse, ${f.same} the same. Any effect inside this band cannot be told from a rerun.`; }
+  const e = M.effects[a];
+  const read = { "C-A": "No detectable effect: the lessons memory did not help the LangGraph agent.",
+    "D-B": "Not detectable: the memory did not help Deep Agents either.",
+    "B-A": "Weak: the interval's lower end rounds to zero and the sign test is far from significant.",
+    "D-C": "The one comparison whose interval excludes zero, but its p is above the Bonferroni threshold of " + M.bonferroni + ".",
+    "D-A": "Not pre-registered, so exploratory only." }[a];
+  return `<b>${M3BN[a]}</b> (${e.role}): ${f1s(e.eff)} ${ciS(e)} points; ${e.better} problems better, ${e.worse} worse, ${e.same} the same; sign test p = ${e.p}. ${read}`;
+}
+
+/* ---------------------------------------------------------- M3b: outcome of every problem-run, stacked */
+const M3BL = [
+  ["pass", "passed", "f1"],
+  ["tests_failed_no_selfcheck", "untested: no own testbench", "s1"],
+  ["tests_failed_selfcheck_passed", "own testbench passed", "s2"],
+  ["stopped_by_cap", "stopped by a cap", "s3"],
+  ["iface", "interface mismatch", "sx"],
+  ["other", "other", "fgrid"]
+];
+function m3bSeg(z, key) {
+  if (key === "pass") return z.k;
+  if (key === "iface") return (z.labels.compile_fail_hidden || 0) + (z.labels.signal_missing_hidden || 0);
+  if (key === "other") return z.fails - ["tests_failed_no_selfcheck", "tests_failed_selfcheck_passed", "stopped_by_cap", "compile_fail_hidden", "signal_missing_hidden"].reduce((t, l) => t + (z.labels[l] || 0), 0);
+  return z.labels[key] || 0;
+}
+function m3bFailDraw() {
+  const host = document.getElementById("c-m3bfail"); const W = widthOf(host), narrow = W < 560;
+  const left = narrow ? 64 : 190, right = 6, top = 8, rowH = 34, bh = 22;
+  const Hh = top + 4 * rowH + 22;
+  const v = svgIn(host, W, Hh, "Outcome of every problem-run per arm: passes, then failures by label");
+  const n = M.arms.A.n, x = c => left + (W - left - right) * c / n;
+  for (let t = 0; t <= n; t += 50) { s("line", { x1: x(t), x2: x(t), y1: top, y2: Hh - 18, class: "grid" }, v); s("text", { x: x(t), y: Hh - 5, "font-size": 9.5, "text-anchor": "middle", class: "t-3" }, v, t); }
+  "ABCD".split("").forEach((a, r) => {
+    const z = M.arms[a], y = top + r * rowH + 4;
+    s("text", { x: 0, y: y + 15, "font-size": narrow ? 10 : 11, class: "t-ink", "font-weight": 600 }, v, narrow ? a + (z.harness === "Deep Agents" ? " DA" : " LG") + (z.memory === "none" ? "" : "+m") : `${a} · ${z.harness}${z.memory === "none" ? "" : " + lessons"}`);
+    let c0 = 0;
+    M3BL.forEach(([key, , cls]) => {
+      const c = m3bSeg(z, key); if (!c) return;
+      const g = s("g", { class: "hit" }, v);
+      s("rect", { x: x(c0) + 0.5, y, width: Math.max(1, x(c0 + c) - x(c0) - 1), height: bh, class: cls, "stroke-width": 1 }, g);
+      s("title", {}, g, `${a}: ${key === "pass" ? "passed" : key} ${c} of ${z.n}`);
+      if (x(c0 + c) - x(c0) > 22) s("text", { x: (x(c0) + x(c0 + c)) / 2, y: y + 15, "font-size": 9.5, "text-anchor": "middle", class: key === "pass" ? "fpanel" : key === "iface" ? "t-x" : "t-ink", fill: key === "pass" ? "var(--panel)" : null, "font-weight": 600 }, g, c);
+      c0 += c;
+    });
+  });
+  const L = document.getElementById("l-m3bfail"); L.innerHTML = "";
+  M3BL.forEach(([, lab, cls]) => { const sp = h("span", {}, L); const sv = s("svg", { width: 12, height: 12, viewBox: "0 0 12 12" }, sp); s("rect", { x: 1, y: 1, width: 10, height: 10, class: cls, "stroke-width": 1 }, sv); sp.appendChild(document.createTextNode(lab)); });
+}
+
+/* ---------------------------------------------------------- M3b: tokens against cost, relative to A */
+function m3bTokDraw() {
+  const host = document.getElementById("c-m3btok"); const W = widthOf(host), narrow = W < 560;
+  const left = narrow ? 64 : 190, right = narrow ? 66 : 120, top = 8, rowH = 40, bh = 12;
+  const Hh = top + 4 * rowH + 22;
+  const v = svgIn(host, W, Hh, "Tokens and cost per arm relative to arm A");
+  const A = M.arms.A, max = 6, x = r => left + (W - left - right) * r / max;
+  for (let t = 0; t <= max; t++) { s("line", { x1: x(t), x2: x(t), y1: top, y2: Hh - 18, class: t === 1 ? "grid2" : "grid", "stroke-width": t === 1 ? 1.5 : 1 }, v); s("text", { x: x(t), y: Hh - 5, "font-size": 9.5, "text-anchor": "middle", class: "t-3" }, v, t + "×"); }
+  "ABCD".split("").forEach((a, r) => {
+    const z = M.arms[a], y = top + r * rowH + 4;
+    s("text", { x: 0, y: y + 15, "font-size": narrow ? 10 : 11, class: "t-ink", "font-weight": 600 }, v, narrow ? a + (z.harness === "Deep Agents" ? " DA" : " LG") + (z.memory === "none" ? "" : "+m") : `${a} · ${z.harness}${z.memory === "none" ? "" : " + lessons"}`);
+    const rt = z.tokens / A.tokens, rc = z.cost / A.cost;
+    s("rect", { x: x(0), y, width: x(rt) - x(0), height: bh, class: "s1" }, v);
+    s("text", { x: x(rt) + 5, y: y + 10, "font-size": 9.5, class: "t-ink" }, v, (z.tokens / 1e6).toFixed(1) + "M tok" + (narrow ? "" : "  " + rt.toFixed(1) + "×"));
+    s("rect", { x: x(0), y: y + bh + 3, width: x(rc) - x(0), height: bh, class: "s2" }, v);
+    s("text", { x: x(rc) + 5, y: y + bh + 13, "font-size": 9.5, class: "t-ink" }, v, usd(z.cost, 2) + (narrow ? "" : "  " + rc.toFixed(2) + "×"));
+  });
+}
+function m3bLessons() {
+  const L = document.getElementById("m3b-lessons"); L.innerHTML = "";
+  M.lessons.top.forEach(t => {
+    const q = h("figure", { class: "lesson" }, L);
+    h("div", { class: "lh" }, q, `<span class="lz c2">${t.id}</span><span>retrieved for ${t.count} of ${M.n_eval} problems</span>`);
+    const b = h("blockquote", {}, q); b.textContent = "“" + t.text + "”";
+  });
+}
+
 /* ---------------------------------------------------------- Pareto */
 // intervals: docs/reports/m3/arms_paired.md "Arms" (pooled pass@1, 95% problem bootstrap)
 const PCI = { A: [46.7, 66.3], B: [45.7, 64.7], C: [46.2, 63.6], D: [45.7, 63.6], E: [46.2, 65.8], F: [50.5, 69.6], G: [45.7, 63.6] };
@@ -1358,7 +1592,7 @@ const FAQ = [
   ["How do you know the taxonomy is right?", "Its rules are deterministic and run on the committed CSVs. Against hand labels: 15 of 15 on the rule-development set (12 of 15 before the new rule) and 15 of 15 on a hold-out set drawn after the rule was fixed. The hold-out has no missing-name case, and one person wrote both, so it is a consistency check, not an independent one.", "M3_report.md, Rules against hand labels"],
   ["What would you do differently?", "Run 3 times per arm from the start, since 2 runs resolve only about &plusmn;5 points; give each repeat a distinct seed label from the start (M3's second runs predate <code>seed_offset</code>); capture the hidden compiler's own message; and measure the agent's testbench directly instead of inferring its quality from outcomes.", "M3_report.md, Known gaps and M3b design"],
   ["How does this compare to the paper's numbers?", "It does not, directly. The paper ran agentic problems as single-turn prompts on the first release, including commercial-tool categories, with 2025 models and n=5. The comparable numbers are three LBC-bench rows on the same 92 problems: 48, 52 and 53 of 92, against 41 to 56 here.", "This page, How this compares; arXiv:2506.14074 Table 3"],
-  ["What did the agent actually cost?", "gpt-6-luna: $0.0105&ndash;0.0109 per solved problem; Haiku 5.5: $0.0184&ndash;0.0214; DeepSeek: $0.0238&ndash;0.0240. Whole milestones: M1 about $0.75, M2 $8.5539, M3 $8.2537, all provider-reported, each with one unreported call in M2 and M3.", "M2_report.md; M3_report.md, Cost bookkeeping"],
+  ["What did the agent actually cost?", `gpt-6-luna: $0.0105&ndash;0.0109 per solved problem; Haiku 5.5: $0.0184&ndash;0.0214; DeepSeek: $0.0238&ndash;0.0240. Whole milestones: M1 about $0.75, M2 $8.5539, M3 $8.2537, M3b $${M.cost_total.toFixed(2)} (scored sweeps $${M.cost_scored.toFixed(2)}, learning runs at least $${M.cost_learning.toFixed(2)}), all provider-reported, with one unreported call each in M2 and M3 and ${M.learning.reduce((a, x) => a + x.unreported, 0)} in M3b's learning runs.`, "M2_report.md; M3_report.md, Cost bookkeeping; M3b_report.md, In short"],
   ["Is Haiku better than Luna?", "No. They tie on pass rate: counting each problem over both runners, Haiku is ahead on 12 problems and Luna on 12; the paired effect is +1.6 [&minus;4.9, +8.2]. Luna costs half as much per solved problem.", "M2_report.md; m3/m2_models_paired.md"],
   ["Does self-checking help?", "Not detectably. Self-check off: &minus;1.1 [&minus;6.0, +4.3]. With lint off the agent ran its testbench on 67 problems instead of 31&ndash;32, and the pass rate did not move. And where its testbench ran on a failed submission, it had passed 61 times out of 73.", "M3_report.md, In short"],
   ["Then why keep lint on?", "Cost. With lint off the agent takes more turns, and a solved problem costs &ge; $0.0146 (C) and $0.0169 (D) against $0.0106 for the base: 38 to 59% more for the same pass rate.", "M3_report.md, In short"],
@@ -1369,6 +1603,8 @@ const FAQ = [
   ["How is the API key protected?", "It reaches the agent only through <code>CVDP_AGENT_ENV</code>. Tools run with every credential-like variable removed, as an unprivileged user that cannot read the agent's environment through <code>/proc</code>. The work directory is uploaded only if a scan finds nothing key-shaped.", "README.md; M1_report.md, Review round 1"],
   ["Which problems does nothing solve, and why?", "24 problems failed in all 20 full runs. For 10 of them most failures are one of the two interface labels. The rest fail the hidden tests on behaviour, often with the agent never having run a testbench.", "M3_report.md, The 28 problems no M2 run solved"],
   ["What does F's +3.8 points mean?", "Probably nothing yet: its interval [&minus;1.1, +9.2] includes 0, the sign test gives p = 0.424, and the extra turns explain at most 1 of its 7 extra passes. M3b keeps 10 turns.", "m3/arms_paired.md; M3_report.md"],
+  ["Did the lessons memory help?", `No detectable effect. On the LangGraph agent, C &minus; A is ${f1s(M.effects["C-A"].eff)} ${ciS(M.effects["C-A"])} points (${M.effects["C-A"].better} problems better, ${M.effects["C-A"].worse} worse, sign test p = ${M.effects["C-A"].p}); on Deep Agents, D &minus; B is ${f1s(M.effects["D-B"].eff)} ${ciS(M.effects["D-B"])}. The memory was ${M.lessons.n} generic lessons from ${M.lessons.attempts} attempts on other problems, and ${M.lessons.never.length} were never retrieved. That says this memory does not help, not that no memory could.`, "M3b_report.md, In short; m3b/arms_paired_eval86.md"],
+  ["Is Deep Agents better?", `Perhaps a little; not shown. B &minus; A is ${f1s(M.effects["B-A"].eff)} ${ciS(M.effects["B-A"])} (p = ${M.effects["B-A"].p}), and on top of the memory D &minus; C is ${f1s(M.effects["D-C"].eff)} ${ciS(M.effects["D-C"])} (p = ${M.effects["D-C"].p}), the one interval that excludes zero. With four comparisons, no sign test passes a Bonferroni threshold of ${M.bonferroni}, so it is a hypothesis for a confirming run. It leaves fewer problems untested but stops more often on its round cap, and it costs about the same per problem despite about ${(M.arms.B.tokens / M.arms.A.tokens).toFixed(0)} times the tokens.`, "M3b_report.md, In short; m3b/arms_paired_secondary_eval86.md; m3b/taxonomy_by_arm.md"],
   ["Is this a verification agent?", "No. It is an RTL agent that checks its own work before submitting. The verification-writing categories of CVDP need a commercial simulator, so they are not in the free split; the planned M5 track adds open verification work, scored by seeded-bug kill rate.", "README.md, What it is tested on"]
 ];
 const GLOSS = [
@@ -1381,7 +1617,8 @@ const GLOSS = [
   ["g-ablation", "ablation", "Turning one part of the system off or changing one setting, holding the rest fixed, to see what that part contributes."],
   ["g-pareto", "Pareto front", "The arms not beaten on both axes at once (here: higher pass rate and lower cost). An arm is dominated only by one at least as good on both and better on one."],
   ["g-langgraph", "LangGraph", "A library for building LLM agents as explicit graphs of nodes and edges with state. The agent here is a six-node LangGraph graph."],
-  ["g-deep", "Deep Agents", "LangGraph's ready-made agent harness with a planning tool, sub-agents and a virtual file system. M3b compares it with the hand-built graph."],
+  ["g-deep", "Deep Agents", "A ready-made agent harness from the LangChain project, built on LangGraph: a free tool-call loop with a planning tool, file tools, sub-agents and conversation summarization. In M3b it drives the same model and tools as the hand-built graph, with sub-agents and the shell turned off and a cap of 22 model calls."],
+  ["g-memory", "lessons memory", "A fixed list of short, general lessons distilled by the model from attempts on other problems, then frozen and named by its content hash. M3b appends the top 5 for each task, picked by BM25, to the agent's prompt."],
   ["g-bm25", "BM25", "A classic keyword-ranking formula from information retrieval. M3b uses it to pick lessons for a task with no model in the loop."],
   ["g-bmc", "BMC", "Bounded model checking: a formal tool searches every input sequence up to a depth for one that breaks a property."],
   ["g-sva", "SVA", "SystemVerilog Assertions: temporal properties written into the design or testbench, checked in simulation or formally."],
@@ -1452,9 +1689,10 @@ label();
 const P_RASTER = Player("p-raster", { n: RCOLS, ms: 700, hold: j => (j === 5 || j === RCOLS - 1 ? 2 : 1), draw: rasterDraw, caption: rasterCap });
 const P_FOREST = Player("p-forest", { n: FOREST.length, ms: 1500, draw: forestDraw, caption: forestCap });
 const P_WAFFLE = Player("p-waffle", { n: TAX.length, ms: 1600, draw: waffleDraw, caption: waffleCap });
-const statics = [pipeDraw, m2Draw, m2CostDraw, paretoDraw, behavDraw, probeDraw, tb73Draw, cmpDraw];
+const P_M3B = Player("p-m3b", { n: M3BF.length, ms: 1500, draw: m3bForestDraw, caption: m3bForestCap });
+const statics = [pipeDraw, m2Draw, m2CostDraw, paretoDraw, behavDraw, m3bGridDraw, m3bFailDraw, m3bTokDraw, probeDraw, tb73Draw, cmpDraw];
 statics.forEach(f => f());
-cmpLists(); fillText(); waffleLegend(); stamps(); onScroll();
+cmpLists(); m3bLessons(); fillText(); waffleLegend(); stamps(); onScroll();
 let lastW = window.innerWidth, rT = null;
 window.addEventListener("resize", () => {
   clearTimeout(rT);

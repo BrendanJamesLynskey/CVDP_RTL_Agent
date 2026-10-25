@@ -839,5 +839,427 @@
     "why_not": "The nine categories include cid012-014 (commercial simulator); the figure is an average of category rates; the post does not state the split, the problem count or the number of runs; a different agent with an RTL-specialised model."
    }
   ]
+ },
+ "m3b": {
+  "arms": {
+   "A": {
+    "harness": "LangGraph",
+    "memory": "none",
+    "runs": [
+     {
+      "tag": "A1",
+      "run": "40126423704",
+      "k": 48,
+      "n": 86
+     },
+     {
+      "tag": "A2",
+      "run": "40130180594",
+      "k": 51,
+      "n": 86
+     },
+     {
+      "tag": "A3",
+      "run": "40133554684",
+      "k": 50,
+      "n": 86
+     }
+    ],
+    "k": 149,
+    "n": 258,
+    "rate": 57.8,
+    "cost": 1.8484,
+    "usd_problem": 0.0072,
+    "usd_solved": 0.0124,
+    "prompt_tokens": 6894167,
+    "tokens": 8878176,
+    "usd_per_mprompt": 0.268,
+    "cap_stops": 18,
+    "cap_stops_passed": 7,
+    "unreported": 0,
+    "labels": {
+     "stopped_by_cap": 11,
+     "tests_failed_selfcheck_passed": 15,
+     "tests_failed_no_selfcheck": 58,
+     "compile_fail_hidden": 12,
+     "signal_missing_hidden": 3,
+     "sim_incomplete": 4,
+     "tests_failed_selfcheck_failed": 4,
+     "no_edit": 2
+    },
+    "fails": 109
+   },
+   "B": {
+    "harness": "Deep Agents",
+    "memory": "none",
+    "runs": [
+     {
+      "tag": "B1",
+      "run": "40126434731",
+      "k": 54,
+      "n": 86
+     },
+     {
+      "tag": "B2",
+      "run": "40130193595",
+      "k": 51,
+      "n": 86
+     },
+     {
+      "tag": "B3",
+      "run": "40133940001",
+      "k": 55,
+      "n": 86
+     }
+    ],
+    "k": 160,
+    "n": 258,
+    "rate": 62.0,
+    "cost": 1.9081,
+    "usd_problem": 0.0074,
+    "usd_solved": 0.0119,
+    "prompt_tokens": 43573697,
+    "tokens": 45667940,
+    "usd_per_mprompt": 0.044,
+    "cap_stops": 49,
+    "cap_stops_passed": 20,
+    "unreported": 0,
+    "labels": {
+     "stopped_by_cap": 29,
+     "tests_failed_selfcheck_passed": 13,
+     "tests_failed_no_selfcheck": 39,
+     "compile_fail_hidden": 13,
+     "signal_missing_hidden": 2,
+     "killed": 1,
+     "sim_incomplete": 1
+    },
+    "fails": 98
+   },
+   "C": {
+    "harness": "LangGraph",
+    "memory": "lessons",
+    "runs": [
+     {
+      "tag": "C1",
+      "run": "40139315526",
+      "k": 51,
+      "n": 86
+     },
+     {
+      "tag": "C2",
+      "run": "40142158409",
+      "k": 51,
+      "n": 86
+     },
+     {
+      "tag": "C3",
+      "run": "40144901339",
+      "k": 51,
+      "n": 86
+     }
+    ],
+    "k": 153,
+    "n": 258,
+    "rate": 59.3,
+    "cost": 1.7268,
+    "usd_problem": 0.0067,
+    "usd_solved": 0.0113,
+    "prompt_tokens": 6267727,
+    "tokens": 8159082,
+    "usd_per_mprompt": 0.276,
+    "cap_stops": 8,
+    "cap_stops_passed": 4,
+    "unreported": 0,
+    "labels": {
+     "tests_failed_selfcheck_failed": 4,
+     "stopped_by_cap": 6,
+     "tests_failed_selfcheck_passed": 21,
+     "tests_failed_no_selfcheck": 55,
+     "compile_fail_hidden": 12,
+     "signal_missing_hidden": 2,
+     "sim_incomplete": 4,
+     "no_edit": 1
+    },
+    "fails": 105
+   },
+   "D": {
+    "harness": "Deep Agents",
+    "memory": "lessons",
+    "runs": [
+     {
+      "tag": "D1",
+      "run": "40139331557",
+      "k": 52,
+      "n": 86
+     },
+     {
+      "tag": "D2",
+      "run": "40142529849",
+      "k": 59,
+      "n": 86
+     },
+     {
+      "tag": "D3",
+      "run": "40145267040",
+      "k": 57,
+      "n": 86
+     }
+    ],
+    "k": 168,
+    "n": 258,
+    "rate": 65.1,
+    "cost": 1.7841,
+    "usd_problem": 0.0069,
+    "usd_solved": 0.0106,
+    "prompt_tokens": 41193904,
+    "tokens": 43215570,
+    "usd_per_mprompt": 0.043,
+    "cap_stops": 44,
+    "cap_stops_passed": 11,
+    "unreported": 0,
+    "labels": {
+     "stopped_by_cap": 33,
+     "tests_failed_no_selfcheck": 33,
+     "sim_incomplete": 2,
+     "compile_fail_hidden": 12,
+     "tests_failed_selfcheck_passed": 8,
+     "signal_missing_hidden": 2
+    },
+    "fails": 90
+   }
+  },
+  "effects": {
+   "C-A": {
+    "finding": "no detectable effect",
+    "eff": 1.6,
+    "lo": -3.1,
+    "hi": 6.6,
+    "better": 10,
+    "worse": 8,
+    "same": 68,
+    "p": 0.815,
+    "role": "primary"
+   },
+   "B-A": {
+    "finding": "better than base",
+    "eff": 4.3,
+    "lo": 0.0,
+    "hi": 8.5,
+    "better": 15,
+    "worse": 8,
+    "same": 63,
+    "p": 0.21,
+    "role": "primary"
+   },
+   "D-A": {
+    "finding": "better than base",
+    "eff": 7.4,
+    "lo": 2.3,
+    "hi": 12.8,
+    "better": 14,
+    "worse": 4,
+    "same": 68,
+    "p": 0.0309,
+    "role": "exploratory"
+   },
+   "D-B": {
+    "finding": "no detectable effect",
+    "eff": 3.1,
+    "lo": -0.4,
+    "hi": 7.0,
+    "better": 9,
+    "worse": 3,
+    "same": 74,
+    "p": 0.146,
+    "role": "secondary"
+   },
+   "D-C": {
+    "finding": "better than base",
+    "eff": 5.8,
+    "lo": 1.9,
+    "hi": 10.1,
+    "better": 9,
+    "worse": 1,
+    "same": 76,
+    "p": 0.0215,
+    "role": "secondary"
+   }
+  },
+  "bonferroni": 0.0125,
+  "bonf_pass": [],
+  "floor": {
+   "eff": -2.3,
+   "lo": -9.3,
+   "hi": 3.5,
+   "better": 3,
+   "worse": 5,
+   "same": 78
+  },
+  "f20": {
+   "eff": 4.1,
+   "lo": -0.6,
+   "hi": 9.9
+  },
+  "lessons": {
+   "hash": "b783931cbf160595",
+   "n": 40,
+   "attempts": 87,
+   "passed": 19,
+   "problems": 29,
+   "cost": 0.00307092,
+   "never": [
+    "L07",
+    "L08",
+    "L17",
+    "L28",
+    "L30",
+    "L38"
+   ],
+   "top": [
+    {
+     "id": "L03",
+     "count": 50,
+     "text": "Use the interface documentation and existing instantiations to verify every required port, parameter, width, and connection before implementing or changing a module."
+    },
+    {
+     "id": "L02",
+     "count": 40,
+     "text": "Build tests from the specification\u2019s corner cases, not just typical operation; check control-signal priority, reset behavior, stalls, and boundary conditions."
+    },
+    {
+     "id": "L37",
+     "count": 36,
+     "text": "Turn the specification and any failure description into a precise cycle-by-cycle expectation; do not rely on a plausible diagnosis without checking the surrounding control logic."
+    },
+    {
+     "id": "L06",
+     "count": 33,
+     "text": "For asynchronous or buffered designs, test empty/full transitions, simultaneous activity, pointer wraparound, and data integrity across clock domains."
+    }
+   ]
+  },
+  "learning": [
+   {
+    "run": "40120087602",
+    "k": 6,
+    "n": 29,
+    "cost": 1.0713,
+    "unreported": 2
+   },
+   {
+    "run": "40120092696",
+    "k": 7,
+    "n": 29,
+    "cost": 1.1807,
+    "unreported": 1
+   },
+   {
+    "run": "40123128619",
+    "k": 6,
+    "n": 29,
+    "cost": 1.1629,
+    "unreported": 0
+   }
+  ],
+  "cost_scored": 7.2674,
+  "cost_learning": 3.4149,
+  "cost_smoke": 0.1855,
+  "cost_total": 10.8709,
+  "n_eval": 86,
+  "prose": {
+   "spend_all": "28.43",
+   "m3b_n": "86",
+   "m3b_runs_arm": "3",
+   "m3b_pr_arm": "258",
+   "m3b_pr_all": "1,032",
+   "m3b_scored": "7.27",
+   "m3b_learn": "3.41",
+   "m3b_total": "10.87",
+   "bonf": "0.0125",
+   "floor_eff": "\u22122.3",
+   "floor_ci": "[\u22129.3, +3.5]",
+   "f20_eff": "+4.1",
+   "f20_ci": "[\u22120.6, +9.9]",
+   "les_n": "40",
+   "les_att": "87",
+   "les_pass": "19",
+   "les_never": "6",
+   "les_never_ids": "L07, L08, L17, L28, L30, L38",
+   "les_cost": "0.0031",
+   "les_problems": "29",
+   "les_hash": "b783931cbf160595",
+   "tok_A": "8.9",
+   "tok_B": "45.7",
+   "ptok_A": "6.9",
+   "ptok_B": "43.6",
+   "tok_x": "5",
+   "ptok_x": "6",
+   "mp_A": "0.268",
+   "mp_B": "0.044",
+   "upp_lo": "0.0067",
+   "upp_hi": "0.0074",
+   "e_CA": "+1.6",
+   "ci_CA": "[\u22123.1, +6.6]",
+   "p_CA": "0.82",
+   "bws_CA": "10 / 8 / 68",
+   "e_BA": "+4.3",
+   "ci_BA": "[+0.0, +8.5]",
+   "p_BA": "0.21",
+   "bws_BA": "15 / 8 / 63",
+   "e_DA": "+7.4",
+   "ci_DA": "[+2.3, +12.8]",
+   "p_DA": "0.031",
+   "bws_DA": "14 / 4 / 68",
+   "e_DB": "+3.1",
+   "ci_DB": "[\u22120.4, +7.0]",
+   "p_DB": "0.15",
+   "bws_DB": "9 / 3 / 74",
+   "e_DC": "+5.8",
+   "ci_DC": "[+1.9, +10.1]",
+   "p_DC": "0.022",
+   "bws_DC": "9 / 1 / 76",
+   "rate_A": "57.8",
+   "k_A": "149",
+   "us_A": "0.0124",
+   "cap_A": "11",
+   "nst_A": "58",
+   "stp_A": "15",
+   "capall_A": "18",
+   "cappass_A": "7",
+   "runs_A": "48, 51, 50",
+   "rate_B": "62.0",
+   "k_B": "160",
+   "us_B": "0.0119",
+   "cap_B": "29",
+   "nst_B": "39",
+   "stp_B": "13",
+   "capall_B": "49",
+   "cappass_B": "20",
+   "runs_B": "54, 51, 55",
+   "rate_C": "59.3",
+   "k_C": "153",
+   "us_C": "0.0113",
+   "cap_C": "6",
+   "nst_C": "55",
+   "stp_C": "21",
+   "capall_C": "8",
+   "cappass_C": "4",
+   "runs_C": "51, 51, 51",
+   "rate_D": "65.1",
+   "k_D": "168",
+   "us_D": "0.0106",
+   "cap_D": "33",
+   "nst_D": "33",
+   "stp_D": "8",
+   "capall_D": "44",
+   "cappass_D": "11",
+   "runs_D": "52, 59, 57",
+   "cfh_range": "12\u201313",
+   "smh_range": "2\u20133",
+   "top_L03": "50",
+   "top_L02": "40",
+   "top_L37": "36",
+   "top_L06": "33"
+  }
  }
 }
