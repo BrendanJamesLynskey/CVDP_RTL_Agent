@@ -42,7 +42,7 @@ def from_runs(works):
         for s in glob.glob(os.path.join(w, "**", "agent_out", "summary.json"), recursive=True):
             summ = json.load(open(s))
             if summ.get("lessons") is not None:
-                out[os.path.relpath(s, w)] = summ["lessons"]
+                out[(w, os.path.relpath(s, w))] = summ["lessons"]  # keyed by work dir too: runs share seed paths
     return out
 
 

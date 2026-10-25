@@ -1,7 +1,8 @@
 # M3b report: harness against self-improvement
 
-**Skeleton.** The tooling, the problem sets and the smoke runs are done; every table marked **[waits on runs]** is
-filled in once the scored sweeps have run. Harness `8e894cf`, dataset revision `5b807d9`, agent from PR
+**Results.** The learning runs, the lessons snapshot and the 12 scored sweeps ran on 24 and 25 October 2026, dispatched
+by the planner from `main` after the tooling PR merged; the run CSVs are in [`m3b/runs/`](m3b/runs/) and
+[`m3b/learning/`](m3b/learning/), and every table below is recomputed from them by the committed tools. Harness `8e894cf`, dataset revision `5b807d9`, agent from PR
 `m3b-harness-memory`. The rules from the M1 report still apply: the LLM never produces a score or a label, and
 every cost is provider-reported.
 
@@ -21,22 +22,41 @@ to the other).
 
 ## In short
 
-Negative and null findings first. **[waits on runs]**
+Negative and null findings first. Evaluation set (86 problems), 3 runs an arm, effects in points of pass@1 with a
+95% paired problem-bootstrap interval:
 
-- B − A: **[waits on runs]** points [95% CI], better/worse, sign-test p.
-- C − A: **[waits on runs]**.
-- D − B, D − C: **[waits on runs]**.
+- **C − A, the lessons memory on the LangGraph agent (primary): no detectable effect.** +1.6 [−3.1, +6.6]; 10
+  problems better, 8 worse, 68 the same; sign test p = 0.82. C solved exactly 51 of 86 in each of its three runs.
+- **D − B, the memory on Deep Agents (secondary): not detectable.** +3.1 [−0.4, +7.0]; 9 / 3 / 74; p = 0.15.
+- **B − A, the Deep Agents harness (primary): weak evidence of a small gain.** +4.3 [+0.0, +8.5]; 15 / 8 / 63;
+  p = 0.21. The interval's lower end rounds to zero and the sign test is far from significant, so this is not a
+  firm result.
+- **D − C, the harness on top of the memory (secondary): the one comparison whose interval excludes zero.** +5.8
+  [+1.9, +10.1]; 9 / 1 / 76; p = 0.022.
+- Not pre-registered, so exploratory only: **D − A +7.4 [+2.3, +12.8]**; 14 / 4 / 68; p = 0.031. With four
+  pre-registered comparisons, a Bonferroni threshold of 0.0125 on the sign tests passes none of them. Read the
+  harness effect as a hypothesis for the next milestone, not a finding.
 - The noise floor on this evaluation set, from M3: the base's two Arm64 runs differ by **−2.3 points
   [−9.3, +3.5]** (3 better, 5 worse, 78 the same) on the 86 problems; M3's largest effect, 20 turns, is
   **+4.1 [−0.6, +9.9]** here. An effect of the size M3 saw cannot be told from that floor with 3 runs an arm.
-- Cost per solved problem by arm: **[waits on runs]**.
+- Cost per solved problem by arm: A $0.0124, B $0.0119, C $0.0113, D $0.0106; every arm costs $0.0067–0.0074 per
+  problem-run, and none of the 1,032 problem-runs has an unreported call. Scored sweeps $7.27 in all; learning runs
+  ≥ $3.41 (3 calls unreported); the snapshot $0.0031.
+- **Where the harness differs.** Deep Agents leaves fewer problems untested (`tests_failed_no_selfcheck`: A 58, B 39,
+  D 33 failed runs) but stops more often on its round cap (A 11, B 29, D 33). With the lessons, the LangGraph agent
+  has more failures whose own testbench passed (C 21 against A 15); with both, fewest (D 8).
+- **Deep Agents resends the whole conversation each round**: about 6 times A's prompt tokens (43.6M against 6.9M
+  over 258 problem-runs; 45.7M against 8.9M counting completion tokens too) for about the same provider-reported cost. Its cost per million prompt tokens is about a
+  sixth of A's ($0.044 against $0.268), which points to provider-side prompt caching; cached tokens are not
+  recorded per call, so this is inferred, not measured.
 
 ## Arms and settings
 
 All arms: `openai/gpt-6-luna`, reasoning `default`, `ubuntu-24.04-arm`, 4 threads, the M2 defaults (10 turns,
 $0.10 per problem, self-check and lint on, 480 s wall cap). Three runs per arm, dispatched with `seeds=1` and
-`seed_offset` 0, 1, 2 (or `seeds=3`), so runs are seeds 1–3. Every arm runs all 92 agentic problems; the primary
-analysis restricts to the 86 of the evaluation set with `ablate.py --ids`, and all 92 are a secondary table.
+`seed_offset` 0, 1, 2 (or `seeds=3`), so runs are seeds 1–3. The scored sweeps were dispatched on the 86 of the
+evaluation set (`-f ids=` from `tools/m3b_eval_ids.txt`, run budget guard $3 each); the 6 excluded problems ran in one
+extra sweep per arm (`seeds=3`), so all 92 can be tabled as the secondary analysis.
 
 ```
 gh workflow run sweep.yml -f model=openai/gpt-6-luna -f split=agentic -f runner=ubuntu-24.04-arm \
@@ -121,10 +141,20 @@ caps are the LangGraph agent's, checked before every call.
       -f reasoning=default -f seeds=3 -f ids=$(grep -v '^#' tools/m3b_learn_in_roots_ids.txt | paste -sd,)
     python3 tools/learn_lessons.py --work <work dir> --out-dir docs/reports/m3b/lessons
     ```
-    **[waits on runs]** (run ID, pass count per seed, cost).
+    Run as three dispatches (`seed_offset` 0, 1, 2) instead of `seeds=3`, and the snapshot built in Actions by
+    `.github/workflows/learn_lessons.yml` (run 40126242272), which holds the key as a secret:
+
+    | Run | Seed | Passed | Provider-reported spend |
+    |---|---|---|---|
+    | 40120087602 | 1 | 6/29 | ≥ $1.0713 (2 unreported) |
+    | 40120092696 | 2 | 7/29 | ≥ $1.1807 (1 unreported) |
+    | 40123128619 | 3 | 6/29 | $1.1629 |
+
+    Every pass is a bug-fixing (cid016) problem, so the memory learns mostly from failures.
   - Three of the 29 (`i2c_0007`, `i2c_0046`, `i2c_0049`) gave no test output under the null agent in M1 and may not
     be scorable. They stay in the set (the rule is the edit roots alone); if they fail without a test log in all 3
-    seeds, their attempts carry no outcome to learn from, and the report will say so.
+    seeds, their attempts carry no outcome to learn from, and the report will say so. **They did:** all 9 attempts
+    ended `harness_error` (no test output), so 78 of the 87 attempts carry a hidden-test outcome.
 - **Evaluation set**: the 92 agentic problems minus 6 that no agent can be expected to pass, 86 problems
   (`tools/m3b_eval_ids.txt`; the 6 in `tools/m3b_excluded_ids.txt`). Committed before any scored run.
 
@@ -147,47 +177,86 @@ problems whose M3 failures are mostly interface labels are kept, because every n
 pass@1 points with a 95% problem-bootstrap interval, problems better / worse / same, and an exact sign test. Runs of
 an arm are pooled per problem.
 
-**[waits on runs]** Evaluation set (86 problems), primary:
+Evaluation set (86 problems), primary ([`m3b/arms_paired_eval86.md`](m3b/arms_paired_eval86.md),
+[`m3b/arms_paired_secondary_eval86.md`](m3b/arms_paired_secondary_eval86.md)):
 
 | Comparison | Effect (points) | 95% CI | Better | Worse | Same | Sign test p |
 |---|---|---|---|---|---|---|
-| B − A | | | | | | |
-| C − A | | | | | | |
-| D − B | | | | | | |
-| D − C | | | | | | |
+| B − A (primary) | +4.3 | [+0.0, +8.5] | 15 | 8 | 63 | 0.21 |
+| C − A (primary) | +1.6 | [−3.1, +6.6] | 10 | 8 | 68 | 0.82 |
+| D − B (secondary) | +3.1 | [−0.4, +7.0] | 9 | 3 | 74 | 0.15 |
+| D − C (secondary) | +5.8 | [+1.9, +10.1] | 9 | 1 | 76 | 0.022 |
+| D − A (exploratory) | +7.4 | [+2.3, +12.8] | 14 | 4 | 68 | 0.031 |
 
-**[waits on runs]** All 92 problems, secondary: the same table.
+Pooled pass@1 per arm (258 problem-runs each): A 149 = 57.8% (runs 48, 51, 50 of 86), B 160 = 62.0% (54, 51, 55),
+C 153 = 59.3% (51, 51, 51), D 168 = 65.1% (52, 59, 57).
+
+All 92 problems, secondary ([`m3b/arms_paired_all92.md`](m3b/arms_paired_all92.md)): the 86 runs above plus one
+`seeds=3` sweep per arm on the 6 excluded problems ([`m3b/runs_excluded/`](m3b/runs_excluded/): A 40148663345,
+B 40148674078, C 40149695994, D 40149707990; $0.5254 in all). **All 72 of those problem-runs failed**, 66 of them on
+`signal_missing_hidden` or `compile_fail_hidden`, as the exclusion rule predicted, so adding them only dilutes
+every effect a little and changes no finding. (`ablate.py` lists each arm's excluded sweep as three more runs at
+0%; the pooled figures are per problem and correct.)
+
+| Comparison | Effect (points) | 95% CI | Better | Worse | Same | Sign test p |
+|---|---|---|---|---|---|---|
+| B − A (primary) | +4.0 | [+0.0, +8.3] | 15 | 8 | 69 | 0.21 |
+| C − A (primary) | +1.4 | [−2.9, +5.8] | 10 | 8 | 74 | 0.82 |
+| D − B (secondary) | +2.9 | [−0.4, +6.5] | 9 | 3 | 80 | 0.15 |
+| D − C (secondary) | +5.4 | [+1.8, +9.8] | 9 | 1 | 82 | 0.022 |
+| D − A (exploratory) | +6.9 | [+2.2, +12.0] | 14 | 4 | 74 | 0.031 |
+
+Pooled pass@1 on 92 (276 problem-runs each): A 54.0%, B 58.0%, C 55.4%, D 60.9%; $/solved $0.0132, $0.0128, $0.0122,
+$0.0113.
 
 ## Pareto
 
-**[waits on runs]** pass@1 against $ per solved problem and $ per problem for the four arms (`ablate.py --pareto-csv/--pareto-svg`).
+pass@1 against $ per problem for the four arms (`ablate.py --pareto-csv/--pareto-svg`;
+[`m3b/pareto.csv`](m3b/pareto.csv), [`m3b/pareto.svg`](m3b/pareto.svg)). The frontier is C and D; the spread in cost
+is small (about 10%), so the arms differ in pass rate, not in price.
 
 | Arm | pass@1 | $ / problem | $ / solved | Median wall s | Calls unreported |
 |---|---|---|---|---|---|
-| A | | | | | |
-| B | | | | | |
-| C | | | | | |
-| D | | | | | |
+| A | 57.8% | $0.0072 | $0.0124 | 53 | 0 |
+| B | 62.0% | $0.0074 | $0.0119 | 73 | 0 |
+| C | 59.3% | $0.0067 | $0.0113 | 51 | 0 |
+| D | 65.1% | $0.0069 | $0.0106 | 68 | 0 |
 
 ## Failure taxonomy by arm
 
-**[waits on runs]** Failed problem-runs by label (`taxonomy.py --arm A=... --work A=...`), with focus on the labels each arm is meant to move:
+Failed problem-runs by label (`taxonomy.py --arm A=...`; full tables in
+[`m3b/taxonomy_by_arm.md`](m3b/taxonomy_by_arm.md)), 402 failures of 1,032 problem-runs, with focus on the labels each arm is meant to move:
 `signal_missing_hidden` and `compile_fail_hidden` (the lessons on interface names), `tests_failed_no_selfcheck`
 and `tests_failed_selfcheck_passed` (the lessons on testing; Deep Agents' freer loop), `stopped_by_cap` (Deep
 Agents' round cap).
 
 | Label | A | B | C | D |
 |---|---|---|---|---|
-| tests_failed_no_selfcheck | | | | |
-| tests_failed_selfcheck_passed | | | | |
-| signal_missing_hidden | | | | |
-| compile_fail_hidden | | | | |
-| stopped_by_cap | | | | |
-| other | | | | |
+| tests_failed_no_selfcheck | 58 | 39 | 55 | 33 |
+| tests_failed_selfcheck_passed | 15 | 13 | 21 | 8 |
+| signal_missing_hidden | 3 | 2 | 2 | 2 |
+| compile_fail_hidden | 12 | 13 | 12 | 12 |
+| stopped_by_cap | 11 | 29 | 6 | 33 |
+| other (sim_incomplete, selfcheck_failed, no_edit, killed) | 10 | 2 | 9 | 2 |
+| **All failures** | 109 | 98 | 105 | 90 |
+
+- The interface labels barely move on any arm (`compile_fail_hidden` 12–13, `signal_missing_hidden` 2–3): the
+  lessons on interface names (L03, L15, L29, retrieved for 50, 29 and 20 of the 86 problems) did not change them.
+  With the 6 unreachable problems excluded, these labels are now a small share of the failures (15 of A's 109,
+  against 147 of 565 in M3 on all 92).
+- Deep Agents' gain is in untested failures, at the price of round-cap stops. A cap stop still submits the best
+  edit kept so far, and some of those pass: B stopped on the cap 49 times and 20 of them passed, D 44 times (11
+  passed), A 18 times (7 passed). So the 22-round cap costs Deep Agents some problems but not all of its cap stops.
 
 ## The lessons and how often each is retrieved
 
-**[waits on runs]** The real snapshot's lessons, and the problems of the evaluation set each is retrieved for
+The real snapshot's 40 lessons, and the problems of the evaluation set each is retrieved for, are in
+[`m3b/retrieval_eval86.md`](m3b/retrieval_eval86.md). The agents' own summaries agree exactly: over C's and D's 516
+problem-runs each lesson was retrieved 6 times as often as the offline count ([`m3b/retrieval_runs.md`](m3b/retrieval_runs.md)),
+as deterministic BM25 should give. Most retrieved: L03 (verify every port, parameter and width against the interface
+documentation; 50 of 86), L02 (tests from the spec's corner cases; 40), L37 (a cycle-by-cycle expectation; 36), L06
+(FIFO and clock-domain corner cases; 33). Six lessons are never retrieved (L07, L08, L17, L28, L30, L38): they are
+about compile diagnostics and turn budgeting, words the problem statements do not use. The tables come from
 (`python3 tools/retrieval.py <snapshot> <dataset.jsonl> --ids tools/m3b_eval_ids.txt`; with `--runs`, what the
 agents' summaries say they retrieved).
 
@@ -257,13 +326,26 @@ Odd or worth knowing (none of it is a result: one run of 10 problems each):
 - **Shared dependency drift.** Pinning `deepagents` moved one shared transitive dependency, `tenacity` 9.2.1 →
   9.1.4. The LangGraph golden test passes unchanged on the new set.
 - **Summarization as shipped.** Deep Agents' summarization middleware is left as shipped; with 22 rounds and cut
-  check output it should rarely trigger, and a summarizing call counts as a round. **[waits on runs]**: how often it
-  ran.
+  check output it should rarely trigger, and a summarizing call counts as a round. **It did not run**, as far
+  as the traces show: summarization replaces the history, so the next call's prompt would shrink sharply, and in
+  none of B's and D's 516 problem-runs did a call's prompt fall below 60% of the previous one. The trace does not
+  mark summarizing calls, so this is inferred. The largest single prompt was 221k tokens (B, seed 1).
 - **Common words count as not given.** `reachable.py` lists a plain word such as `clk` or `hour` as not given when
   it appears only in prose, which may be too strict for it. The 6 exclusions do not depend on this: each also reads
   an identifier-shaped name the agent is not given, such as `hour_pulse` or `CLK_FREQ` (`m3b/unreachable.md`).
 - **Rounds are not turns.** B and D's `turns` count model calls; A and C's count edit cycles. Compare the arms on
   cost and wall time, not on turns.
+- **Four comparisons, three runs.** None of the sign tests passes a Bonferroni threshold for four comparisons
+  (0.0125), and the bootstrap intervals are not adjusted. The harness effect needs a confirming run (more seeds,
+  or another model) before it is called a finding.
+- **One snapshot, generic lessons.** The memory is one snapshot from 87 attempts, 9 of them without a test outcome
+  and only 19 passes; its lessons are general process advice, several near-duplicates, and 6 are never retrieved. A
+  null C − A says this memory does not help, not that no memory could.
+- **Caching is inferred.** Cached prompt tokens are not recorded per call, so the claim that Deep Agents' 6× prompt
+  tokens are mostly cached rests on the cost per prompt token, not on a measured cache-hit count.
+- **`retrieval.py --runs` miscounted across arms** before this report: it keyed summaries by their path inside a
+  work dir, so C's and D's runs (which share `seed1/...` paths) overwrote each other and only 258 of 516 were
+  counted. Fixed here (keyed by work dir too) with a test; the published counts are after the fix.
 
 ## Gotchas
 
@@ -287,3 +369,7 @@ Odd or worth knowing (none of it is a result: one run of 10 problems each):
   run.
 - One frozen snapshot for C and D: the memory does not grow during evaluation, so C − A measures one fixed memory.
 - The round cap is 22 (above).
+- The snapshot is built in Actions (`learn_lessons.yml`), not locally, so the key never leaves the repository's
+  secrets; it is committed as built, with no hand edits, before any scored run of C or D.
+- Arms A and B ran before the snapshot was merged, C and D after it; all 12 ran from `main` (A and B at `21c3473`, C and D at `44d3ef9`, which differ only in the snapshot and docs: no change to `agent/`, `docker/`, `tools/sweep.sh` or `sweep.yml`) within
+  about 7 hours, two sweeps at a time, with a $3 run-budget guard each (no guard was reached).
