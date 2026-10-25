@@ -86,8 +86,6 @@ RESET_ONLY_TB = """module tb;
   end
 endmodule
 """
-SLOW_TB = STRONG_TB.replace("@(negedge clk); @(negedge clk); rst = 0;",
-                            "repeat (400000) @(negedge clk); rst = 0;")
 
 
 def tree(tmp_path, prompt="Design a `counter` module in SystemVerilog. See `docs/spec.md`.", spec=SPEC, rtl=None):
@@ -303,8 +301,20 @@ def test_gate_without_a_testbench_fails_with_the_message(tmp_path):
 
 
 @needs_tools
-def test_gate_bound_counts_unfinished_mutants_as_not_killed(tmp_path):
-    r = gate(tree(tmp_path), SLOW_TB, bound_s=4.0)
+def test_gate_bound_counts_unfinished_mutants_as_not_killed(tmp_path, monkeypatch):
+    """A deliberately slow testbench: every mutant's run takes at least 1 s more, so 12 cannot fit in a 4 s bound
+    on any machine."""
+    import time
+
+    real = MutationGate._sim
+
+    def slow(self, name, *a, **kw):
+        if name.startswith("mutant"):
+            time.sleep(1.0)
+        return real(self, name, *a, **kw)
+
+    monkeypatch.setattr(MutationGate, "_sim", slow)
+    r = gate(tree(tmp_path), STRONG_TB, bound_s=4.0)
     assert r["wall_s"] < 4.0 + 2.0  # the bound holds (each tool call is cut at it)
     assert r["outcome"] == "timeout" and r["unfinished"] > 0, r["summary"]
     assert r["killed"] + r["unfinished"] <= r["compiled"]  # unfinished mutants are never counted as killed
