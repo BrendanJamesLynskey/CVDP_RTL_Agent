@@ -220,8 +220,9 @@ Total **$0.1853** of the $1.00 allowed (each the sum of its 10 per-problem provi
 runs, 39 killed. Gate wall time per run was at most 2.0 s (bound 60 s): these designs are small. `no_tb` sent 4
 problems back to reflect; all 4 then ran a testbench. The second gate run was `skipped` on 3
 (`axis_to_uart_0001`, which then passed, `dynamic_equalizer_0004`, `phase_rotation_0010`) and `fail` on
-`phase_rotation_0028` (12 mutants generated, none compiled with its testbench, so a kill rate of 0; that problem then
-stopped on the turn cap).
+`phase_rotation_0028` (12 mutants generated, 0 compiled: the CSV does not say whether its testbench failed on the
+design itself or no mutant compiled; its last self-check failed, which points to the first). That problem then stopped
+on the turn cap; it is one of M3b's 6 unreachable problems.
 
 **Interface check (I)**: 31 checks on 10 problems, all elaborated by pyslang (no Yosys fallback, nothing that could
 not be elaborated); mismatches on one problem only, `phase_rotation_0010` (10 of 10 checks, 2 `missing_module`
