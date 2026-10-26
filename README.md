@@ -38,14 +38,17 @@ gain (B − A +4.3 [+0.0, +8.5], sign test p = 0.21); Deep Agents on top of the 
 interval excludes zero (D − C +5.8 [+1.9, +10.1]). Pooled pass@1 A 57.8%, B 62.0%, C 59.3%, D 65.1%, at $0.0106–0.0124
 per solved problem; $7.27 for the 12 sweeps.
 
-**M3c** (tooling PR; scored runs pending, report skeleton [`docs/reports/M3c_report.md`](docs/reports/M3c_report.md)):
+**M3c** ([`docs/reports/M3c_report.md`](docs/reports/M3c_report.md)):
 two deterministic, model-free checks, each a fixed step of the LangGraph graph behind a switch that is off by default,
 each aimed at one failure class M3 and M3b found. **Interface diff by elaboration** (`interface_check`): after every
 edit, the design is elaborated with pyslang (Yosys as the fallback) and its modules, ports, widths and parameters are
 compared with the interface the agent was given; the findings go to reflect like lint. **Mutation-score gate**
 (`mutation_gate`): before a submit, the agent's own testbench must detect at least half of 12 Yosys `mutate` mutants of
 its design, or the gate sends the survivors back to reflect (at most twice). Three arms, 3 runs each, on M3b's 86
-problems: A (neither), M (the gate), I (the interface check); M − A and I − A are pre-registered.
+problems: A (neither), M (the gate), I (the interface check); M − A and I − A are pre-registered. **Results** (9 scored
+sweeps, paired on the 86): neither check moves pass@1 (M − A +0.8 points [−3.9, +5.8], I − A −1.6 [−6.2, +3.1]).
+The gate removes the "no testbench" failures but they come back as "testbench passed, hidden tests failed" and as
+turn-cap stops, at about twice the cost per solved problem. Pooled pass@1 A 61.6%, M 62.4%, I 60.1%.
 
 **M2a** (merged, [`docs/reports/M2a_report.md`](docs/reports/M2a_report.md)): reasoning limits, a retry on empty
 replies and unreadable decisions, and seeds. On the same 10 problems on Arm64, DeepSeek at `reasoning=off` passed
