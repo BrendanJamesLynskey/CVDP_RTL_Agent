@@ -1,0 +1,11 @@
+# Benchmark-limited problems with strong evidence (docs/reports/unsolved_analysis.md): the hidden test needs a
+# detail the task never gives, and a counterfactual rerun of a failing attempt with only that detail changed passes.
+# Borderline cases (dynamic_equalizer_0001, phase_rotation_0015) are left out. Report any score that excludes these
+# next to the full M3b evaluation score, never in its place.
+cvdp_agentic_cache_controller_0001
+cvdp_agentic_dynamic_equalizer_0008
+cvdp_agentic_elevator_control_0004
+cvdp_agentic_rc5_0001
+cvdp_agentic_secure_apb_history_shift_register_0001
+cvdp_agentic_sync_serial_communication_0001
+cvdp_agentic_traffic_light_controller_0001
