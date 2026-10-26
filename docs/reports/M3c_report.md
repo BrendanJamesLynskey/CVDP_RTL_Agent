@@ -1,8 +1,11 @@
 # M3c report: mutation testing and elaboration in the loop
 
-**Status: skeleton.** The tooling PR (`m3c-formal-checks`) adds the two checks and the sweep inputs; the 9 scored
-sweeps are dispatched by the planner from `main` after it merges. Every table marked **[waits on runs]** is filled
-from the run CSVs by the committed tools, nothing by hand. Harness `8e894cf`, dataset revision `5b807d9`. The rules
+**Status: done (2026-10-26).** The tooling PR (#16, `m3c-formal-checks`) added the two checks and the sweep inputs;
+the 9 scored sweeps ran from `main` at `dd8be4f` on 2026-10-26 (runs 40257040625 to 40274995282, listed in
+`m3c/runs/`). The tables are filled from the run CSVs by the committed tools (`ablate.py`, `taxonomy.py`, and a
+column count for the gate and interface tables), nothing by hand. A first set of 9 sweeps on 2026-10-25 (runs
+40213580065 to 40215295542) is void: the OpenRouter balance was too low and every call failed with 402
+`in_flight_budget_exhausted`; none of its rows is used. Harness `8e894cf`, dataset revision `5b807d9`. The rules
 from the M1 report still apply: the LLM never produces a score or a label, every cost is provider-reported, and a
 missing cost is recorded as unreported, never estimated.
 
@@ -23,10 +26,21 @@ first. No combined arm.
 
 ## In short
 
-**[waits on runs]** Negative and null findings first: M − A and I − A with their 95% paired problem-bootstrap
-intervals, better / worse / same, sign test; cost per solved problem by arm; which of the four focus labels each
-arm moved; how often the gate failed, was overridden or found no testbench; how often the interface check found a
-mismatch and of which kind.
+**Neither check moves pass@1.** Both pre-registered comparisons are null:
+
+- **M − A: +0.8 points [−3.9, +5.8]**, better / worse / same 13 / 10 / 63, sign test p = 0.68. M costs about twice
+  as much per solved problem (≥$0.0190 against ≥$0.0099) and takes a median 135 s per problem against 51 s.
+- **I − A: −1.6 points [−6.2, +3.1]**, 10 / 13 / 63, p = 0.68, at about the same cost ($0.0113 per solved problem).
+
+**The gate changes the kind of failure, not the number.** It removes `tests_failed_no_selfcheck` entirely (56 failed
+problem-runs on A, 0 on M), because it will not let the agent submit without a testbench. But the failures move to
+`tests_failed_selfcheck_passed` (14 → 50) and `stopped_by_cap` (4 → 19): the agent now writes a testbench, the
+testbench passes, and the hidden tests still fail. The testbenches the gate forced killed 56% of compiled mutants
+(1,051 of 1,872). 16% of gate runs (61 of 390) were `skipped` and let the submission through.
+
+**The interface check found little to fix.** Of 672 checks, 99 reported a mismatch, on 38 problem-runs, and 21 of
+those 38 then passed the hidden tests, so most findings were false or harmless. It turned 3 submits into edits.
+`signal_missing_hidden` and `compile_fail_hidden` together are 16 failures on A and 16 on I.
 
 The noise floor to read them against, from M3b: the base's runs differ by about ±2 points on these 86 problems
 between identical runs, and M3b's largest single-change effect (+4.3, Deep Agents) had an interval reaching zero.
@@ -122,81 +136,100 @@ show (below).
 
 ## Paired results
 
-**[waits on runs]** `python3 tools/ablate.py --ids tools/m3b_eval_ids.txt --base A --arm A=a1.csv,a2.csv,a3.csv
---arm M=m1.csv,m2.csv,m3.csv --arm I=i1.csv,i2.csv,i3.csv` (run CSVs in `m3c/runs/`):
+`python3 tools/ablate.py --ids tools/m3b_eval_ids.txt --base A --arm A=A1…,A2…,A3… --arm M=M1…,M2…,M3…
+--arm I=I1…,I2…,I3…` on the CSVs in `m3c/runs/`; full output in
+[`m3c/arms_paired_eval86.md`](m3c/arms_paired_eval86.md). All 86 problems are in every arm (none dropped).
 
 | Comparison | Effect (points) | 95% CI | Better | Worse | Same | Sign test p |
 |---|---|---|---|---|---|---|
-| M − A (primary) | | | | | | |
-| I − A (primary) | | | | | | |
+| M − A (primary) | +0.8 | [−3.9, +5.8] | 13 | 10 | 63 | 0.678 |
+| I − A (primary) | −1.6 | [−6.2, +3.1] | 10 | 13 | 63 | 0.678 |
 
-Pooled pass@1 per arm (258 problem-runs each): **[waits on runs]**.
+Pooled pass@1 per arm (258 problem-runs each): **A 159 = 61.6%** (runs 65.1, 59.3, 60.5), **M 161 = 62.4%**
+(59.3, 64.0, 64.0), **I 155 = 60.1%** (59.3, 65.1, 55.8). Both intervals contain 0 and both effects are inside the
+±2-point spread between identical runs of the base. This A (61.6%) sits between M3b's arm A (57.9% in the confirming
+runs) and arm B (62.6%), within run-to-run noise.
 
 ## Pareto
 
-**[waits on runs]** pass@1 against $ per problem (`ablate.py --pareto-csv m3c/pareto.csv --pareto-svg
-m3c/pareto.svg`). The gate's extra reflect calls and the interface check's extra edits cost tokens; the checks
-themselves cost none.
+pass@1 against $ per problem ([`m3c/pareto.csv`](m3c/pareto.csv), [`m3c/pareto.svg`](m3c/pareto.svg)). The gate's
+extra reflect calls and the interface check's extra edits cost tokens; the checks themselves cost none. A cost
+marked ≥ has unreported calls and is a lower bound.
 
 | Arm | pass@1 | $ / problem | $ / solved | Median wall s | Calls unreported |
 |---|---|---|---|---|---|
-| A | | | | | |
-| M | | | | | |
-| I | | | | | |
+| A | 61.6% | ≥$0.0061 | ≥$0.0099 | 51 | 1 |
+| M | 62.4% | ≥$0.0119 | ≥$0.0190 | 135 | 3 |
+| I | 60.1% | $0.0068 | $0.0113 | 59 | 0 |
+
+M makes 2,984 LLM calls against A's 1,414 (median 4 turns against 1) and uses 14.8 M tokens against 7.7 M. I makes
+1,599 calls (median 2 turns). Only I is on the frontier, because A's and M's costs are lower bounds; in practice A
+is the cheapest arm, and no arm buys pass rate.
 
 ## Failure taxonomy by arm
 
-**[waits on runs]** `taxonomy.py --arm A=... --arm M=... --arm I=...`. No new label; three new flags say which
-failures each arm touched: `gate_overridden` (the gate failed twice and the agent submitted anyway), `gate_no_tb`
+`taxonomy.py --arm A=... --arm M=... --arm I=...`; full output in
+[`m3c/taxonomy_by_arm.md`](m3c/taxonomy_by_arm.md). No new label; three new flags say which failures each arm
+touched: `gate_overridden` (the gate failed twice and the agent submitted anyway), `gate_no_tb`
 (the gate found no testbench at least once) and `interface_mismatch_unresolved` (the last interface check still
 reported a mismatch).
 
 | Label | A | M | I |
 |---|---|---|---|
-| tests_failed_no_selfcheck | | | |
-| tests_failed_selfcheck_passed | | | |
-| signal_missing_hidden | | | |
-| compile_fail_hidden | | | |
-| stopped_by_cap | | | |
-| other | | | |
-| **All failures** | | | |
+| tests_failed_no_selfcheck | 56 | 0 | 45 |
+| tests_failed_selfcheck_passed | 14 | 50 | 18 |
+| signal_missing_hidden | 5 | 4 | 3 |
+| compile_fail_hidden | 11 | 11 | 13 |
+| stopped_by_cap | 4 | 19 | 12 |
+| other (`tests_failed_selfcheck_failed`, `sim_incomplete`, `llm_error`) | 9 | 13 | 12 |
+| **All failures** | 99 | 97 | 103 |
 
 | Flag (failed problem-runs) | A | M | I |
 |---|---|---|---|
-| gate_overridden | — | | — |
-| gate_no_tb | — | | — |
-| interface_mismatch_unresolved | — | — | |
+| gate_overridden | — | 25 | — |
+| gate_no_tb | — | 66 | — |
+| interface_mismatch_unresolved | — | — | 7 |
 
 What each arm is expected to move, if it works: M, `tests_failed_no_selfcheck` (the gate demands a testbench) and
 `tests_failed_selfcheck_passed` (it demands a stronger one); I, `signal_missing_hidden` and `compile_fail_hidden`.
 Expected side effects: more `stopped_by_cap` on M (the gate's extra reflects and edits use turns and wall time).
 
+What happened: M moved `tests_failed_no_selfcheck` as expected (56 → 0), but not into passes: 36 more failures are
+`tests_failed_selfcheck_passed` and 15 more are `stopped_by_cap`. M stopped on the turn cap 34 times; 16 of those still passed. Requiring a
+testbench is not the same as requiring a correct one. I moved neither of its labels (16 → 16 together); its
+`stopped_by_cap` rose 4 → 12.
+
 ## Gate and interface-check statistics
 
-**[waits on runs]** From the new `results.csv` columns (after `memory`: `mutation_gate`, `interface_check`,
+From the new `results.csv` columns (after `memory`: `mutation_gate`, `interface_check`,
 `gate_runs`, `gate_outcomes`, `gate_failures`, `gate_overridden`, `mutants_generated`, `mutants_compiled`,
 `mutants_killed`, `mutants_unfinished`, `gate_wall_s`, `interface_runs`, `interface_mismatch_runs`,
 `interface_kinds`, `interface_fallbacks`, `interface_blocks`, `interface_unresolved`; blank when the switch is off).
 
 | Gate (arm M, 258 problem-runs) | Value |
 |---|---|
-| Problem-runs where the gate ran | |
-| Gate runs, by outcome (no_tb / pass / fail / timeout / skipped) | |
-| Problem-runs with gate_overridden | |
-| Mutants generated / compiled / killed / unfinished | |
-| Kill rate over compiled mutants | |
-| Gate wall time per run (median, max) | |
-| Wrapper vs per-mutant builds | |
-| Passed problems with a gate failure first | |
+| Problem-runs where the gate ran | 242 (the other 16 never reached a submit) |
+| Gate runs, by outcome (no_tb / pass / fail / timeout / skipped) | 390: 141 / 103 / 85 / 0 / 61 |
+| Problem-runs with gate_overridden | 51 (26 of them passed) |
+| Mutants generated / compiled / killed / unfinished | 2,904 / 1,872 / 1,051 / 0 |
+| Kill rate over compiled mutants | 56.1% |
+| Gate wall time per problem-run (median, 90th percentile, max) | 0.2 s, 6.1 s, 60.0 s (2 at the bound) |
+| Wrapper vs per-mutant builds | not in the CSV (the method is in the trace only) |
+| Passed problems with a gate failure first (`no_tb` or `fail`) | 91 of M's 161 passes |
+| `skipped` (fails open) | 61 gate runs on 61 problem-runs, 38 distinct problems |
 
 | Interface check (arm I, 258 problem-runs) | Value |
 |---|---|
-| Checks run | |
-| Checks with a mismatch | |
-| Findings by kind (missing_module / missing_port / missing_param / spelling / width) | |
-| Yosys fallbacks; could not elaborate | |
-| Submits turned into an edit (interface_blocks) | |
-| Problem-runs ending with a mismatch unresolved; of them passed | |
+| Checks run | 672 |
+| Checks with a mismatch | 99, on 38 problem-runs (21 of them passed) |
+| Findings by kind (missing_module / missing_port / missing_param / spelling / width) | problem-runs with each kind: 11 / 18 / 13 / 0 / 0 |
+| Yosys fallbacks; could not elaborate | 16 fallbacks on 11 problem-runs; none failed to elaborate |
+| Submits turned into an edit (interface_blocks) | 3 (bcd_adder_0004 twice, passed both; DES_0007 once, failed) |
+| Problem-runs ending with a mismatch unresolved; of them passed | 13; 6 passed |
+
+The 13 unresolved problem-runs are on 5 problems: `DES_0007`, `bcd_adder_0004`, `ethernet_mii_0006`,
+`phase_rotation_0013` and `programmable_fsm_dynamic_state_encoding_0001`. No `spelling` or `width` finding was made
+in 672 checks.
 
 A mismatch on a problem the agent then passes is a false finding of the check (or a name the hidden tests do not
 read); the report counts them.
