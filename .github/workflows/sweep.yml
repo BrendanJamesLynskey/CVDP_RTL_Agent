@@ -63,9 +63,9 @@ on:
         type: string
         default: "0"
       harness:
-        description: "Agent harness: langgraph (M1-M3) or deepagents (M3b)"
+        description: "Agent harness: langgraph (M1-M3), deepagents (M3b) or claudecode (Claude Code on the plan; model = a Claude model id)"
         type: choice
-        options: [langgraph, deepagents]
+        options: [langgraph, deepagents, claudecode]
         default: langgraph
       memory:
         description: "Lessons snapshot in the repo, e.g. docs/reports/m3b/lessons/lessons_<hash>.json (blank = none)"
@@ -196,6 +196,7 @@ jobs:
         timeout-minutes: 320
         env:
           OPENROUTER_API_KEY: ${{ env.REAL_MODEL == 'true' && secrets.OPENROUTER_API_KEY || '' }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ env.HARNESS == 'claudecode' && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
           AGENT_IMAGE: ${{ steps.agent.outputs.image }}
           IDS: ${{ github.event_name == 'pull_request' && env.SMOKE_IDS || inputs.ids }}
           # The Run step's 320 min, less a margin: a seed starts only if its worst case fits in what is left.
@@ -238,7 +239,12 @@ jobs:
         if: always()
         env:
           OPENROUTER_API_KEY: ${{ env.REAL_MODEL == 'true' && secrets.OPENROUTER_API_KEY || '' }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ env.HARNESS == 'claudecode' && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
         run: |
+          if grep -rl -e 'sk-ant-' work work.* 2>/dev/null; then echo "::error::token-shaped string in work dir"; exit 1; fi
+          if [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ] && grep -rlF -e "$CLAUDE_CODE_OAUTH_TOKEN" work work.* 2>/dev/null; then
+            echo "::error::token in work dir"; exit 1
+          fi
           # Never upload the key: fail if it, or anything shaped like it, is anywhere in the work dir, binary files
           # included. The upload below runs only when this step succeeds.
           if grep -rl -e 'sk-or-' work work.* 2>/dev/null; then echo "::error::key-shaped string in work dir"; exit 1; fi

@@ -7,10 +7,11 @@ import time
 # Anything that looks like a key or an auth header. The key's own value is redacted too, whatever its shape.
 _PATTERNS = [
     re.compile(r"sk-or-[A-Za-z0-9_\-]*"),
+    re.compile(r"sk-ant-[A-Za-z0-9_\-]*"),
     re.compile(r"Bearer\s*\S*", re.IGNORECASE),
     re.compile(r"Authorization\S*(\s*[:=]\s*\S+)?", re.IGNORECASE),
 ]
-_SECRET_ENV = ("OPENROUTER_API_KEY",)
+_SECRET_ENV = ("OPENROUTER_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN")
 REDACTED = "[REDACTED]"
 
 

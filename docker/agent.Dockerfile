@@ -19,6 +19,15 @@ RUN uv venv /opt/agent/venv && \
 RUN useradd --system --no-create-home --shell /usr/sbin/nologin cvdptool
 ENV CVDP_TOOL_USER=cvdptool
 
+# Claude Code, pinned, for the claudecode comparison harness only (CVDP_HARNESS=claudecode); the other harnesses
+# never call it.
+ARG CLAUDE_CODE_VERSION=2.1.310
+ENV DISABLE_AUTOUPDATER=1 DISABLE_TELEMETRY=1 DISABLE_ERROR_REPORTING=1
+RUN (command -v curl || (apt-get update -qq && apt-get install -y -qq --no-install-recommends curl ca-certificates)) && \
+    curl -fsSL https://claude.ai/install.sh | bash -s ${CLAUDE_CODE_VERSION} && \
+    install -m 0755 "$(readlink -f /root/.local/bin/claude)" /usr/local/bin/claude && rm -rf /root/.local/bin/claude && \
+    claude --version  # a real copy: the harness runs the agent as a non-root user, who cannot reach /root
+
 COPY agent/cvdp_agent /opt/agent/cvdp_agent
 # M3c: the mutation gate needs Yosys' `mutate -ctrl` (core Yosys since 0.9); the interface check needs pyslang
 RUN command -v iverilog && command -v verilator && command -v yosys && python3 -c "import cocotb_tools" && \

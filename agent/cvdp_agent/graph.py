@@ -723,6 +723,10 @@ def write_ledger(cfg, summary, name=None):
 
 
 def run(cfg, llm=None, **kw):
+    if cfg.harness == "claudecode":  # no LLM client of ours: Claude Code makes its own calls
+        from . import claude_code
+
+        return claude_code.run(cfg)
     from . import llm as llm_mod
 
     tracer = kw.pop("tracer", None) or Tracer(cfg.agent_out)

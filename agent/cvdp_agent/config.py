@@ -31,6 +31,7 @@ class Config:
     seed: str = ""                      # repeat number from the sweep; a label only (sampling is not seeded)
     provider_order: list = field(default_factory=list)  # OpenRouter providers to use, in order, no fallbacks
     harness: str = "langgraph"          # langgraph (the M1-M3 agent) | deepagents (LangGraph's Deep Agents, M3b)
+                                        # | claudecode (Claude Code headless on the owner's plan, a comparison)
     max_rounds: int = 22                # deepagents: model calls (tool-call rounds); M2's worst case for 10 turns
     memory: str = ""                    # a lessons snapshot (JSON, tools/learn_lessons.py); blank = no memory
     memory_k: int = 5                   # lessons retrieved into the plan prompt
@@ -83,8 +84,8 @@ def _reasoning(name):
 
 def _harness(name):
     v = (os.environ.get(name) or "langgraph").strip().lower()
-    if v not in ("langgraph", "deepagents"):
-        raise ValueError(f"{name} must be langgraph or deepagents, got {v!r}")
+    if v not in ("langgraph", "deepagents", "claudecode"):
+        raise ValueError(f"{name} must be langgraph, deepagents or claudecode, got {v!r}")
     return v
 
 
@@ -103,7 +104,7 @@ def from_env():
         seed=os.environ.get("CVDP_SEED", "").strip(),
         provider_order=[p.strip() for p in os.environ.get("CVDP_PROVIDER_ORDER", "").split(",") if p.strip()],
         harness=_harness("CVDP_HARNESS"),
-        max_rounds=_num("CVDP_MAX_ROUNDS", 22, int),
+        max_rounds=_num("CVDP_MAX_ROUNDS", 60 if _harness("CVDP_HARNESS") == "claudecode" else 22, int),
         memory=os.environ.get("CVDP_MEMORY", "").strip(),
         mutation_gate=_flag("CVDP_MUTATION_GATE", False),
         interface_check=_flag("CVDP_INTERFACE_CHECK", False),
