@@ -431,7 +431,72 @@ lad_all = sum(1 for p in EVAL if all(ladder[k]["_rate"][p] for k in ladder))
 claude_ladder = {"arms": {k: public(v) for k, v in ladder.items()}, "order": [k for k, _, _ in LADDER],
                  "union": lad_union, "all": lad_all}
 
-spend_all = round(spend_all + conf_cost + m3c_scored + m3c_smoke, 2)  # + confirming run, M3c scored sweeps and smoke runs
+# ---- the unsolved-problems analysis: 12 problems no Claude model solved (docs/reports/unsolved_analysis.md) ----
+BLIM = [l.strip() for l in open(os.path.join(ROOT, "tools", "benchmark_limited_ids.txt")) if l.strip() and not l.startswith("#")]
+EVAL79 = [p for p in EVAL if p not in BLIM]
+uns = sorted(p for p in EVAL if not any(ladder[k]["_rate"][p] for k in ladder))
+uns_A0 = [p for p in uns if m3c_arms["A"]["_rate"][p] == 0]
+def on79(arm, runs):
+    return sum(round(arm["_rate"][p] * runs) for p in EVAL79), runs * len(EVAL79)
+u79 = {"A": on79(m3c_arms["A"], len(c_runs["A"]))}
+for k in ladder:
+    u79[k] = on79(ladder[k], 1)
+unsolved = {"n": len(uns), "never_A": len(uns_A0), "blim": len(BLIM), "n79": len(EVAL79),
+            "blim_in_uns": all(p in uns for p in BLIM),
+            "r79": {k: round(100 * a / b, 1) for k, (a, b) in u79.items()}, "k79": {k: list(v) for k, v in u79.items()}}
+rep_un = open(os.path.join(REP, "unsolved_analysis.md")).read()
+mc = re.search(r"Class counts: \*\*benchmark-limited (\d+) \((\d+) strong, (\d+) borderline\), environment (\d+), agent-limited (\d+)", rep_un)
+unsolved.update({"border": int(mc.group(3)), "env": int(mc.group(4)), "agent": int(mc.group(5))})
+mt = re.search(r"In (\d+) of arm A's (\d+) valid attempts on them", rep_un)
+unsolved.update({"p2_untested": int(mt.group(1)), "p2_valid": int(mt.group(2))})
+mdf = re.search(r"the defaults alone were set to (\d+) and (\d+)", rep_un)
+unsolved["tl_defaults"] = [int(mdf.group(1)), int(mdf.group(2))]
+# part two: solved by at least 2 Claude models, never by M3c's arm A
+P2 = sorted(p for p in EVAL if sum(ladder[k]["_rate"][p] for k in ladder) >= 2 and m3c_arms["A"]["_rate"][p] == 0)
+unsolved["p2"] = len(P2)
+
+# ---- M3d: arms A, V (verify before submit), S (V + blind spec cases), 3 runs each (docs/reports/M3d_report.md, m3d/) ----
+M3D = os.path.join(REP, "m3d")
+d_runs = load_runs(os.path.join(M3D, "runs", "*.csv"))
+m3d_arms = {a: pool(d_runs[a]) for a in "AVS"}
+m3d_eff = parse_sections(os.path.join(M3D, "arms_paired_eval86.md"))
+m3d_eff79 = parse_sections(os.path.join(M3D, "arms_paired_eval79.md"))
+m3d_chk = {k: paired_on(m3d_arms[k[0]], m3d_arms["A"]) for k in ("V-A", "S-A")}
+d_rows = {a: [x for _, _, r in d_runs[a] for x in r] for a in "AVS"}
+def rate79(a):
+    r = [x for x in d_rows[a] if x["id"] in EVAL79]
+    return round(100 * sum(int(x["pass"]) for x in r) / len(r), 1), len(r)
+m3d_extra = {}
+for a, rs in d_rows.items():
+    m3d_extra[a] = {
+        "no_sc": sum(1 for x in rs if int(x["selfcheck_runs"] or 0) == 0),
+        "one_turn": sum(1 for x in rs if int(x["turns"] or 0) == 1),
+        "turns_med": statistics.median(int(x["turns"] or 0) for x in rs),
+        "llm_error_stop": sum(1 for x in rs if x["stop_reason"] == "llm_error"),
+        "guard": sum(1 for x in rs if x["stop_reason"] == "run_budget_exhausted"),
+        "rate79": rate79(a)[0], "n79": rate79(a)[1],
+    }
+    if a != "A":
+        m3d_extra[a].update({"verify_runs": sum(int(x["verify_runs"] or 0) for x in rs),
+                             "refusals": sum(int(x["verify_refusals"] or 0) for x in rs),
+                             "refused_rows": sum(1 for x in rs if int(x["verify_refusals"] or 0) > 0)})
+Srows = d_rows["S"]
+spec_tab = {}
+for x in Srows:
+    st = x["spec_final_status"]
+    key = "pass" if st == "pass" else "fail" if st == "fail" else "na"
+    spec_tab.setdefault(key, [0, 0])[0 if int(x["pass"]) else 1] += 1
+spec_gen = sum(1 for x in Srows if x["spec_status"] == "generated")
+p2_pass = {a: sum(int(x["pass"]) for x in d_rows[a] if x["id"] in P2) for a in "AVS"}
+guard_adj = round(100 * m3d_extra["S"]["guard"] * (m3d_arms["A"]["k"] / m3d_arms["A"]["n"]) / m3d_arms["A"]["n"], 1)
+rep3d = open(os.path.join(REP, "M3d_report.md")).read()
+m3d_smoke = float(re.search(r"\*\*Smoke runs\.\*\* \$([\d.]+) reported", rep3d).group(1))
+m3d_scored = round(sum(a["cost"] for a in m3d_arms.values()), 4)
+m3d = {"arms": {a: public(v) for a, v in m3d_arms.items()}, "effects": m3d_eff, "effects79": m3d_eff79, "extra": m3d_extra,
+       "spec": spec_tab, "spec_generated": spec_gen, "guard_adj": guard_adj, "cost_scored": m3d_scored, "cost_smoke": m3d_smoke,
+       "solved_x": {a: round(m3d_arms[a]["usd_solved"] / m3d_arms["A"]["usd_solved"], 1) for a in "VS"}}
+
+spend_all = round(spend_all + conf_cost + m3c_scored + m3c_smoke + m3d_scored + m3d_smoke, 2)  # + confirming run, M3c and M3d scored sweeps and smoke runs
 
 # Prose numbers in story.html: <span data-d="key">value</span>; --inject rewrites the value from here.
 MINUS = "−"
@@ -515,6 +580,38 @@ for k, z in ladder.items():
     prose[f"l_rate_{k}"] = f"{z['rate']:.1f}"; prose[f"l_k_{k}"] = str(z["k"]); prose[f"l_wall_{k}"] = str(z["wall_med"])
 prose["l_wcap_fable"] = str(ladder["fable"]["wall_cap"]); prose["l_wcapf_fable"] = str(ladder["fable"]["wall_cap_failed"])
 prose["l_union"] = str(lad_union); prose["l_all"] = str(lad_all)
+# the unsolved-problems analysis
+prose["u_n"] = str(unsolved["n"]); prose["u_neverA"] = str(unsolved["never_A"]); prose["u_blim"] = str(unsolved["blim"])
+prose["u_n79"] = str(unsolved["n79"])
+prose["u_border"] = str(unsolved["border"]); prose["u_env"] = str(unsolved["env"]); prose["u_agent"] = str(unsolved["agent"])
+prose["u_p2"] = str(unsolved["p2"]); prose["u_p2_unt"] = str(unsolved["p2_untested"]); prose["u_p2_valid"] = str(unsolved["p2_valid"])
+prose["u_tl_def"] = f"{unsolved['tl_defaults'][0]} and {unsolved['tl_defaults'][1]}"
+prose["d_p2_A"], prose["d_p2_V"], prose["d_p2_S"] = (str(p2_pass[a]) for a in "AVS")
+prose["d_p2_n"] = str(len(P2) * len(d_runs["A"]))
+for k, (a, b) in u79.items():
+    prose[f"u_k79_{k}"] = str(a); prose[f"u_n79_{k}"] = str(b); prose[f"u_r79_{k}"] = f"{unsolved['r79'][k]:.1f}"
+# M3d
+for key in ("V-A", "S-A"):
+    put_eff("d_" + key.replace("-", "") + "_", m3d_eff[key])
+    prose["d_" + key.replace("-", "") + "_e79"] = sg(m3d_eff79[key]["eff"]); prose["d_" + key.replace("-", "") + "_ci79"] = ci(m3d_eff79[key])
+prose["d_runs_arm"] = str(len(d_runs["A"])); prose["d_pr_arm"] = str(m3d_arms["A"]["n"])
+for a, v in m3d_arms.items():
+    x = m3d_extra[a]
+    prose[f"d_rate_{a}"] = f"{v['rate']:.1f}"; prose[f"d_k_{a}"] = str(v["k"]); prose[f"d_us_{a}"] = f"{v['usd_solved']:.4f}"
+    prose[f"d_wall_{a}"] = str(v["wall_med"]); prose[f"d_fails_{a}"] = str(v["fails"])
+    for lab, short_ in (("tests_failed_no_selfcheck", "nst"), ("tests_failed_selfcheck_passed", "stp"), ("stopped_by_cap", "cap"), ("llm_error", "lle")):
+        prose[f"d_{short_}_{a}"] = str(v["labels"].get(lab, 0))
+    prose[f"d_nosc_{a}"] = f"{100 * x['no_sc'] / v['n']:.0f}"; prose[f"d_1t_{a}"] = f"{100 * x['one_turn'] / v['n']:.0f}"
+    prose[f"d_tmed_{a}"] = f"{x['turns_med']:.0f}"; prose[f"d_r79_{a}"] = f"{x['rate79']:.1f}"
+for a in "VS":
+    prose[f"d_sx_{a}"] = f"{m3d['solved_x'][a]:.1f}"; prose[f"d_ref_{a}"] = str(m3d_extra[a]["refused_rows"])
+prose["d_sp_pass_k"] = str(spec_tab["pass"][0]); prose["d_sp_pass_n"] = str(sum(spec_tab["pass"]))
+prose["d_sp_fail_k"] = str(spec_tab["fail"][0]); prose["d_sp_fail_n"] = str(sum(spec_tab["fail"]))
+prose["d_sp_pass_pct"] = f"{100 * spec_tab['pass'][0] / sum(spec_tab['pass']):.0f}"
+prose["d_sp_fail_pct"] = f"{100 * spec_tab['fail'][0] / sum(spec_tab['fail']):.0f}"
+prose["d_sp_gen"] = str(spec_gen)
+prose["d_guard"] = str(m3d_extra["S"]["guard"]); prose["d_guard_adj"] = sg(guard_adj)
+prose["d_scored"] = f"{m3d_scored:.2f}"; prose["d_unrep"] = str(sum(a["unreported"] for a in m3d_arms.values()))
 m3b["prose"] = prose
 
 data = {
@@ -534,6 +631,7 @@ data = {
     "external": ext,
     "m3b": m3b,
     "m3b_confirm": m3b_conf, "m3c": m3c, "ladder": claude_ladder,
+    "unsolved": unsolved, "m3d": m3d,
 }
 
 # ---- checks against the reports ----
@@ -674,6 +772,73 @@ check({k: (z["k"], z["effect"]["eff"], z["effect"]["lo"], z["effect"]["hi"]) for
 check({k: z["wall_med"] for k, z in ladder.items()} == {"haiku": 83, "sonnet": 24, "opus": 50, "fable": 265}, "ladder median wall")
 check((ladder["fable"]["wall_cap"], ladder["fable"]["wall_cap_failed"], ladder["sonnet"]["wall_cap"], ladder["opus"]["wall_cap"], ladder["haiku"]["wall_cap"]) == (17, 10, 1, 0, 0), "ladder wall-cap stops")
 check((lad_union, lad_all) == (74, 45), f"ladder union/all {lad_union} {lad_all}")
+
+# the unsolved-problems analysis (docs/reports/unsolved_analysis.md, tools/benchmark_limited_ids.txt)
+check(unsolved["n"] == 12 and unsolved["never_A"] == 10 and unsolved["blim"] == 7 and unsolved["blim_in_uns"], f"unsolved {unsolved}")
+check(re.search(r"the 12 of M3b's 86 evaluation problems", rep_un) and re.search(r"10 of them were also never solved", rep_un), "unsolved report counts")
+m = re.search(r"arm A scores (\d+)/(\d+) = ([\d.]+)% \(([\d.]+)% on 86\)\.\s+Opus scores (\d+)/(\d+) = ([\d.]+)% \(([\d.]+)%\), Sonnet ([\d.]+)%, Fable ([\d.]+)% and Haiku ([\d.]+)%", rep_un)
+check(m is not None, "unsolved report: reduced scores sentence")
+if m:
+    check(tuple(u79["A"]) == (int(m.group(1)), int(m.group(2))) and unsolved["r79"]["A"] == float(m.group(3)) and m3c_arms["A"]["rate"] == float(m.group(4)), f"unsolved arm A on 79 {u79['A']}")
+    check(tuple(u79["opus"]) == (int(m.group(5)), int(m.group(6))) and unsolved["r79"]["opus"] == float(m.group(7)) and ladder["opus"]["rate"] == float(m.group(8)), f"unsolved Opus on 79 {u79['opus']}")
+    check((unsolved["r79"]["sonnet"], unsolved["r79"]["fable"], unsolved["r79"]["haiku"]) == tuple(float(m.group(i)) for i in (9, 10, 11)), f"unsolved others on 79 {unsolved['r79']}")
+check((unsolved["border"], unsolved["env"], unsolved["agent"]) == (2, 0, 3) and unsolved["blim"] + unsolved["border"] + unsolved["agent"] == unsolved["n"], f"unsolved classes {unsolved}")
+check(unsolved["p2"] == 7 and "7 problems were solved by at least 2 Claude models" in rep_un and (unsolved["p2_untested"], unsolved["p2_valid"]) == (14, 20), f"unsolved part two {unsolved['p2']}")
+check(re.search(r"traffic_light_controller_0001\b", "\n".join(BLIM)) and re.search(r"sync_serial_communication_0001\b", "\n".join(BLIM)) and unsolved["tl_defaults"] == [10, 20], "unsolved examples in the IDs file")
+# M3d (docs/reports/M3d_report.md, m3d/arms_paired_eval86.md, arms_paired_eval79.md, taxonomy_by_arm.md, secondary_tables.md, pareto.csv)
+for a in "AVS":
+    check(m3d_arms[a]["ids"] == sorted(EVAL) and m3d_arms[a]["n"] == 258 and len(d_runs[a]) == 3, f"M3d arm {a} rows")
+check({a: v["k"] for a, v in m3d_arms.items()} == {"A": 157, "V": 152, "S": 145}, "M3d pooled passes")
+check({a: v["rate"] for a, v in m3d_arms.items()} == {"A": 60.9, "V": 58.9, "S": 56.2}, "M3d pooled rates")
+check({k: (m3d_eff[k]["eff"], m3d_eff[k]["lo"], m3d_eff[k]["hi"], m3d_eff[k]["better"], m3d_eff[k]["worse"], m3d_eff[k]["same"]) for k in ("V-A", "S-A")}
+      == {"V-A": (-1.9, -6.6, 2.3, 7, 9, 70), "S-A": (-4.7, -11.2, 1.6, 12, 19, 55)}, "M3d effects")
+check(all(m3d_eff[k]["finding"] == "no detectable effect" and m3d_eff[k]["lo"] < 0 < m3d_eff[k]["hi"] for k in ("V-A", "S-A")), "M3d verdicts null")
+check("97.5% interval" in open(os.path.join(M3D, "arms_paired_eval86.md")).read(), "M3d intervals are 97.5%")
+for k, (eff, b, w, same, p) in m3d_chk.items():
+    e = m3d_eff[k]
+    check(abs(e["eff"] - eff) < 0.06 and (e["better"], e["worse"], e["same"]) == (b, w, same) and abs(e["p"] - p) < 0.0006, f"M3d recomputed {k} {eff, b, w, same, p}")
+check({k: (m3d_eff79[k]["eff"], m3d_eff79[k]["lo"], m3d_eff79[k]["hi"]) for k in ("V-A", "S-A")} == {"V-A": (-2.1, -7.2, 2.5), "S-A": (-5.1, -12.7, 1.7)}, "M3d effects on 79")
+check({a: (x["rate79"], x["n79"]) for a, x in m3d_extra.items()} == {"A": (66.2, 237), "V": (64.1, 237), "S": (61.2, 237)}, f"M3d rates on 79 {m3d_extra}")
+taxd, colsd = {}, None
+for line in open(os.path.join(M3D, "taxonomy_by_arm.md")):
+    if line.startswith("#### Primary label by cid"):
+        break
+    m = re.match(r"\| Label \| (.*) \| All \|", line)
+    if m:
+        colsd = [c.strip() for c in m.group(1).split("|")]
+    m = re.match(r"\| (\w+) \| ([\d |]+) \|$", line.rstrip())
+    if m and colsd:
+        taxd[m.group(1)] = dict(zip(colsd, map(int, m.group(2).split("|"))))
+check(len(taxd) == 8, f"M3d taxonomy rows {len(taxd)}")
+for lab, by in taxd.items():
+    for a in "AVS":
+        check(m3d_arms[a]["labels"].get(lab, 0) == by[a], f"M3d taxonomy {lab} {a}")
+check({a: v["fails"] for a, v in m3d_arms.items()} == {"A": 101, "V": 106, "S": 113}, "M3d failures")
+check({a: (v["labels"].get("tests_failed_no_selfcheck", 0), v["labels"].get("tests_failed_selfcheck_passed", 0), v["labels"].get("stopped_by_cap", 0), v["labels"].get("llm_error", 0)) for a, v in m3d_arms.items()}
+      == {"A": (55, 16, 7, 2), "V": (0, 48, 27, 14), "S": (2, 44, 43, 9)}, "M3d key labels")
+check({a: v["usd_solved"] for a, v in m3d_arms.items()} == {"A": 0.0112, "V": 0.0181, "S": 0.0234}, "M3d $/solved")
+check({a: v["unreported"] for a, v in m3d_arms.items()} == {"A": 4, "V": 15, "S": 18}, "M3d unreported")
+check({a: v["wall_med"] for a, v in m3d_arms.items()} == {"A": 74, "V": 135, "S": 247}, "M3d median wall")
+check(m3d["solved_x"] == {"V": 1.6, "S": 2.1} and "V costs 1.6× as much per solved" in rep3d and "S costs 2.1× as much per solved" in rep3d, f"M3d $/solved ratios {m3d['solved_x']}")
+for row in rows(os.path.join(M3D, "pareto.csv")):
+    v = m3d_arms[row["arm"]]
+    check(abs(float(row["pass_rate"]) - v["k"] / v["n"]) < 0.0006 and round(float(row["usd_per_problem"]), 4) == v["usd_problem"], f"M3d pareto {row['arm']}")
+sec = open(os.path.join(M3D, "secondary_tables.md")).read()
+for a in "AVS":
+    x = m3d_extra[a]
+    m = re.search(rf"\| {a} \| 258 \| (\d+) / [\d.]+ \| (\d+) \((\d+)%\) \| [\d.]+ / [\d.]+ \| [\d.]+ / [\d.]+ \| (\d+) \((\d+)%\) \|", sec)
+    check(m is not None and (x["turns_med"], x["one_turn"], x["no_sc"]) == (int(m.group(1)), int(m.group(2)), int(m.group(4))), f"M3d effort {a} {x}")
+check("from 55% to 1%" in rep3d, "M3d 55% to 1%")
+m = re.search(r"\| V \| 258 \| (\d+) \| (\d+) \| (\d+) \|", sec); check(m and (m3d_extra["V"]["verify_runs"], m3d_extra["V"]["refusals"], m3d_extra["V"]["refused_rows"]) == tuple(map(int, m.groups())), "M3d verify V")
+m = re.search(r"\| S \| 258 \| (\d+) \| (\d+) \| (\d+) \|", sec); check(m and (m3d_extra["S"]["verify_runs"], m3d_extra["S"]["refusals"], m3d_extra["S"]["refused_rows"]) == tuple(map(int, m.groups())), "M3d verify S")
+m = re.search(r"\| yes \| (\d+) \| (\d+) \|\n\| no \(fail or timeout\) \| (\d+) \| (\d+) \|\n\| not applied [^|]*\| (\d+) \| (\d+) \|", sec)
+check(m is not None and (spec_tab["pass"], spec_tab["fail"], spec_tab["na"]) == ([int(m.group(1)), int(m.group(2))], [int(m.group(3)), int(m.group(4))], [int(m.group(5)), int(m.group(6))]), f"M3d spec table {spec_tab}")
+check("a 61% hidden pass rate when they all pass, 57% when" in rep3d and round(100 * spec_tab["pass"][0] / sum(spec_tab["pass"])) == 61 and round(100 * spec_tab["fail"][0] / sum(spec_tab["fail"])) == 57, "M3d spec agreement 61/57")
+check(spec_gen == 239 and "generated 239" in sec, "M3d spec generated")
+m = re.search(r"The (\d+) refused problem-runs \(`run_budget_exhausted`\).*?about \+([\d.]+) points", rep3d, re.S)
+check(m is not None and int(m.group(1)) == m3d_extra["S"]["guard"] == 8 and float(m.group(2)) == guard_adj and m3d_extra["V"]["guard"] == m3d_extra["A"]["guard"] == 0, f"M3d guard {m3d_extra['S']['guard']} {guard_adj}")
+check(p2_pass["V"] <= p2_pass["A"] and p2_pass["S"] <= p2_pass["A"] and "None of the 7 problems from brief 09's part two is won" in rep3d, f"M3d part-two problems {p2_pass}")
+check(round(m3d_scored, 4) == 7.899 and "provider-reported cost is $7.8990" in rep3d and m3d_smoke == 0.26, f"M3d spend {m3d_scored} {m3d_smoke}")
 
 json.dump(data, open(OUT, "w"), indent=1, sort_keys=False)
 if errors:

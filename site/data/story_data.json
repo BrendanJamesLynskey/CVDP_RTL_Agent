@@ -1167,7 +1167,7 @@
   "cost_total": 10.8709,
   "n_eval": 86,
   "prose": {
-   "spend_all": "42.60",
+   "spend_all": "50.76",
    "m3b_n": "86",
    "m3b_runs_arm": "3",
    "m3b_pr_arm": "258",
@@ -1367,7 +1367,105 @@
    "l_wcap_fable": "17",
    "l_wcapf_fable": "10",
    "l_union": "74",
-   "l_all": "45"
+   "l_all": "45",
+   "u_n": "12",
+   "u_neverA": "10",
+   "u_blim": "7",
+   "u_n79": "79",
+   "u_border": "2",
+   "u_env": "0",
+   "u_agent": "3",
+   "u_p2": "7",
+   "u_p2_unt": "14",
+   "u_p2_valid": "20",
+   "u_tl_def": "10 and 20",
+   "d_p2_A": "1",
+   "d_p2_V": "1",
+   "d_p2_S": "1",
+   "d_p2_n": "21",
+   "u_k79_A": "158",
+   "u_n79_A": "237",
+   "u_r79_A": "66.7",
+   "u_k79_haiku": "57",
+   "u_n79_haiku": "79",
+   "u_r79_haiku": "72.2",
+   "u_k79_sonnet": "60",
+   "u_n79_sonnet": "79",
+   "u_r79_sonnet": "75.9",
+   "u_k79_opus": "63",
+   "u_n79_opus": "79",
+   "u_r79_opus": "79.7",
+   "u_k79_fable": "58",
+   "u_n79_fable": "79",
+   "u_r79_fable": "73.4",
+   "d_VA_e": "\u22121.9",
+   "d_VA_ci": "[\u22126.6, +2.3]",
+   "d_VA_p": "0.80",
+   "d_VA_bws": "7 / 9 / 70",
+   "d_VA_e79": "\u22122.1",
+   "d_VA_ci79": "[\u22127.2, +2.5]",
+   "d_SA_e": "\u22124.7",
+   "d_SA_ci": "[\u221211.2, +1.6]",
+   "d_SA_p": "0.28",
+   "d_SA_bws": "12 / 19 / 55",
+   "d_SA_e79": "\u22125.1",
+   "d_SA_ci79": "[\u221212.7, +1.7]",
+   "d_runs_arm": "3",
+   "d_pr_arm": "258",
+   "d_rate_A": "60.9",
+   "d_k_A": "157",
+   "d_us_A": "0.0112",
+   "d_wall_A": "74",
+   "d_fails_A": "101",
+   "d_nst_A": "55",
+   "d_stp_A": "16",
+   "d_cap_A": "7",
+   "d_lle_A": "2",
+   "d_nosc_A": "55",
+   "d_1t_A": "47",
+   "d_tmed_A": "2",
+   "d_r79_A": "66.2",
+   "d_rate_V": "58.9",
+   "d_k_V": "152",
+   "d_us_V": "0.0181",
+   "d_wall_V": "135",
+   "d_fails_V": "106",
+   "d_nst_V": "0",
+   "d_stp_V": "48",
+   "d_cap_V": "27",
+   "d_lle_V": "14",
+   "d_nosc_V": "1",
+   "d_1t_V": "10",
+   "d_tmed_V": "3",
+   "d_r79_V": "64.1",
+   "d_rate_S": "56.2",
+   "d_k_S": "145",
+   "d_us_S": "0.0234",
+   "d_wall_S": "247",
+   "d_fails_S": "113",
+   "d_nst_S": "2",
+   "d_stp_S": "44",
+   "d_cap_S": "43",
+   "d_lle_S": "9",
+   "d_nosc_S": "7",
+   "d_1t_S": "7",
+   "d_tmed_S": "4",
+   "d_r79_S": "61.2",
+   "d_sx_V": "1.6",
+   "d_ref_V": "155",
+   "d_sx_S": "2.1",
+   "d_ref_S": "178",
+   "d_sp_pass_k": "82",
+   "d_sp_pass_n": "135",
+   "d_sp_fail_k": "36",
+   "d_sp_fail_n": "63",
+   "d_sp_pass_pct": "61",
+   "d_sp_fail_pct": "57",
+   "d_sp_gen": "239",
+   "d_guard": "8",
+   "d_guard_adj": "+1.9",
+   "d_scored": "7.90",
+   "d_unrep": "37"
   }
  },
  "m3b_confirm": {
@@ -1886,5 +1984,289 @@
   ],
   "union": 74,
   "all": 45
+ },
+ "unsolved": {
+  "n": 12,
+  "never_A": 10,
+  "blim": 7,
+  "n79": 79,
+  "blim_in_uns": true,
+  "r79": {
+   "A": 66.7,
+   "haiku": 72.2,
+   "sonnet": 75.9,
+   "opus": 79.7,
+   "fable": 73.4
+  },
+  "k79": {
+   "A": [
+    158,
+    237
+   ],
+   "haiku": [
+    57,
+    79
+   ],
+   "sonnet": [
+    60,
+    79
+   ],
+   "opus": [
+    63,
+    79
+   ],
+   "fable": [
+    58,
+    79
+   ]
+  },
+  "border": 2,
+  "env": 0,
+  "agent": 3,
+  "p2_untested": 14,
+  "p2_valid": 20,
+  "tl_defaults": [
+   10,
+   20
+  ],
+  "p2": 7
+ },
+ "m3d": {
+  "arms": {
+   "A": {
+    "runs": [
+     {
+      "tag": "A1",
+      "run": "40353853802",
+      "k": 49,
+      "n": 86
+     },
+     {
+      "tag": "A2",
+      "run": "40368004835",
+      "k": 52,
+      "n": 86
+     },
+     {
+      "tag": "A3",
+      "run": "40376808643",
+      "k": 56,
+      "n": 86
+     }
+    ],
+    "k": 157,
+    "n": 258,
+    "rate": 60.9,
+    "cost": 1.7592,
+    "usd_problem": 0.0068,
+    "usd_solved": 0.0112,
+    "unreported": 4,
+    "labels": {
+     "llm_error": 2,
+     "tests_failed_selfcheck_passed": 16,
+     "sim_incomplete": 5,
+     "tests_failed_no_selfcheck": 55,
+     "compile_fail_hidden": 10,
+     "stopped_by_cap": 7,
+     "signal_missing_hidden": 4,
+     "tests_failed_selfcheck_failed": 2
+    },
+    "fails": 101,
+    "tokens": 8621964,
+    "turn_cap": 8,
+    "wall_cap": 3,
+    "wall_cap_failed": 2,
+    "wall_med": 74
+   },
+   "V": {
+    "runs": [
+     {
+      "tag": "V1",
+      "run": "40353876684",
+      "k": 51,
+      "n": 86
+     },
+     {
+      "tag": "V2",
+      "run": "40368026867",
+      "k": 53,
+      "n": 86
+     },
+     {
+      "tag": "V3",
+      "run": "40381334658",
+      "k": 48,
+      "n": 86
+     }
+    ],
+    "k": 152,
+    "n": 258,
+    "rate": 58.9,
+    "cost": 2.7506,
+    "usd_problem": 0.0107,
+    "usd_solved": 0.0181,
+    "unreported": 15,
+    "labels": {
+     "llm_error": 14,
+     "tests_failed_selfcheck_passed": 48,
+     "stopped_by_cap": 27,
+     "compile_fail_hidden": 9,
+     "tests_failed_selfcheck_failed": 3,
+     "signal_missing_hidden": 3,
+     "sim_incomplete": 2
+    },
+    "fails": 106,
+    "tokens": 13226965,
+    "turn_cap": 18,
+    "wall_cap": 24,
+    "wall_cap_failed": 13,
+    "wall_med": 135
+   },
+   "S": {
+    "runs": [
+     {
+      "tag": "S1",
+      "run": "40353898485",
+      "k": 48,
+      "n": 86
+     },
+     {
+      "tag": "S2",
+      "run": "40370912138",
+      "k": 49,
+      "n": 86
+     },
+     {
+      "tag": "S3",
+      "run": "40389203542",
+      "k": 48,
+      "n": 86
+     }
+    ],
+    "k": 145,
+    "n": 258,
+    "rate": 56.2,
+    "cost": 3.3892,
+    "usd_problem": 0.0131,
+    "usd_solved": 0.0234,
+    "unreported": 18,
+    "labels": {
+     "tests_failed_selfcheck_failed": 4,
+     "tests_failed_selfcheck_passed": 44,
+     "llm_error": 9,
+     "compile_fail_hidden": 10,
+     "stopped_by_cap": 43,
+     "tests_failed_no_selfcheck": 2,
+     "sim_incomplete": 1
+    },
+    "fails": 113,
+    "tokens": 15249575,
+    "turn_cap": 17,
+    "wall_cap": 38,
+    "wall_cap_failed": 23,
+    "wall_med": 247
+   }
+  },
+  "effects": {
+   "S-A": {
+    "finding": "no detectable effect",
+    "eff": -4.7,
+    "lo": -11.2,
+    "hi": 1.6,
+    "better": 12,
+    "worse": 19,
+    "same": 55,
+    "p": 0.281
+   },
+   "V-A": {
+    "finding": "no detectable effect",
+    "eff": -1.9,
+    "lo": -6.6,
+    "hi": 2.3,
+    "better": 7,
+    "worse": 9,
+    "same": 70,
+    "p": 0.804
+   }
+  },
+  "effects79": {
+   "S-A": {
+    "finding": "no detectable effect",
+    "eff": -5.1,
+    "lo": -12.7,
+    "hi": 1.7,
+    "better": 12,
+    "worse": 19,
+    "same": 48,
+    "p": 0.281
+   },
+   "V-A": {
+    "finding": "no detectable effect",
+    "eff": -2.1,
+    "lo": -7.2,
+    "hi": 2.5,
+    "better": 7,
+    "worse": 9,
+    "same": 63,
+    "p": 0.804
+   }
+  },
+  "extra": {
+   "A": {
+    "no_sc": 143,
+    "one_turn": 122,
+    "turns_med": 2.0,
+    "llm_error_stop": 4,
+    "guard": 0,
+    "rate79": 66.2,
+    "n79": 237
+   },
+   "V": {
+    "no_sc": 3,
+    "one_turn": 26,
+    "turns_med": 3.0,
+    "llm_error_stop": 15,
+    "guard": 0,
+    "rate79": 64.1,
+    "n79": 237,
+    "verify_runs": 383,
+    "refusals": 182,
+    "refused_rows": 155
+   },
+   "S": {
+    "no_sc": 17,
+    "one_turn": 17,
+    "turns_med": 4.0,
+    "llm_error_stop": 18,
+    "guard": 8,
+    "rate79": 61.2,
+    "n79": 237,
+    "verify_runs": 423,
+    "refusals": 246,
+    "refused_rows": 178
+   }
+  },
+  "spec": {
+   "pass": [
+    82,
+    53
+   ],
+   "na": [
+    27,
+    33
+   ],
+   "fail": [
+    36,
+    27
+   ]
+  },
+  "spec_generated": 239,
+  "guard_adj": 1.9,
+  "cost_scored": 7.899,
+  "cost_smoke": 0.26,
+  "solved_x": {
+   "V": 1.6,
+   "S": 2.1
+  }
  }
 }
