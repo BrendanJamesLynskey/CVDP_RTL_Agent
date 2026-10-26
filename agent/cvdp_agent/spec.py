@@ -76,6 +76,10 @@ def value(v, width):
         return "x"
     if isinstance(v, bool):
         v = int(v)
+    if isinstance(v, str) and len(v) == 3 and v[0] == v[2] == "'":  # 'G': an ASCII character
+        v = ord(v[1])
+    elif isinstance(v, str) and len(v) == 1 and not v.isalnum() and v != "?":  # "$", ",", "\r": a character too
+        v = ord(v)
     if isinstance(v, str):
         s = v.strip().lower().replace("_", "")
         if s in ("x", "?", "", "dontcare", "don't care", "any"):

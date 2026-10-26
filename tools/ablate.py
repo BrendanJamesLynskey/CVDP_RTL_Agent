@@ -95,14 +95,20 @@ def run_rates(rows):
     return {k: sum(v) / len(v) for k, v in sorted(acc.items())}
 
 
-def bootstrap_mean(values, b=BOOT, seed=0):
-    """95% percentile interval of the mean of `values`, resampling them with replacement. Deterministic."""
+LEVEL = [0.95]  # the paired interval's coverage; --level sets it (M3d: 0.975, Bonferroni over two comparisons)
+
+
+def bootstrap_mean(values, b=BOOT, seed=0, level=None):
+    """Percentile interval (95% unless --level) of the mean of `values`, resampling them with replacement.
+    Deterministic."""
+    level = level or LEVEL[0]
     if not values:
         return (0.0, 0.0)
     rng = random.Random(seed)
     n = len(values)
     means = sorted(sum(rng.choice(values) for _ in range(n)) / n for _ in range(b))
-    return (means[int(0.025 * b)], means[min(b - 1, int(0.975 * b))])
+    tail = (1 - level) / 2
+    return (means[int(round(tail * b, 9))], means[min(b - 1, int(round((1 - tail) * b, 9)))])
 
 
 def sign_test(better, worse):
@@ -181,11 +187,12 @@ def report(arms, base):
     pairs = {n: paired(arms[n], arms[base]) for n in arms if n != base}
     order = {"no detectable effect": 0, "worse than base": 1, "better than base": 2}
     names = sorted(pairs, key=lambda n: (order[verdict(pairs[n])], pairs[n]["effect"], n))
+    lv = f"{100 * LEVEL[0]:g}%"
     out = [f"#### Paired effect against the base (`{base}`)\n",
            "Effect = mean over common problems of (arm pass rate − base pass rate), in points of pass rate. "
-           "95% interval: paired bootstrap over problems. Sign test: exact, two-sided, on the problems that "
+           f"{lv} interval: paired bootstrap over problems. Sign test: exact, two-sided, on the problems that "
            "changed. Arms whose interval includes 0 come first.\n",
-           "| Arm | Finding | Effect [95%] | Better / worse / same | Sign test p | Problems | Dropped |",
+           f"| Arm | Finding | Effect [{lv}] | Better / worse / same | Sign test p | Problems | Dropped |",
            "|---|---|---|---|---|---|---|"]
     for n in names:
         p = pairs[n]
@@ -293,11 +300,18 @@ def main(argv=None):
     ap.add_argument("--pareto-svg")
     ap.add_argument("--ids", help="a file of problem ids (one per line, # comments): keep only those problems, "
                                   "e.g. tools/m3b_eval_ids.txt for M3b's evaluation set")
+    ap.add_argument("--exclude", help="a file of problem ids to leave out (applied after --ids), e.g. "
+                                      "tools/benchmark_limited_ids.txt")
+    ap.add_argument("--level", type=float, default=0.95, help="coverage of the paired interval (default 0.95)")
     a = ap.parse_args(argv)
+    LEVEL[0] = a.level
     arms = arms_from(a.arm, a.csv)
     if a.ids:
         keep = {ln.strip() for ln in open(a.ids) if ln.strip() and not ln.startswith("#")}
         arms = {n: [r for r in rows if r["id"] in keep] for n, rows in arms.items()}
+    if a.exclude:
+        drop = {ln.strip() for ln in open(a.exclude) if ln.strip() and not ln.startswith("#")}
+        arms = {n: [r for r in rows if r["id"] not in drop] for n, rows in arms.items()}
     if len(arms) < 2:
         raise SystemExit("need at least two arms")
     base = pick_base(arms, a.base)

@@ -98,6 +98,8 @@ def test_parse_cases_values_and_drops():
     assert spec_mod.parse_cases("no json here")[0] is None
     assert spec_mod.parse_cases(json.dumps({**CASES, "top": "bad name"}))[0] is None
     assert spec_mod.parse_cases(json.dumps({**CASES, "clock": "count"}))[0] is None  # an output is no clock
+    assert spec_mod.value("'G'", 8) == 71 and spec_mod.value("$", 8) == 36 and spec_mod.value("\r", 8) == 13
+    assert spec_mod.value("1", 8) == 1  # a digit is a number, not a character
     assert spec_mod.value("8'hff", 8) == 255 and spec_mod.value(256, 8) is None and spec_mod.value("0b101", 3) == 5
 
 
@@ -302,3 +304,19 @@ def test_sweep_refuses_bad_m3d_combinations(tmp_path):
         r = subprocess.run(["bash", os.path.join(ROOT, "tools", "sweep.sh")], env=env, capture_output=True,
                            text=True)
         assert r.returncode == 2 and ("VERIFY_SUBMIT" in r.stderr or "SPEC_VECTORS" in r.stderr), r.stderr
+
+
+def test_ablate_level_and_exclude(tmp_path, capsys):
+    import ablate
+
+    runs = os.path.join(ROOT, "docs", "reports", "m3c", "runs")
+    a = ",".join(os.path.join(runs, f) for f in ("A1_40257040625.csv", "A2_40263328806.csv"))
+    m = ",".join(os.path.join(runs, f) for f in ("M1_40257053178.csv", "M2_40265000386.csv"))
+    ablate.main(["--arm", f"A={a}", "--arm", f"M={m}", "--base", "A"])
+    default = capsys.readouterr().out
+    assert "Effect [95%]" in default
+    ablate.main(["--arm", f"A={a}", "--arm", f"M={m}", "--base", "A", "--level", "0.975",
+                 "--exclude", os.path.join(ROOT, "tools", "benchmark_limited_ids.txt")])
+    out = capsys.readouterr().out
+    assert "Effect [97.5%]" in out and "| 79 |" in out
+    ablate.LEVEL[0] = 0.95

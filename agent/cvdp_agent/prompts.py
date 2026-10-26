@@ -142,7 +142,8 @@ SystemVerilog testbench automatically, with these rules:
   before "expect" is compared. "until": {{"signal": "done", "value": 1, "max_cycles": 50}} keeps clocking until
   that output has that value (the case fails if it never does), then compares "expect".
 - With "clock": null (purely combinational), each step sets "in", waits 1 ns and compares "expect".
-- Values are integers, or strings "0x1f", "0b101", "-3" (two's complement at the port's width). Leave a signal out
+- Values are integers, or strings "0x1f", "0b101", "-3" (two's complement at the port's width), or one ASCII
+  character in single quotes, "'G'" (its code; "'\\r'" is not allowed, write 13). Leave a signal out
   of "expect", or give "x", where the specification does not fix its value at that time.
 - Steps of one case run in order; cases run one after another in one simulation, without a new reset unless a
   case drives one itself.
