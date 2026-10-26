@@ -319,6 +319,120 @@ m3b = {
     "n_eval": len(EVAL),
 }
 
+# ---- shared pooling for the 86-problem sets below (confirming run, M3c, Claude Code ladder) ----
+import statistics
+def load_runs(pattern):
+    out = {}
+    for f in sorted(glob.glob(pattern)):
+        tag, run_id = os.path.basename(f)[:-4].split("_")
+        out.setdefault(tag[0], []).append((tag, run_id, rows(f)))
+    return out
+
+
+def pool(runs):
+    allr = [x for _, _, r in runs for x in r]
+    k = sum(int(x["pass"]) for x in allr)
+    cost = sum(float(x["cost_usd"] or 0) for x in allr)
+    labs = {}
+    for x in allr:
+        if not int(x["pass"]):
+            labs[x["failure_label"]] = labs.get(x["failure_label"], 0) + 1
+    per = {}
+    for _, _, r in runs:
+        for x in r:
+            per.setdefault(x["id"], []).append(int(x["pass"]))
+    tok = sum(int(x["prompt_tokens"] or 0) + int(x["completion_tokens"] or 0) for x in allr)
+    wc = [x for x in allr if x["stop_reason"] == "wall_time"]
+    return {
+        "runs": [{"tag": t, "run": rid, "k": sum(int(x["pass"]) for x in r), "n": len(r)} for t, rid, r in runs],
+        "k": k, "n": len(allr), "rate": round(100 * k / len(allr), 1),
+        "cost": round(cost, 4), "usd_problem": round(cost / len(allr), 4), "usd_solved": round(cost / k, 4) if k else None,
+        "unreported": sum(int(x["cost_unreported_calls"] or 0) for x in allr),
+        "labels": labs, "fails": sum(labs.values()), "tokens": tok,
+        "turn_cap": sum(1 for x in allr if x["stop_reason"] == "max_turns"),
+        "wall_cap": len(wc), "wall_cap_failed": sum(1 for x in wc if not int(x["pass"])),
+        "wall_med": round(statistics.median(float(x["wall_time_s"]) for x in allr)),
+        "ids": sorted(per), "_rate": {p: sum(v) / len(v) for p, v in per.items()},
+    }
+
+
+def paired_on(arm, base):
+    d = [arm["_rate"][p] - base["_rate"][p] for p in EVAL]
+    b, w = sum(1 for x in d if x > 0), sum(1 for x in d if x < 0)
+    return (round(100 * sum(d) / len(d), 1), b, w, len(d) - b - w, sign_p(b, w))
+
+
+def public(arm):
+    return {k: v for k, v in arm.items() if not k.startswith("_") and k != "ids"}
+
+
+# ---- M3b confirming run: B - A on 6 new runs an arm (docs/reports/m3b/confirm_*.md, confirm_runs/) ----
+conf_runs = load_runs(os.path.join(M3B, "confirm_runs", "*.csv"))
+conf = {a: pool(r) for a, r in sorted(conf_runs.items())}
+conf_eff = parse_sections(os.path.join(M3B, "confirm_paired_eval86.md"))["B-A"]
+conf_chk = paired_on(conf["B"], conf["A"])
+conf_seeds = sorted({int(x["seed"]) for _, _, r in conf_runs["A"] + conf_runs["B"] for x in r})
+conf_verdict = "confirmed" if conf_eff["lo"] > 0 and conf_eff["eff"] > 0 else "reversed" if conf_eff["hi"] < 0 else "not confirmed"
+conf_rep = open(os.path.join(M3B, "confirm_result.md")).read()
+conf_rep_verdict = re.search(r"## Verdict: (.+)", conf_rep).group(1).strip()
+conf_rep_total = float(re.search(r"Total spend \$(\d+\.\d+)", conf_rep).group(1))
+conf_cost = round(sum(a["cost"] for a in conf.values()), 4)
+m3b_conf = {"arms": {a: public(v) for a, v in conf.items()}, "effect": conf_eff, "verdict": conf_verdict,
+            "seeds": conf_seeds, "cost": conf_cost}
+
+# ---- M3c: arms A, M (mutation gate), I (interface check), 3 runs each (docs/reports/M3c_report.md, m3c/) ----
+M3C = os.path.join(REP, "m3c")
+c_runs = load_runs(os.path.join(M3C, "runs", "*.csv"))
+m3c_arms = {a: pool(c_runs[a]) for a in "AMI"}
+m3c_eff = parse_sections(os.path.join(M3C, "arms_paired_eval86.md"))
+m3c_chk = {k: paired_on(m3c_arms[k[0]], m3c_arms["A"]) for k in ("M-A", "I-A")}
+Mrows = [x for _, _, r in c_runs["M"] for x in r]
+Irows = [x for _, _, r in c_runs["I"] for x in r]
+gate_out = {}
+for x in Mrows:
+    for o in x["gate_outcomes"].split("+"):
+        if o:
+            gate_out[o] = gate_out.get(o, 0) + 1
+gsum = lambda col: sum(int(x[col] or 0) for x in Mrows)
+gate = {
+    "runs": gsum("gate_runs"), "outcomes": gate_out, "problem_runs": sum(1 for x in Mrows if int(x["gate_runs"] or 0) > 0),
+    "generated": gsum("mutants_generated"), "compiled": gsum("mutants_compiled"), "killed": gsum("mutants_killed"),
+    "unfinished": gsum("mutants_unfinished"),
+    "skipped_problems": len({x["id"] for x in Mrows if "skipped" in x["gate_outcomes"].split("+")}),
+}
+gate["kill_rate"] = round(100 * gate["killed"] / gate["compiled"], 1)
+mm = [x for x in Irows if int(x["interface_mismatch_runs"] or 0) > 0]
+iface = {"checks": sum(int(x["interface_runs"] or 0) for x in Irows),
+         "mismatch_checks": sum(int(x["interface_mismatch_runs"] or 0) for x in Irows),
+         "mismatch_pr": len(mm), "mismatch_pr_passed": sum(int(x["pass"]) for x in mm),
+         "blocks": sum(int(x["interface_blocks"] or 0) for x in Irows)}
+rep3c = open(os.path.join(REP, "M3c_report.md")).read()
+m3c_smoke = float(re.search(r"Total \*\*\$([\d.]+)\*\* of the", rep3c).group(1))
+m3c_scored = round(sum(a["cost"] for a in m3c_arms.values()), 4)
+m3c = {"arms": {a: public(v) for a, v in m3c_arms.items()}, "effects": m3c_eff, "gate": gate, "iface": iface,
+       "cost_scored": m3c_scored, "cost_smoke": m3c_smoke,
+       "solved_x": round(m3c_arms["M"]["usd_solved"] / m3c_arms["A"]["usd_solved"], 1)}
+
+# ---- Claude Code ladder: one run per model against M3c's arm A (docs/reports/claude_code_ladder.md) ----
+LADDER = [("haiku", "Haiku 5.5", "claude-haiku-5-5"), ("sonnet", "Sonnet 5.5", "claude-sonnet-5-5"),
+          ("opus", "Opus 5.5", "claude-opus-5-5"), ("fable", "Fable 5.1", "claude-fable-5-1")]
+lad_eff = parse_sections(os.path.join(REP, "claude_code", "ladder_paired_eval86.md"))
+ladder = {}
+lad_chk = {}
+for key, name, stem in LADDER:
+    r = rows(os.path.join(REP, "claude_code", "runs", stem + ".csv"))
+    z = pool([("1", stem, r)])
+    lad_chk[key] = paired_on(z, m3c_arms["A"])
+    z["name"], z["providers"] = name, sorted({x["provider"] for x in r})
+    z["effect"] = lad_eff[key + "-luna"]
+    ladder[key] = z
+lad_union = sum(1 for p in EVAL if any(ladder[k]["_rate"][p] for k in ladder))
+lad_all = sum(1 for p in EVAL if all(ladder[k]["_rate"][p] for k in ladder))
+claude_ladder = {"arms": {k: public(v) for k, v in ladder.items()}, "order": [k for k, _, _ in LADDER],
+                 "union": lad_union, "all": lad_all}
+
+spend_all = round(spend_all + conf_cost + m3c_scored + m3c_smoke, 2)  # + confirming run, M3c scored sweeps and smoke runs
+
 # Prose numbers in story.html: <span data-d="key">value</span>; --inject rewrites the value from here.
 MINUS = "−"
 def sg(x, d=1):
@@ -367,6 +481,40 @@ def rng(lab):
 prose["cfh_range"], prose["smh_range"] = rng("compile_fail_hidden"), rng("signal_missing_hidden")
 for t in m3b["lessons"]["top"]:
     prose[f"top_{t['id']}"] = str(t["count"])
+# confirming run, M3c and the Claude Code ladder
+def put_eff(pre, e):
+    prose[f"{pre}e"] = sg(e["eff"]); prose[f"{pre}ci"] = ci(e); prose[f"{pre}p"] = p2(e["p"])
+    prose[f"{pre}bws"] = f"{e['better']} / {e['worse']} / {e['same']}"
+put_eff("cf_", conf_eff)
+prose["cf_runs"] = str(len(conf_runs["A"])); prose["cf_n"] = str(conf["A"]["n"])
+prose["cf_seeds"] = f"{conf_seeds[0]} to {conf_seeds[-1]}"; prose["cf_cost"] = f"{conf_cost:.2f}"
+prose["cf_verdict"] = conf_verdict.upper(); prose["cf_unrep"] = str(sum(a["unreported"] for a in conf.values()))
+for a, v in conf.items():
+    prose[f"cf_rate_{a}"] = f"{v['rate']:.1f}"; prose[f"cf_k_{a}"] = str(v["k"]); prose[f"cf_us_{a}"] = f"{v['usd_solved']:.4f}"
+    prose[f"cf_nst_{a}"] = str(v["labels"].get("tests_failed_no_selfcheck", 0)); prose[f"cf_cap_{a}"] = str(v["turn_cap"])
+    prose[f"cf_wall_{a}"] = str(v["wall_med"])
+for key in ("M-A", "I-A"):
+    put_eff("c_" + key.replace("-", "") + "_", m3c_eff[key])
+prose["c_runs_arm"] = str(len(c_runs["A"])); prose["c_pr_arm"] = str(m3c_arms["A"]["n"])
+for a, v in m3c_arms.items():
+    prose[f"c_rate_{a}"] = f"{v['rate']:.1f}"; prose[f"c_k_{a}"] = str(v["k"]); prose[f"c_us_{a}"] = f"{v['usd_solved']:.4f}"
+    prose[f"c_wall_{a}"] = str(v["wall_med"]); prose[f"c_fails_{a}"] = str(v["fails"])
+    for lab, short_ in (("tests_failed_no_selfcheck", "nst"), ("tests_failed_selfcheck_passed", "stp"), ("stopped_by_cap", "cap")):
+        prose[f"c_{short_}_{a}"] = str(v["labels"].get(lab, 0))
+    prose[f"c_iface_{a}"] = str(v["labels"].get("compile_fail_hidden", 0) + v["labels"].get("signal_missing_hidden", 0))
+prose["c_solved_x"] = f"{m3c['solved_x']:.1f}"; prose["c_scored"] = f"{m3c_scored:.2f}"
+prose["c_unrep"] = str(sum(a["unreported"] for a in m3c_arms.values()))
+prose["g_runs"] = str(gate["runs"]); prose["g_pr"] = str(gate["problem_runs"])
+prose["g_skip"] = str(gate["outcomes"].get("skipped", 0)); prose["g_skip_pct"] = f"{100 * gate['outcomes'].get('skipped', 0) / gate['runs']:.0f}"
+prose["g_skip_probs"] = str(gate["skipped_problems"]); prose["g_notb"] = str(gate["outcomes"].get("no_tb", 0))
+prose["g_kill"] = f"{gate['kill_rate']:.0f}"; prose["g_killed"] = f"{gate['killed']:,}"; prose["g_compiled"] = f"{gate['compiled']:,}"
+prose["i_checks"] = str(iface["checks"]); prose["i_mm"] = str(iface["mismatch_checks"]); prose["i_pr"] = str(iface["mismatch_pr"])
+prose["i_pr_pass"] = str(iface["mismatch_pr_passed"]); prose["i_blocks"] = str(iface["blocks"])
+for k, z in ladder.items():
+    put_eff(f"l_{k}_", z["effect"])
+    prose[f"l_rate_{k}"] = f"{z['rate']:.1f}"; prose[f"l_k_{k}"] = str(z["k"]); prose[f"l_wall_{k}"] = str(z["wall_med"])
+prose["l_wcap_fable"] = str(ladder["fable"]["wall_cap"]); prose["l_wcapf_fable"] = str(ladder["fable"]["wall_cap_failed"])
+prose["l_union"] = str(lad_union); prose["l_all"] = str(lad_all)
 m3b["prose"] = prose
 
 data = {
@@ -385,6 +533,7 @@ data = {
     "cost_m2": m2_cost, "cost_m3": m3_cost,
     "external": ext,
     "m3b": m3b,
+    "m3b_confirm": m3b_conf, "m3c": m3c, "ladder": claude_ladder,
 }
 
 # ---- checks against the reports ----
@@ -461,6 +610,70 @@ check(m3b["lessons"]["never"] == ["L07", "L08", "L17", "L28", "L30", "L38"], f"n
 check([(t["id"], t["count"]) for t in m3b["lessons"]["top"]] == [("L03", 50), ("L02", 40), ("L37", 36), ("L06", 33)], "top lessons")
 check([(x["k"], x["n"]) for x in learn] == [(6, 29), (7, 29), (6, 29)] and sum(x["unreported"] for x in learn) == 3, f"learning runs {learn}")
 check(round(m3b_scored, 2) == 7.27 and round(m3b_learn, 2) == 3.41 and smoke == 0.1855, f"M3b costs {m3b_scored} {m3b_learn}")
+
+# M3b confirming run (docs/reports/m3b/confirm_preregistration.md, confirm_result.md, confirm_paired_eval86.md)
+for a in "AB":
+    check(conf[a]["ids"] == sorted(EVAL) and conf[a]["n"] == 516 and len(conf_runs[a]) == 6, f"confirm arm {a} rows")
+check(conf_seeds == [4, 5, 6, 7, 8, 9], f"confirm seeds {conf_seeds}")
+check((conf["A"]["k"], conf["B"]["k"], conf["A"]["rate"], conf["B"]["rate"]) == (299, 323, 57.9, 62.6), "confirm pooled pass@1")
+check((conf_eff["eff"], conf_eff["lo"], conf_eff["hi"], conf_eff["better"], conf_eff["worse"], conf_eff["same"]) == (4.7, 1.0, 8.5, 16, 7, 63), f"confirm effect {conf_eff}")
+check(abs(conf_eff["eff"] - conf_chk[0]) < 0.06 and conf_chk[1:4] == (16, 7, 63) and abs(conf_chk[4] - conf_eff["p"]) < 0.0006, f"confirm recomputed {conf_chk}")
+check(conf_verdict == conf_rep_verdict == "confirmed", f"confirm verdict {conf_verdict} / {conf_rep_verdict}")
+check((conf["A"]["labels"].get("tests_failed_no_selfcheck"), conf["B"]["labels"].get("tests_failed_no_selfcheck")) == (121, 79), "confirm untested failures")
+check((conf["A"]["turn_cap"], conf["B"]["turn_cap"]) == (28, 101), "confirm turn-cap stops")
+check((conf["A"]["usd_solved"], conf["B"]["usd_solved"]) == (0.0126, 0.0119) and (conf["A"]["unreported"], conf["B"]["unreported"]) == (1, 1), "confirm $/solved")
+check((conf["A"]["wall_med"], conf["B"]["wall_med"]) == (51, 72), "confirm median wall")
+check(round(conf_cost, 1) == conf_rep_total, f"confirm spend {conf_cost} vs {conf_rep_total}")
+# M3c (docs/reports/M3c_report.md, m3c/arms_paired_eval86.md, taxonomy_by_arm.md, pareto.csv)
+for a in "AMI":
+    check(m3c_arms[a]["ids"] == sorted(EVAL) and m3c_arms[a]["n"] == 258 and len(c_runs[a]) == 3, f"M3c arm {a} rows")
+check({a: v["k"] for a, v in m3c_arms.items()} == {"A": 159, "M": 161, "I": 155}, "M3c pooled passes")
+check({a: [r["k"] for r in v["runs"]] for a, v in m3c_arms.items()} == {"A": [56, 51, 52], "M": [51, 55, 55], "I": [51, 56, 48]}, "M3c runs")
+check({k: (m3c_eff[k]["eff"], m3c_eff[k]["lo"], m3c_eff[k]["hi"], m3c_eff[k]["better"], m3c_eff[k]["worse"], m3c_eff[k]["same"]) for k in ("M-A", "I-A")}
+      == {"M-A": (0.8, -3.9, 5.8, 13, 10, 63), "I-A": (-1.6, -6.2, 3.1, 10, 13, 63)}, "M3c effects")
+for k, (eff, b, w, same, p) in m3c_chk.items():
+    e = m3c_eff[k]
+    check(abs(e["eff"] - eff) < 0.06 and (e["better"], e["worse"], e["same"]) == (b, w, same) and abs(e["p"] - p) < 0.0006, f"M3c recomputed {k} {eff, b, w, same, p}")
+tax3c, cols3c = {}, None
+for line in open(os.path.join(M3C, "taxonomy_by_arm.md")):
+    if line.startswith("#### Primary label by cid"):
+        break
+    m = re.match(r"\| Label \| (.*) \| All \|", line)
+    if m:
+        cols3c = [c.strip() for c in m.group(1).split("|")]
+    m = re.match(r"\| (\w+) \| ([\d |]+) \|$", line.rstrip())
+    if m and cols3c:
+        tax3c[m.group(1)] = dict(zip(cols3c, map(int, m.group(2).split("|"))))
+check(len(tax3c) == 8, f"M3c taxonomy rows {len(tax3c)}")
+for lab, by in tax3c.items():
+    for a in "AMI":
+        check(m3c_arms[a]["labels"].get(lab, 0) == by[a], f"M3c taxonomy {lab} {a}")
+check({a: (v["labels"].get("tests_failed_no_selfcheck"), v["labels"].get("tests_failed_selfcheck_passed"), v["labels"].get("stopped_by_cap")) for a, v in m3c_arms.items()}
+      == {"A": (56, 14, 4), "M": (None, 50, 19), "I": (45, 18, 12)}, "M3c key labels")
+check({a: v["fails"] for a, v in m3c_arms.items()} == {"A": 99, "M": 97, "I": 103}, "M3c failures")
+check({a: v["usd_solved"] for a, v in m3c_arms.items()} == {"A": 0.0099, "M": 0.0190, "I": 0.0113}, "M3c $/solved")
+check({a: v["unreported"] for a, v in m3c_arms.items()} == {"A": 1, "M": 3, "I": 0}, "M3c unreported")
+check({a: v["wall_med"] for a, v in m3c_arms.items()} == {"A": 51, "M": 135, "I": 59}, "M3c median wall")
+for row in rows(os.path.join(M3C, "pareto.csv")):
+    v = m3c_arms[row["arm"]]
+    check(abs(float(row["pass_rate"]) - v["k"] / v["n"]) < 0.0006 and round(float(row["usd_per_problem"]), 4) == v["usd_problem"], f"M3c pareto {row['arm']}")
+check(gate["runs"] == 390 and gate["outcomes"] == {"no_tb": 141, "pass": 103, "fail": 85, "skipped": 61} and gate["problem_runs"] == 242, f"gate runs {gate}")
+check((gate["generated"], gate["compiled"], gate["killed"], gate["unfinished"], gate["kill_rate"]) == (2904, 1872, 1051, 0, 56.1), f"mutants {gate}")
+check(gate["skipped_problems"] == 38, "gate skipped problems")
+check(iface == {"checks": 672, "mismatch_checks": 99, "mismatch_pr": 38, "mismatch_pr_passed": 21, "blocks": 3}, f"interface {iface}")
+check(m3c["solved_x"] == 1.9, f"M3c $/solved ratio {m3c['solved_x']}")
+# Claude Code ladder (docs/reports/claude_code_ladder.md, claude_code/ladder_paired_eval86.md)
+for k, z in ladder.items():
+    check(z["ids"] == sorted(EVAL) and z["n"] == 86, f"ladder {k} rows")
+    check(z["providers"] == ["claude_plan"] and z["cost"] == 0, f"ladder {k} is on the plan, not provider-billed")
+    eff, b, w, same, p = lad_chk[k]
+    e = z["effect"]
+    check(abs(e["eff"] - eff) < 0.06 and (e["better"], e["worse"], e["same"]) == (b, w, same) and abs(e["p"] - p) < 0.0006 * max(1, p * 10), f"ladder recomputed {k} {lad_chk[k]} vs {e}")
+check({k: (z["k"], z["effect"]["eff"], z["effect"]["lo"], z["effect"]["hi"]) for k, z in ladder.items()} ==
+      {"haiku": (57, 4.7, -2.3, 11.2), "sonnet": (60, 8.1, -0.4, 17.4), "opus": (63, 11.6, 1.9, 21.3), "fable": (58, 5.8, -1.2, 12.8)}, "ladder effects")
+check({k: z["wall_med"] for k, z in ladder.items()} == {"haiku": 83, "sonnet": 24, "opus": 50, "fable": 265}, "ladder median wall")
+check((ladder["fable"]["wall_cap"], ladder["fable"]["wall_cap_failed"], ladder["sonnet"]["wall_cap"], ladder["opus"]["wall_cap"], ladder["haiku"]["wall_cap"]) == (17, 10, 1, 0, 0), "ladder wall-cap stops")
+check((lad_union, lad_all) == (74, 45), f"ladder union/all {lad_union} {lad_all}")
 
 json.dump(data, open(OUT, "w"), indent=1, sort_keys=False)
 if errors:

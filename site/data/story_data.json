@@ -1167,7 +1167,7 @@
   "cost_total": 10.8709,
   "n_eval": 86,
   "prose": {
-   "spend_all": "28.43",
+   "spend_all": "42.60",
    "m3b_n": "86",
    "m3b_runs_arm": "3",
    "m3b_pr_arm": "258",
@@ -1259,7 +1259,632 @@
    "top_L03": "50",
    "top_L02": "40",
    "top_L37": "36",
-   "top_L06": "33"
+   "top_L06": "33",
+   "cf_e": "+4.7",
+   "cf_ci": "[+1.0, +8.5]",
+   "cf_p": "0.093",
+   "cf_bws": "16 / 7 / 63",
+   "cf_runs": "6",
+   "cf_n": "516",
+   "cf_seeds": "4 to 9",
+   "cf_cost": "7.59",
+   "cf_verdict": "CONFIRMED",
+   "cf_unrep": "2",
+   "cf_rate_A": "57.9",
+   "cf_k_A": "299",
+   "cf_us_A": "0.0126",
+   "cf_nst_A": "121",
+   "cf_cap_A": "28",
+   "cf_wall_A": "51",
+   "cf_rate_B": "62.6",
+   "cf_k_B": "323",
+   "cf_us_B": "0.0119",
+   "cf_nst_B": "79",
+   "cf_cap_B": "101",
+   "cf_wall_B": "72",
+   "c_MA_e": "+0.8",
+   "c_MA_ci": "[\u22123.9, +5.8]",
+   "c_MA_p": "0.68",
+   "c_MA_bws": "13 / 10 / 63",
+   "c_IA_e": "\u22121.6",
+   "c_IA_ci": "[\u22126.2, +3.1]",
+   "c_IA_p": "0.68",
+   "c_IA_bws": "10 / 13 / 63",
+   "c_runs_arm": "3",
+   "c_pr_arm": "258",
+   "c_rate_A": "61.6",
+   "c_k_A": "159",
+   "c_us_A": "0.0099",
+   "c_wall_A": "51",
+   "c_fails_A": "99",
+   "c_nst_A": "56",
+   "c_stp_A": "14",
+   "c_cap_A": "4",
+   "c_iface_A": "16",
+   "c_rate_M": "62.4",
+   "c_k_M": "161",
+   "c_us_M": "0.0190",
+   "c_wall_M": "135",
+   "c_fails_M": "97",
+   "c_nst_M": "0",
+   "c_stp_M": "50",
+   "c_cap_M": "19",
+   "c_iface_M": "15",
+   "c_rate_I": "60.1",
+   "c_k_I": "155",
+   "c_us_I": "0.0113",
+   "c_wall_I": "59",
+   "c_fails_I": "103",
+   "c_nst_I": "45",
+   "c_stp_I": "18",
+   "c_cap_I": "12",
+   "c_iface_I": "16",
+   "c_solved_x": "1.9",
+   "c_scored": "6.39",
+   "c_unrep": "4",
+   "g_runs": "390",
+   "g_pr": "242",
+   "g_skip": "61",
+   "g_skip_pct": "16",
+   "g_skip_probs": "38",
+   "g_notb": "141",
+   "g_kill": "56",
+   "g_killed": "1,051",
+   "g_compiled": "1,872",
+   "i_checks": "672",
+   "i_mm": "99",
+   "i_pr": "38",
+   "i_pr_pass": "21",
+   "i_blocks": "3",
+   "l_haiku_e": "+4.7",
+   "l_haiku_ci": "[\u22122.3, +11.2]",
+   "l_haiku_p": "0.11",
+   "l_haiku_bws": "17 / 8 / 61",
+   "l_rate_haiku": "66.3",
+   "l_k_haiku": "57",
+   "l_wall_haiku": "83",
+   "l_sonnet_e": "+8.1",
+   "l_sonnet_ci": "[\u22120.4, +17.4]",
+   "l_sonnet_p": "0.029",
+   "l_sonnet_bws": "22 / 9 / 55",
+   "l_rate_sonnet": "69.8",
+   "l_k_sonnet": "60",
+   "l_wall_sonnet": "24",
+   "l_opus_e": "+11.6",
+   "l_opus_ci": "[+1.9, +21.3]",
+   "l_opus_p": "0.009",
+   "l_opus_bws": "25 / 9 / 52",
+   "l_rate_opus": "73.3",
+   "l_k_opus": "63",
+   "l_wall_opus": "50",
+   "l_fable_e": "+5.8",
+   "l_fable_ci": "[\u22121.2, +12.8]",
+   "l_fable_p": "0.11",
+   "l_fable_bws": "17 / 8 / 61",
+   "l_rate_fable": "67.4",
+   "l_k_fable": "58",
+   "l_wall_fable": "265",
+   "l_wcap_fable": "17",
+   "l_wcapf_fable": "10",
+   "l_union": "74",
+   "l_all": "45"
   }
+ },
+ "m3b_confirm": {
+  "arms": {
+   "A": {
+    "runs": [
+     {
+      "tag": "A4",
+      "run": "40186976139",
+      "k": 51,
+      "n": 86
+     },
+     {
+      "tag": "A5",
+      "run": "40190136853",
+      "k": 51,
+      "n": 86
+     },
+     {
+      "tag": "A6",
+      "run": "40193770813",
+      "k": 49,
+      "n": 86
+     },
+     {
+      "tag": "A7",
+      "run": "40196834947",
+      "k": 53,
+      "n": 86
+     },
+     {
+      "tag": "A8",
+      "run": "40199964377",
+      "k": 51,
+      "n": 86
+     },
+     {
+      "tag": "A9",
+      "run": "40203576676",
+      "k": 44,
+      "n": 86
+     }
+    ],
+    "k": 299,
+    "n": 516,
+    "rate": 57.9,
+    "cost": 3.7574,
+    "usd_problem": 0.0073,
+    "usd_solved": 0.0126,
+    "unreported": 1,
+    "labels": {
+     "stopped_by_cap": 20,
+     "tests_failed_selfcheck_passed": 33,
+     "tests_failed_no_selfcheck": 121,
+     "compile_fail_hidden": 20,
+     "tests_failed_selfcheck_failed": 8,
+     "sim_incomplete": 6,
+     "no_edit": 1,
+     "signal_missing_hidden": 8
+    },
+    "fails": 217,
+    "tokens": 18181434,
+    "turn_cap": 28,
+    "wall_cap": 4,
+    "wall_cap_failed": 2,
+    "wall_med": 51
+   },
+   "B": {
+    "runs": [
+     {
+      "tag": "B4",
+      "run": "40186985324",
+      "k": 55,
+      "n": 86
+     },
+     {
+      "tag": "B5",
+      "run": "40190146928",
+      "k": 54,
+      "n": 86
+     },
+     {
+      "tag": "B6",
+      "run": "40194162464",
+      "k": 58,
+      "n": 86
+     },
+     {
+      "tag": "B7",
+      "run": "40198007520",
+      "k": 50,
+      "n": 86
+     },
+     {
+      "tag": "B8",
+      "run": "40201168029",
+      "k": 56,
+      "n": 86
+     },
+     {
+      "tag": "B9",
+      "run": "40204771205",
+      "k": 50,
+      "n": 86
+     }
+    ],
+    "k": 323,
+    "n": 516,
+    "rate": 62.6,
+    "cost": 3.8341,
+    "usd_problem": 0.0074,
+    "usd_solved": 0.0119,
+    "unreported": 1,
+    "labels": {
+     "stopped_by_cap": 64,
+     "tests_failed_no_selfcheck": 79,
+     "tests_failed_selfcheck_passed": 20,
+     "compile_fail_hidden": 20,
+     "sim_incomplete": 4,
+     "signal_missing_hidden": 5,
+     "llm_error": 1
+    },
+    "fails": 193,
+    "tokens": 89914785,
+    "turn_cap": 101,
+    "wall_cap": 1,
+    "wall_cap_failed": 0,
+    "wall_med": 72
+   }
+  },
+  "effect": {
+   "finding": "better than base",
+   "eff": 4.7,
+   "lo": 1.0,
+   "hi": 8.5,
+   "better": 16,
+   "worse": 7,
+   "same": 63,
+   "p": 0.0931
+  },
+  "verdict": "confirmed",
+  "seeds": [
+   4,
+   5,
+   6,
+   7,
+   8,
+   9
+  ],
+  "cost": 7.5915
+ },
+ "m3c": {
+  "arms": {
+   "A": {
+    "runs": [
+     {
+      "tag": "A1",
+      "run": "40257040625",
+      "k": 56,
+      "n": 86
+     },
+     {
+      "tag": "A2",
+      "run": "40263328806",
+      "k": 51,
+      "n": 86
+     },
+     {
+      "tag": "A3",
+      "run": "40270547450",
+      "k": 52,
+      "n": 86
+     }
+    ],
+    "k": 159,
+    "n": 258,
+    "rate": 61.6,
+    "cost": 1.5805,
+    "usd_problem": 0.0061,
+    "usd_solved": 0.0099,
+    "unreported": 1,
+    "labels": {
+     "stopped_by_cap": 4,
+     "tests_failed_selfcheck_passed": 14,
+     "tests_failed_no_selfcheck": 56,
+     "compile_fail_hidden": 11,
+     "tests_failed_selfcheck_failed": 3,
+     "signal_missing_hidden": 5,
+     "sim_incomplete": 5,
+     "llm_error": 1
+    },
+    "fails": 99,
+    "tokens": 7674963,
+    "turn_cap": 7,
+    "wall_cap": 5,
+    "wall_cap_failed": 2,
+    "wall_med": 51
+   },
+   "M": {
+    "runs": [
+     {
+      "tag": "M1",
+      "run": "40257053178",
+      "k": 51,
+      "n": 86
+     },
+     {
+      "tag": "M2",
+      "run": "40265000386",
+      "k": 55,
+      "n": 86
+     },
+     {
+      "tag": "M3",
+      "run": "40271417794",
+      "k": 55,
+      "n": 86
+     }
+    ],
+    "k": 161,
+    "n": 258,
+    "rate": 62.4,
+    "cost": 3.0588,
+    "usd_problem": 0.0119,
+    "usd_solved": 0.019,
+    "unreported": 3,
+    "labels": {
+     "stopped_by_cap": 19,
+     "tests_failed_selfcheck_passed": 50,
+     "sim_incomplete": 1,
+     "tests_failed_selfcheck_failed": 10,
+     "compile_fail_hidden": 11,
+     "signal_missing_hidden": 4,
+     "llm_error": 2
+    },
+    "fails": 97,
+    "tokens": 14783930,
+    "turn_cap": 34,
+    "wall_cap": 6,
+    "wall_cap_failed": 1,
+    "wall_med": 135
+   },
+   "I": {
+    "runs": [
+     {
+      "tag": "I1",
+      "run": "40260792400",
+      "k": 51,
+      "n": 86
+     },
+     {
+      "tag": "I2",
+      "run": "40267056311",
+      "k": 56,
+      "n": 86
+     },
+     {
+      "tag": "I3",
+      "run": "40274995282",
+      "k": 48,
+      "n": 86
+     }
+    ],
+    "k": 155,
+    "n": 258,
+    "rate": 60.1,
+    "cost": 1.7528,
+    "usd_problem": 0.0068,
+    "usd_solved": 0.0113,
+    "unreported": 0,
+    "labels": {
+     "tests_failed_selfcheck_passed": 18,
+     "stopped_by_cap": 12,
+     "tests_failed_no_selfcheck": 45,
+     "sim_incomplete": 5,
+     "compile_fail_hidden": 13,
+     "tests_failed_selfcheck_failed": 7,
+     "signal_missing_hidden": 3
+    },
+    "fails": 103,
+    "tokens": 8891798,
+    "turn_cap": 12,
+    "wall_cap": 4,
+    "wall_cap_failed": 3,
+    "wall_med": 59
+   }
+  },
+  "effects": {
+   "I-A": {
+    "finding": "no detectable effect",
+    "eff": -1.6,
+    "lo": -6.2,
+    "hi": 3.1,
+    "better": 10,
+    "worse": 13,
+    "same": 63,
+    "p": 0.678
+   },
+   "M-A": {
+    "finding": "no detectable effect",
+    "eff": 0.8,
+    "lo": -3.9,
+    "hi": 5.8,
+    "better": 13,
+    "worse": 10,
+    "same": 63,
+    "p": 0.678
+   }
+  },
+  "gate": {
+   "runs": 390,
+   "outcomes": {
+    "no_tb": 141,
+    "fail": 85,
+    "pass": 103,
+    "skipped": 61
+   },
+   "problem_runs": 242,
+   "generated": 2904,
+   "compiled": 1872,
+   "killed": 1051,
+   "unfinished": 0,
+   "skipped_problems": 38,
+   "kill_rate": 56.1
+  },
+  "iface": {
+   "checks": 672,
+   "mismatch_checks": 99,
+   "mismatch_pr": 38,
+   "mismatch_pr_passed": 21,
+   "blocks": 3
+  },
+  "cost_scored": 6.3921,
+  "cost_smoke": 0.1853,
+  "solved_x": 1.9
+ },
+ "ladder": {
+  "arms": {
+   "haiku": {
+    "runs": [
+     {
+      "tag": "1",
+      "run": "claude-haiku-5-5",
+      "k": 57,
+      "n": 86
+     }
+    ],
+    "k": 57,
+    "n": 86,
+    "rate": 66.3,
+    "cost": 0.0,
+    "usd_problem": 0.0,
+    "usd_solved": 0.0,
+    "unreported": 0,
+    "labels": {
+     "compile_fail_own": 6,
+     "tests_failed_no_selfcheck": 21,
+     "signal_missing_hidden": 2
+    },
+    "fails": 29,
+    "tokens": 39199840,
+    "turn_cap": 0,
+    "wall_cap": 0,
+    "wall_cap_failed": 0,
+    "wall_med": 83,
+    "name": "Haiku 5.5",
+    "providers": [
+     "claude_plan"
+    ],
+    "effect": {
+     "finding": "no detectable effect",
+     "eff": 4.7,
+     "lo": -2.3,
+     "hi": 11.2,
+     "better": 17,
+     "worse": 8,
+     "same": 61,
+     "p": 0.108
+    }
+   },
+   "sonnet": {
+    "runs": [
+     {
+      "tag": "1",
+      "run": "claude-sonnet-5-5",
+      "k": 60,
+      "n": 86
+     }
+    ],
+    "k": 60,
+    "n": 86,
+    "rate": 69.8,
+    "cost": 0.0,
+    "usd_problem": 0.0,
+    "usd_solved": 0.0,
+    "unreported": 0,
+    "labels": {
+     "compile_fail_own": 4,
+     "tests_failed_no_selfcheck": 19,
+     "signal_missing_hidden": 2,
+     "stopped_by_cap": 1
+    },
+    "fails": 26,
+    "tokens": 9302520,
+    "turn_cap": 0,
+    "wall_cap": 1,
+    "wall_cap_failed": 1,
+    "wall_med": 24,
+    "name": "Sonnet 5.5",
+    "providers": [
+     "claude_plan"
+    ],
+    "effect": {
+     "finding": "no detectable effect",
+     "eff": 8.1,
+     "lo": -0.4,
+     "hi": 17.4,
+     "better": 22,
+     "worse": 9,
+     "same": 55,
+     "p": 0.0294
+    }
+   },
+   "opus": {
+    "runs": [
+     {
+      "tag": "1",
+      "run": "claude-opus-5-5",
+      "k": 63,
+      "n": 86
+     }
+    ],
+    "k": 63,
+    "n": 86,
+    "rate": 73.3,
+    "cost": 0.0,
+    "usd_problem": 0.0,
+    "usd_solved": 0.0,
+    "unreported": 0,
+    "labels": {
+     "tests_failed_no_selfcheck": 18,
+     "sim_incomplete": 2,
+     "compile_fail_own": 3
+    },
+    "fails": 23,
+    "tokens": 14128926,
+    "turn_cap": 0,
+    "wall_cap": 0,
+    "wall_cap_failed": 0,
+    "wall_med": 50,
+    "name": "Opus 5.5",
+    "providers": [
+     "claude_plan"
+    ],
+    "effect": {
+     "finding": "better than base",
+     "eff": 11.6,
+     "lo": 1.9,
+     "hi": 21.3,
+     "better": 25,
+     "worse": 9,
+     "same": 52,
+     "p": 0.00904
+    }
+   },
+   "fable": {
+    "runs": [
+     {
+      "tag": "1",
+      "run": "claude-fable-5-1",
+      "k": 58,
+      "n": 86
+     }
+    ],
+    "k": 58,
+    "n": 86,
+    "rate": 67.4,
+    "cost": 0.0,
+    "usd_problem": 0.0,
+    "usd_solved": 0.0,
+    "unreported": 0,
+    "labels": {
+     "tests_failed_no_selfcheck": 12,
+     "compile_fail_own": 3,
+     "sim_incomplete": 1,
+     "stopped_by_cap": 10,
+     "signal_missing_hidden": 2
+    },
+    "fails": 28,
+    "tokens": 38242506,
+    "turn_cap": 0,
+    "wall_cap": 17,
+    "wall_cap_failed": 10,
+    "wall_med": 265,
+    "name": "Fable 5.1",
+    "providers": [
+     "claude_plan"
+    ],
+    "effect": {
+     "finding": "no detectable effect",
+     "eff": 5.8,
+     "lo": -1.2,
+     "hi": 12.8,
+     "better": 17,
+     "worse": 8,
+     "same": 61,
+     "p": 0.108
+    }
+   }
+  },
+  "order": [
+   "haiku",
+   "sonnet",
+   "opus",
+   "fable"
+  ],
+  "union": 74,
+  "all": 45
  }
 }
