@@ -124,3 +124,7 @@ Five problems from brief 09's part two (`queue_0001`, `lfsr_0005`, `binary_searc
 - 3 of the 10 smoke rows ended `llm_error`: an edit call abandoned at the wall-cap deadline (18–33 s left). This is
   the existing deadline rule. Longer problems reach it more often, so V and S may show more of these stops; the
   report counts them.
+- **S again** (run 40348875200, $0.0776, 2 unreported), after the character fix: usable cases on 5 of 5 problems
+  (3–7 each). `nmea_gps_0008`'s 3 cases now parse, but they did not build against that design, so they failed open,
+  as designed. 1 of 5 passed (`ethernet_mii_0006`, never solved by M3c's arm A); with one problem and one run, that
+  is an anecdote, not a result.
