@@ -79,6 +79,14 @@ on:
         description: "M3c: interface diff by elaboration after each edit (langgraph only)"
         type: boolean
         default: false
+      verify_submit:
+        description: "M3d: refuse a submit until the design as it stands passed a simulation (langgraph only)"
+        type: boolean
+        default: false
+      spec_vectors:
+        description: "M3d: verify_submit plus blind reference cases written from the spec (langgraph only)"
+        type: boolean
+        default: false
       provider_order:
         description: "Pin OpenRouter providers, comma-separated, in order, no fallbacks (blank = OpenRouter routes)"
         type: string
@@ -113,6 +121,8 @@ env:
   MEMORY: ${{ github.event_name == 'pull_request' && '' || inputs.memory }}
   MUTATION_GATE: ${{ (github.event_name == 'workflow_dispatch' && inputs.mutation_gate) && '1' || '0' }}
   INTERFACE_CHECK: ${{ (github.event_name == 'workflow_dispatch' && inputs.interface_check) && '1' || '0' }}
+  VERIFY_SUBMIT: ${{ (github.event_name == 'workflow_dispatch' && inputs.verify_submit) && '1' || '0' }}
+  SPEC_VECTORS: ${{ (github.event_name == 'workflow_dispatch' && inputs.spec_vectors) && '1' || '0' }}
   RUNNER: ${{ github.event_name == 'pull_request' && 'ubuntu-24.04' || inputs.runner }}
   WORK: work
   REAL_MODEL: ${{ github.event_name == 'workflow_dispatch' && inputs.model != 'fake' }}

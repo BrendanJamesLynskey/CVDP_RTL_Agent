@@ -42,6 +42,9 @@ class Config:
     gate_threshold: float = 0.5         # kill rate the gate needs (equivalent mutants make 1.0 unreachable)
     gate_s: float = 60.0                # the gate's own wall time per run
     gate_max_failures: int = 2          # gate failures per problem; after that, the agent submits anyway
+    verify_submit: bool = False         # M3d: a submit is refused until the current design passed a simulation
+    spec_vectors: bool = False          # M3d: verify_submit plus reference cases written blind from the spec
+    verify_max_refusals: int = 2        # refusals per problem; after that, the submit is let through
     out_dir: str = ""                   # default <root>/rundir/agent_out
     fake_script: str = ""               # fake provider: a JSON file or inline JSON list of responses
     ledger_dir: str = ""                # whole-run spend guard: shared directory of per-problem costs
@@ -70,7 +73,14 @@ class Config:
             # M3c switches, likewise only when on
             **({"mutation_gate": True} if self.mutation_gate else {}),
             **({"interface_check": True} if self.interface_check else {}),
+            # M3d switches, likewise only when on
+            **({"verify_submit": True} if self.verify_submit else {}),
+            **({"spec_vectors": True} if self.spec_vectors else {}),
         }
+
+    def __post_init__(self):
+        if self.spec_vectors:  # S is V plus the spec cases: the spec testbench is applied by V's rule
+            self.verify_submit = True
 
 
 def _reasoning(name):
@@ -108,6 +118,8 @@ def from_env():
         memory=os.environ.get("CVDP_MEMORY", "").strip(),
         mutation_gate=_flag("CVDP_MUTATION_GATE", False),
         interface_check=_flag("CVDP_INTERFACE_CHECK", False),
+        verify_submit=_flag("CVDP_VERIFY_SUBMIT", False),
+        spec_vectors=_flag("CVDP_SPEC_VECTORS", False),
         out_dir=os.environ.get("CVDP_OUT_DIR", ""),
         fake_script=os.environ.get("CVDP_FAKE_SCRIPT", ""),
         ledger_dir=os.environ.get("CVDP_LEDGER_DIR", ""),

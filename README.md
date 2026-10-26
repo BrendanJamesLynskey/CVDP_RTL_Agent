@@ -194,6 +194,50 @@ graph TD;
 ```
 <!-- graph-m3c:end -->
 
+With M3d's switches on (`verify_submit`; `spec_vectors`, which turns `verify_submit` on too), the graph has a
+`verify` step between a submit and finalize, and, with `spec_vectors`, a `spec` step before plan:
+
+<!-- graph-m3d:begin -->
+```mermaid
+---
+config:
+  flowchart:
+    curve: linear
+---
+graph TD;
+	__start__([<p>__start__</p>]):::first
+	read_task(read_task)
+	spec(spec)
+	plan(plan)
+	edit(edit)
+	check(check)
+	reflect(reflect)
+	verify(verify)
+	finalize(finalize)
+	__end__([<p>__end__</p>]):::last
+	__start__ --> read_task;
+	check -.-> finalize;
+	check -.-> reflect;
+	edit -.-> check;
+	edit -.-> finalize;
+	plan -.-> edit;
+	plan -.-> finalize;
+	read_task -.-> finalize;
+	read_task -.-> spec;
+	reflect -.-> edit;
+	reflect -.-> finalize;
+	reflect -.-> verify;
+	spec -.-> finalize;
+	spec -.-> plan;
+	verify -.-> edit;
+	verify -.-> finalize;
+	finalize --> __end__;
+	classDef default fill:#f2f0ff,line-height:1.2
+	classDef first fill-opacity:0
+	classDef last fill:#bfb6fc
+```
+<!-- graph-m3d:end -->
+
 - **read_task** reads `/code/prompt.json`, lists the files and detects the tools.
 - **plan**: the LLM returns a JSON plan (files to change, approach, how it will check the result).
 - **edit**: the LLM returns whole files or unified diffs. The file tool writes only under `rtl/`, `verif/` and
@@ -211,6 +255,16 @@ graph TD;
   differently (case or underscores only) and width mismatches where both widths are constant. The result goes to
   reflect as one more check. A submit with a mismatch set reported only once becomes one more edit; once the same
   set has been reported twice, the agent may submit anyway.
+- **verify** (M3d, `verify_submit`): a submit goes through only if the files as they now stand have passed a
+  testbench the agent ran (its own, or one given under `verif/`): if its last testbench has not run since the last
+  edit, verify runs it. A refusal goes back to edit with what is missing (no testbench, a failing one, failing
+  specification cases) and what would satisfy it. After 2 refusals, or with no turn, budget or time left for another
+  edit, the submit is let through. With `spec_vectors`, the specification cases must pass too.
+- **spec** (M3d, `spec_vectors`): one LLM call that sees only the task, `docs/` and a port table of the given RTL
+  (names, directions, widths; never a module body, `verif/` or anything the agent writes) and writes reference cases
+  in a fixed JSON form (`agent/cvdp_agent/spec.py`). The harness turns them into a SystemVerilog testbench under
+  `rundir/agent_tb/spec_vectors/`. It fails open: an error, an unusable reply, or a testbench that does not build
+  against the design never blocks a submit, and each is counted.
 - **gate** (M3c, `mutation_gate`): on a submit, the agent's last testbench is re-run on its design, then on 12
   mutants from Yosys `mutate -list 12 -seed 1`, all in one netlist (`mutate -ctrl`) behind a wrapper selected by
   `+mutsel=<i>` (MCY's method), or one build per mutant if the wrapper cannot drive the testbench. It passes when at
@@ -280,6 +334,8 @@ column.
 | `CVDP_MEMORY` | | path of a lessons snapshot inside the container (the sweep mounts it read-only) |
 | `CVDP_MUTATION_GATE` | 0 | M3c: 1 runs the mutation-score gate before a submit (LangGraph harness only) |
 | `CVDP_INTERFACE_CHECK` | 0 | M3c: 1 runs the interface check after every edit (LangGraph harness only) |
+| `CVDP_VERIFY_SUBMIT` | 0 | M3d: 1 refuses a submit until the design as it stands passed a simulation (LangGraph only) |
+| `CVDP_SPEC_VECTORS` | 0 | M3d: 1 adds the blind specification cases (and turns `CVDP_VERIFY_SUBMIT` on) |
 
 ## Running a sweep
 
@@ -290,7 +346,8 @@ whole-run budget, `reasoning` (default `low`), `seeds` (default 1), `seed_offset
 (default 0: seeds are numbered `seed_offset+1 … seed_offset+seeds`, so a second dispatch of the same settings
 pools with distinct seeds), `harness` (`langgraph`, `deepagents` or `claudecode`), `memory` (blank, or a lessons snapshot path in
 the repo, e.g. `docs/reports/m3b/lessons/lessons_<hash>.json`, mounted read-only into the agent's container),
-`mutation_gate` and `interface_check` (M3c, both default false, LangGraph only) and
+`mutation_gate` and `interface_check` (M3c, both default false, LangGraph only), `verify_submit` and
+`spec_vectors` (M3d, both default false, LangGraph only, not with `mutation_gate`) and
 `provider_order` (blank: OpenRouter
 routes each call; the provider that served it is in the trace, and its price can differ from the list price).
 Tables and `results.csv` label each row with the model and its reasoning setting, e.g.

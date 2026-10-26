@@ -389,7 +389,8 @@ def test_each_arm_end_to_end_on_the_fake_provider(arm, tmp_path):
     assert (row["mutation_gate"], row["interface_check"]) == (int(arm == "M"), int(arm == "I"))
     if arm == "A":
         assert not {k for k in s if k.startswith(("gate_", "mutants_", "interface_"))}
-        assert all(row[k] == "" for k in collect.FIELDS[collect.FIELDS.index("gate_runs"):])
+        assert all(row[k] == "" for k in collect.FIELDS[collect.FIELDS.index("gate_runs"):
+                                                         collect.FIELDS.index("verify_submit")])  # M3d's after
     if arm == "M":
         assert (s["gate_runs"], s["gate_outcomes"], s["gate_failures"], s["gate_overridden"]) == (1, ["pass"], 0,
                                                                                                   False)
