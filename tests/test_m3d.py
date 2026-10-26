@@ -320,3 +320,23 @@ def test_ablate_level_and_exclude(tmp_path, capsys):
     out = capsys.readouterr().out
     assert "Effect [97.5%]" in out and "| 79 |" in out
     ablate.LEVEL[0] = 0.95
+
+
+def test_m3d_tables_on_old_and_new_rows(tmp_path, capsys):
+    import m3d_tables
+
+    old = os.path.join(ROOT, "docs", "reports", "m3c", "runs", "A1_40257040625.csv")
+    rows = list(csv.DictReader(open(old)))
+    new = tmp_path / "s.csv"
+    with open(new, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=collect.FIELDS)
+        w.writeheader()
+        for i, r in enumerate(rows):
+            w.writerow({**{k: r.get(k, "") for k in collect.FIELDS}, "verify_submit": 1, "spec_vectors": 1,
+                        "verify_runs": 1, "verify_refusals": i % 2, "verified_at_submit": 1,
+                        "spec_status": "generated", "spec_cases": 5,
+                        "spec_final_status": "pass" if i % 3 else "fail"})
+    m3d_tables.main(["--arm", f"A={old}", "--arm", f"S={new}"])
+    out = capsys.readouterr().out
+    assert "Effort per problem-run" in out and "#### The verify step" in out and "Spec cases, arm S" in out
+    assert "| A | 86 |" in out
