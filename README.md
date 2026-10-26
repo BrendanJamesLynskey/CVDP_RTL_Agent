@@ -62,6 +62,17 @@ counterfactual reruns. 7 are benchmark-limited with strong evidence (listed in `
 more are borderline, 3 are agent-limited, none is an environment failure. On the problems Claude Code won and our
 agent did not, the agent mostly submitted on a clean compile and lint without running any testbench.
 
+**M3d** ([`docs/reports/M3d_report.md`](docs/reports/M3d_report.md), pre-registered in
+[`docs/reports/m3d/preregistration.md`](docs/reports/m3d/preregistration.md)): two more fixed steps, each off by
+default. **Verify before submit** (`verify_submit`): a submit is refused until the design as it stands has passed a
+testbench, and the refusal goes back to edit (at most twice). **Blind spec cases** (`spec_vectors`): one LLM call that
+sees only the task, the docs and the given ports writes cycle-level reference cases, which verify also applies.
+Arms A, V and S, 3 runs each on the 86 problems; V − A and S − A at α = 0.025. **Results:** both are null and point
+downwards (V − A −1.9 points [−6.6, +2.3], S − A −4.7 [−11.2, +1.6], 97.5% intervals); pooled pass@1 A 60.9%, V 58.9%,
+S 56.2%. The agent now tests before it submits (runs with no self-check fall from 55% to 1%), but its failures move to
+"testbench passed, hidden tests failed" and to wall-cap stops. Where all the blind spec cases passed, the hidden tests
+passed 61% of the time; where some failed, 57%. $8.19 in all.
+
 **M2a** (merged, [`docs/reports/M2a_report.md`](docs/reports/M2a_report.md)): reasoning limits, a retry on empty
 replies and unreadable decisions, and seeds. On the same 10 problems on Arm64, DeepSeek at `reasoning=off` passed
 6/10 for $0.0867 with no empty replies; at `low` it passed 7/10 for $0.3546 with 14 empty replies.
@@ -416,6 +427,7 @@ empty (an old ledger and the harness's reuse of `raw_result.json` would make the
 | M3 | Ablations: self-check on and off, lint on and off, turn and budget caps; failure taxonomy |
 | M3b | Harness against self-improvement: Deep Agents vs LangGraph, and a frozen lessons memory, on a fixed evaluation set |
 | M3c | Mutation testing and elaboration in the loop: a mutation-score gate before submit, an interface diff after each edit |
+| M3d | Verify before submit: a refused submit until a testbench passes on the current design, and blind spec cases |
 | M4 | Write-up, logs packed for the Si2 LBC-bench leaderboard |
 | M5 | Open AMBA verification track: test plan, cocotb testbench with coverage, SVA with SymbiYosys; scored by seeded-bug kill rate and false alarms |
 
