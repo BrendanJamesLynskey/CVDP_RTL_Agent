@@ -1,5 +1,9 @@
 """The agent graph: read_task -> plan -> edit -> check -> reflect -> (edit | finalize).
 
+M3d adds two more, each behind its own switch: `verify` between a submit and finalize (verify_submit: a submit is
+refused until the design as it stands has passed a simulation of a testbench), and `spec` between read_task and
+plan (spec_vectors: a blind LLM call writes reference cases from the specification, which verify then applies too).
+
 M3c adds two fixed steps, each only when its switch is on: `interface` between edit and check (interface_check:
 the design's interface by elaboration against the given one, shown to reflect like lint), and `gate` between a
 submit and finalize (mutation_gate: the agent's own testbench must kill half of 12 mutants of its design).
@@ -23,11 +27,11 @@ from .llm import LOWER, ReasoningRejected
 from .parse import empty_reply, parse_decision, parse_edit, parse_plan
 from .trace import Tracer, redact, truncate
 
-MAX_TOKENS = {"plan": 4000, "edit": 32000, "reflect": 2000, "agent": 32000}  # room for the answer itself
+MAX_TOKENS = {"plan": 4000, "edit": 32000, "reflect": 2000, "agent": 32000, "spec": 12000}  # room for the answer itself
 # Room for reasoning on top of the answer's. Reasoning tokens count against max_tokens (with exclude: true too), so
 # without this a model that reasons at length fills the cap and returns an empty reply (finish_reason: length).
 REASONING_HEADROOM = {"off": 0, "low": 8000, "medium": 16000, "high": 24000, "default": 16000}
-LLM_NODES = ("plan", "edit", "reflect")
+LLM_NODES = ("plan", "edit", "reflect", "spec")  # spec: M3d, only in the graph with spec_vectors on
 MIN_LLM_S = 20.0          # an LLM call is not started with less time than this before the wall cap
 DEADLINE_MARGIN_S = 2.0   # every call (its cost lookup included) must be back this long before the wall cap
 SHORT_CALL_S = 60.0       # a call with less time than this gets no client-side retry
@@ -127,6 +131,22 @@ class Runtime:
         self.gate_stats = {"gate_runs": 0, "gate_outcomes": [], "gate_failures": 0, "gate_overridden": False,
                            "mutants_generated": 0, "mutants_compiled": 0, "mutants_killed": 0,
                            "mutants_unfinished": 0, "gate_wall_s": 0.0, "gate_methods": []}
+        # M3d: which version of the files each testbench result belongs to (bumped by every edit that changed a
+        # file), so verify can tell a pass on the design as it stands from a pass on an older one
+        self.version = 0
+        self.tb_runs = 0
+        self.tb_run_version = None
+        self.tb_pass_version = None
+        self.tb_last = None
+        self.verify_stats = {"verify_runs": 0, "verify_refusals": 0, "verify_let_through": 0, "verify_outcomes": [],
+                             "verify_reruns": 0, "testbench_runs": 0, "verified_at_submit": None}
+        self.spec_inputs = None   # what the blind spec call may see, read before any edit
+        self.spec = None          # the parsed cases
+        self.spec_version = None  # file version of the last spec run
+        self.spec_last = None
+        self.spec_stats = {"spec_status": "not_run", "spec_failed_open": False, "spec_cases": 0, "spec_steps": 0,
+                           "spec_cases_dropped": 0, "spec_runs": 0, "spec_unbuildable_runs": 0,
+                           "spec_final_status": None, "spec_final_passed": None, "spec_final_total": None}
 
     # ---------- stop rules ----------
     def elapsed(self):
@@ -329,9 +349,45 @@ def build(rt):
             except Exception as e:  # the check is then skipped; the problem goes on
                 rt.tracer.log("tool", check="interface_given", command="read prompt, docs/, rtl/, verif/",
                               exit_code=1, output=truncate(f"{type(e).__name__}: {e}", 1000))
+        if cfg.spec_vectors:  # M3d: what the blind spec call may see, read now, before any edit
+            rt.spec_inputs = spec_inputs(rt, task)
         if run_budget_exhausted(cfg, rt.tracer):
             out["stop_reason"] = "run_budget_exhausted"
         return out
+
+    def spec(state):
+        """M3d: one LLM call that sees only the task, docs/ and the given ports, and writes reference cases. It fails
+        open: an error, an unreadable reply or no usable case leaves the problem to verify's own-testbench rule."""
+        from . import spec as spec_mod
+
+        inp = rt.spec_inputs or {"docs": "(no documents)", "ports": "(none: no RTL was given)"}
+        msg = prompts.SPEC.format(task=state["task"], docs=inp["docs"], ports=inp["ports"])
+        st = rt.spec_stats
+        r = rt.ask("spec", [{"role": "system", "content": prompts.SPEC_SYSTEM}, {"role": "user", "content": msg}],
+                   state)
+        if r is None:  # a provider error: counted unreported by call(), which then stops the problem as usual
+            st.update(spec_status="llm_error", spec_failed_open=True)
+            return {}
+        parsed, notes = spec_mod.parse_cases(r.text)
+        rt.log_llm("spec", r, state, decision={"cases": len(parsed["cases"]) if parsed else 0,
+                                                "notes": notes[:20]})
+        if parsed is None:
+            st.update(spec_status="empty" if r.empty else "unusable", spec_failed_open=True,
+                      spec_cases_dropped=sum(1 for n in notes if n.startswith("case ")))
+            return {}
+        try:
+            path = spec_mod.write(cfg.root, parsed)
+        except OSError as e:
+            st.update(spec_status="error", spec_failed_open=True)
+            rt.tracer.log("error", error=truncate(f"spec write: {type(e).__name__}: {e}", 1000))
+            return {}
+        rt.spec = parsed
+        n, steps = spec_mod.count(parsed)
+        st.update(spec_status="generated", spec_cases=n, spec_steps=steps,
+                  spec_cases_dropped=sum(1 for x in notes if x.startswith("case ")))
+        rt.tracer.log("tool", check="spec_write", command=f"write {os.path.relpath(path, cfg.root)}", exit_code=0,
+                      output=f"{n} cases, {steps} steps" + ("; " + "; ".join(notes[:10]) if notes else ""))
+        return {}
 
     def plan(state):
         msg = prompts.PLAN.format(
@@ -396,6 +452,8 @@ def build(rt):
                 rt.tracer.log("tool", check="tb_write", command=f"write {item['path']}", exit_code=1,
                               output=str(ex), turn=turn)
         rt.edited = rt.edited or bool(changed)
+        if changed:
+            rt.version += 1
         rt.changed_all.update(changed)
         requested = [c for c in e["checks"] if allowed_check(c, cfg)]
         tb = {"files": tb_files, "top": tb_top} if tb_files else (state.get("tb") if cfg.self_check else None)
@@ -437,6 +495,7 @@ def build(rt):
             results["interface"] = {"ok": state["interface"].get("ok"), "summary": state["interface"]["summary"]}
         if (results.get("testbench") or {}).get("ok") is not None:
             rt.last_tb = state.get("tb")
+            note_tb(rt, results["testbench"])
         compiled = results.get("compile", {}).get("ok")
         if compiled:
             rt.best = rt.files.snapshot()
@@ -526,6 +585,65 @@ def build(rt):
                     "reason": "The mutation gate failed (above)."}
         return {"results": results}
 
+    def verify(state):
+        """M3d: a submit goes through only if the design as it stands has passed a testbench of the agent's (one it
+        wrote, or one given under verif/ that it ran), and with spec_vectors the specification cases too. A refusal
+        goes back to edit with what is missing; after cfg.verify_max_refusals refusals, or with no turn, budget or
+        time left for another edit, the submit is let through."""
+        st = rt.verify_stats
+        st["verify_runs"] += 1
+        results = dict(state.get("results") or {})
+        missing = []
+        tb = state.get("tb") or rt.last_tb
+        if rt.tb_pass_version != rt.version:
+            if tb and tb.get("files") and rt.tb_run_version != rt.version:
+                st["verify_reruns"] += 1  # the testbench has not run on these files yet: run it now
+                res = rt.checker.run(["testbench"], tb)
+                tbr = res.get("testbench") or {}
+                if tbr.get("ok") is not None:
+                    rt.last_tb = tb
+                    note_tb(rt, tbr)
+                results.update(res)
+                if res.get("compile", {}).get("ok"):
+                    rt.best, rt.best_turn = rt.files.snapshot(), state.get("turn")
+            if rt.tb_pass_version != rt.version:
+                if rt.tb_run_version == rt.version and rt.tb_last is not None:
+                    missing.append("tb_fail")
+                else:
+                    missing.append("no_tb")
+        spec_note = ""
+        if cfg.spec_vectors and rt.spec is not None:
+            sr = rt.spec_last if rt.spec_version == rt.version else run_spec(rt, "spec")
+            if sr["status"] in ("fail", "timeout"):
+                missing.append("spec_fail")
+            elif sr["status"] in ("unbuildable", "error", "skipped"):
+                spec_note = (f"\n(specification cases not applied: {sr['status']}; this does not block the "
+                             "submit)\n" + truncate(sr.get("summary", ""), 800))
+            results["spec_cases"] = {"ok": None if sr["status"] in ("unbuildable", "error", "skipped")
+                                     else sr["status"] == "pass", "summary": spec_render(sr) + spec_note}
+        if not missing:
+            st["verify_outcomes"].append("pass")
+            st["verified_at_submit"] = True
+            rt.tracer.log("tool", check="verify_submit", command="submit", exit_code=0, output="verified: submit")
+            return {"results": results}
+        room = rt.cap({**state}, "edit") is None
+        if st["verify_refusals"] >= cfg.verify_max_refusals or not room:
+            st["verify_let_through"] += 1
+            st["verify_outcomes"].append("let_through")
+            st["verified_at_submit"] = False
+            why = (f"refused {st['verify_refusals']} times" if room else
+                   f"{rt.cap({**state}, 'edit')} leaves no room for another edit")
+            rt.tracer.log("tool", check="verify_submit", command="submit", exit_code=0,
+                          output=f"not verified ({'+'.join(missing)}), but {why}: submitting anyway")
+            return {"results": results}
+        st["verify_refusals"] += 1
+        st["verify_outcomes"].append("refused_" + "+".join(missing))
+        msg = refusal(rt, missing)
+        rt.tracer.log("tool", check="verify_submit", command="submit", exit_code=1, output=truncate(msg, 3000))
+        results["verify_submit"] = {"ok": False, "summary": msg}
+        return {"results": results, "stop_reason": "", "decision": "verify_refused", "reason": msg,
+                "checked": True}
+
     def finalize(state):
         return finish(rt, state)
 
@@ -536,12 +654,24 @@ def build(rt):
         nodes.insert(3, ("interface", interface))
     if cfg.mutation_gate:
         nodes.insert(-1, ("gate", gate))
+    if cfg.verify_submit and cfg.mutation_gate:
+        raise ValueError("verify_submit and mutation_gate are separate arms: turn one of them off")
+    if cfg.verify_submit:
+        nodes.insert(-1, ("verify", verify))
+    if cfg.spec_vectors:
+        nodes.insert(1, ("spec", spec))
     for name, fn in nodes:
         g.add_node(name, fn)
     after_edit = "interface" if cfg.interface_check else "check"
     g.add_edge(START, "read_task")
-    g.add_conditional_edges("read_task", lambda s: "finalize" if s.get("stop_reason") else rt.go(s, "plan"),
-                            ["plan", "finalize"])
+    if cfg.spec_vectors:
+        g.add_conditional_edges("read_task", lambda s: "finalize" if s.get("stop_reason") else rt.go(s, "spec"),
+                                ["spec", "finalize"])
+        g.add_conditional_edges("spec", lambda s: "finalize" if s.get("stop_reason") else rt.go(s, "plan"),
+                                ["plan", "finalize"])
+    else:
+        g.add_conditional_edges("read_task", lambda s: "finalize" if s.get("stop_reason") else rt.go(s, "plan"),
+                                ["plan", "finalize"])
     g.add_conditional_edges("plan", lambda s: "finalize" if s.get("stop_reason") else rt.go(s, "edit"),
                             ["edit", "finalize"])
     g.add_conditional_edges("edit", lambda s: "finalize" if s.get("stop_reason") else rt.go(s, after_edit),
@@ -555,11 +685,101 @@ def build(rt):
                                 ["edit", "gate", "finalize"])
         g.add_conditional_edges("gate", lambda s: "finalize" if s.get("stop_reason") else rt.go(s, "reflect"),
                                 ["reflect", "finalize"])
+    elif cfg.verify_submit:
+        g.add_conditional_edges("reflect", lambda s: (rt.go(s, "verify") if s.get("stop_reason") == "submit" else
+                                                      "finalize") if s.get("stop_reason") else rt.go(s, "edit"),
+                                ["edit", "verify", "finalize"])
+        g.add_conditional_edges("verify", lambda s: "finalize" if s.get("stop_reason") else rt.go(s, "edit"),
+                                ["edit", "finalize"])
     else:
         g.add_conditional_edges("reflect", lambda s: "finalize" if s.get("stop_reason") else rt.go(s, "edit"),
                                 ["edit", "finalize"])
     g.add_edge("finalize", END)
     return g.compile()
+
+
+def note_tb(rt, result):
+    """M3d bookkeeping (kept for every arm, shown only with verify_submit): a testbench result on these files."""
+    rt.tb_runs += 1
+    rt.tb_run_version = rt.version
+    rt.tb_last = result
+    if result.get("ok"):
+        rt.tb_pass_version = rt.version
+
+
+def spec_inputs(rt, task):
+    """M3d: the blind spec call's inputs: the documents under docs/ and a port table of the given RTL. Never an
+    RTL body, verif/, or anything the agent writes."""
+    from . import spec as spec_mod
+
+    docs = {}
+    for rel in rt.files.list_files():
+        if rel.startswith("docs/") and os.path.splitext(rel)[1] in TEXT_EXT:
+            try:
+                docs[rel] = rt.files.read(rel)
+            except OSError:
+                continue
+    ports = "(none: no RTL was given)"
+    try:
+        from .interface import given_interface, given_record
+
+        given, _ = given_interface(given_record(rt.cfg.root))
+        ports = spec_mod.port_table(given)
+    except Exception as e:  # the call still runs, without the port table
+        rt.tracer.log("tool", check="spec_ports", command="read rtl/ ports", exit_code=1,
+                      output=truncate(f"{type(e).__name__}: {e}", 500))
+    return {"docs": spec_mod.docs_text(docs), "ports": ports}
+
+
+def run_spec(rt, tag):
+    """M3d: the spec testbench on the files as they stand; fails open on any error."""
+    from . import spec as spec_mod
+
+    st = rt.spec_stats
+    try:
+        res = spec_mod.run(rt.checker, rt.cfg.root, rt.spec, tag=tag)
+    except Exception as e:
+        res = {"status": "error", "passed": 0, "total": len(rt.spec["cases"]), "failed_cases": [], "mismatches": [],
+               "summary": f"{type(e).__name__}: {e}"}
+    if res["status"] != "skipped":
+        st["spec_runs"] += 1
+    if res["status"] == "unbuildable":
+        st["spec_unbuildable_runs"] += 1
+    rt.spec_version, rt.spec_last = rt.version, res
+    rt.tracer.log("tool", check=f"{tag}_result", command="spec cases", exit_code=0 if res["status"] == "pass" else 1,
+                  output=f"{res['status']}: {res['passed']}/{res['total']} cases passed")
+    return res
+
+
+def spec_render(res):
+    from . import spec as spec_mod
+
+    return spec_mod.render(res)
+
+
+def refusal(rt, missing):
+    """The message a refused submit sends back to edit: what is missing and what would satisfy the rule."""
+    given = [r for r in rt.files.list_files() if r.startswith("verif/") and r.endswith((".sv", ".v", ".py"))]
+    parts = ["Submit refused: the design as it now stands has not passed a simulation."]
+    if "no_tb" in missing:
+        parts.append("No testbench has run on the current files.")
+    if "tb_fail" in missing:
+        parts.append("Your testbench fails on the current files (its result is above).")
+    if "spec_fail" in missing:
+        parts.append("The specification cases fail (above). They were written from the specification alone, by a "
+                     "reviewer who has not seen your design; inputs change just after a rising edge and outputs are "
+                     "compared 1 ns after the next one. Fix the design where the specification supports the "
+                     "expected value.")
+    if "no_tb" in missing or "tb_fail" in missing:
+        if given:
+            parts.append("The task gives a testbench: run it by naming it with an empty body, e.g. "
+                         f'<tb path="{given[0]}" top="<its top module>"></tb>, and choose the testbench check. '
+                         f"Given under verif/: {', '.join(given[:6])}.")
+        else:
+            parts.append("Write a self-checking testbench with a small reference model that covers the "
+                         "specification's examples, its error cases and any latency, count or flag it states, "
+                         "choose the testbench check, and fix what it finds.")
+    return " ".join(parts)
 
 
 def allowed_check(name, cfg):
@@ -590,8 +810,13 @@ def finish(rt, state, error=None):
             kept = "last"
             if compiled is False and rt.best is not None:
                 rt.files.restore(rt.best)
+                rt.version += 1
                 kept = f"best_compiled_turn_{rt.best_turn}"
                 rt.tracer.log("tool", check="keep_best", command=f"restore turn {rt.best_turn}", exit_code=0)
+        if rt.cfg.spec_vectors and rt.spec is not None:  # M3d: the spec cases on the final design (measurement)
+            final = rt.spec_last if rt.spec_version == rt.version else run_spec(rt, "spec_final")
+            rt.spec_stats.update(spec_final_status=final["status"], spec_final_passed=final["passed"],
+                                 spec_final_total=final["total"])
         for f in ("compile.vvp", "tb.vvp"):
             p = os.path.join(rt.checker.tb_dir, f) if hasattr(rt.checker, "tb_dir") else None
             if p and os.path.exists(p):
@@ -635,6 +860,11 @@ def make_summary(rt, state, stop, kept, compiled):
         extra.update(json.loads(json.dumps(rt.iface_stats)))
     if rt.cfg.mutation_gate:
         extra.update(json.loads(json.dumps(rt.gate_stats)))
+    if rt.cfg.verify_submit:
+        rt.verify_stats["testbench_runs"] = rt.tb_runs
+        extra.update(json.loads(json.dumps(rt.verify_stats)))
+    if rt.cfg.spec_vectors:
+        extra.update(json.loads(json.dumps(rt.spec_stats)))
     return {**_summary(rt, state, stop, kept, compiled), **rt.summary_extra, **extra}
 
 
@@ -740,7 +970,8 @@ def run(cfg, llm=None, **kw):
     graph = build(rt)
     state = {}
     try:
-        limit = 10 * cfg.max_turns + (40 if cfg.mutation_gate or cfg.interface_check else 20)  # M3c: more steps
+        limit = 10 * cfg.max_turns + (40 if cfg.mutation_gate or cfg.interface_check or cfg.verify_submit
+                                      else 20)  # M3c, M3d: more steps
         for state in graph.stream({}, {"recursion_limit": limit}, stream_mode="values"):
             pass
     except Exception as e:
@@ -756,7 +987,8 @@ def run(cfg, llm=None, **kw):
 
 def mermaid(**switches):
     """The compiled graph as mermaid, for the README (and its drift test). With M3c's switches
-    (mutation_gate=True, interface_check=True), the graph with their steps."""
+    (mutation_gate=True, interface_check=True) or M3d's (verify_submit=True, spec_vectors=True), the graph with
+    their steps."""
     from .config import Config
     from .llm import FakeLLM
 

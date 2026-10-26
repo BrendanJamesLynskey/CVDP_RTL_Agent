@@ -36,10 +36,17 @@ FIELDS = ["label", "id", "seed", "cid", "difficulty", "pass", "tests", "tests_pa
           "mutation_gate", "interface_check", "gate_runs", "gate_outcomes", "gate_failures", "gate_overridden",
           "mutants_generated", "mutants_compiled", "mutants_killed", "mutants_unfinished", "gate_wall_s",
           "interface_runs", "interface_mismatch_runs", "interface_kinds", "interface_fallbacks",
-          "interface_blocks", "interface_unresolved"]
+          "interface_blocks", "interface_unresolved",
+          # M3d (after M3c's): verify before submit and the blind spec cases, blank when the switch was off
+          "verify_submit", "spec_vectors", "verify_runs", "verify_refusals", "verify_let_through", "verify_outcomes",
+          "verify_reruns", "testbench_runs", "verified_at_submit", "spec_status", "spec_failed_open", "spec_cases",
+          "spec_steps", "spec_runs", "spec_unbuildable_runs", "spec_final_status", "spec_final_passed",
+          "spec_final_total"]
 M3C_GATE = ("gate_runs", "gate_failures", "mutants_generated", "mutants_compiled", "mutants_killed",
             "mutants_unfinished", "gate_wall_s")
 M3C_IFACE = ("interface_runs", "interface_mismatch_runs", "interface_blocks")
+M3D_VERIFY = ("verify_runs", "verify_refusals", "verify_let_through", "verify_reruns", "testbench_runs")
+M3D_SPEC = ("spec_cases", "spec_steps", "spec_runs", "spec_unbuildable_runs")
 
 
 import taxonomy  # noqa: E402  (after the path insert; taxonomy imports collect lazily)
@@ -79,6 +86,27 @@ def m3c_columns(s):
         out["interface_kinds"] = "+".join(f"{k}:{v}" for k, v in sorted((s.get("interface_kinds") or {}).items()))
         out["interface_fallbacks"] = (s.get("interface_engines") or {}).get("yosys", 0)
         out["interface_unresolved"] = int(bool(s.get("interface_mismatch_unresolved")))
+    return out
+
+
+def m3d_columns(s):
+    """M3d's columns from a summary; blank for an agent without the switch (or an older one)."""
+    sw = s.get("switches", {})
+    out = {k: "" for k in FIELDS[FIELDS.index("verify_submit"):]}
+    out["verify_submit"] = int(bool(sw.get("verify_submit"))) if s else ""
+    out["spec_vectors"] = int(bool(sw.get("spec_vectors"))) if s else ""
+    if "verify_runs" in s:
+        out.update({k: s.get(k, 0) for k in M3D_VERIFY})
+        out["verify_outcomes"] = "+".join(s.get("verify_outcomes") or [])
+        v = s.get("verified_at_submit")
+        out["verified_at_submit"] = "" if v is None else int(bool(v))
+    if "spec_status" in s:
+        out.update({k: s.get(k, 0) for k in M3D_SPEC})
+        out["spec_status"] = s.get("spec_status") or ""
+        out["spec_failed_open"] = int(bool(s.get("spec_failed_open")))
+        out["spec_final_status"] = s.get("spec_final_status") or ""
+        for k in ("spec_final_passed", "spec_final_total"):
+            out[k] = "" if s.get(k) is None else s[k]
     return out
 
 
@@ -146,6 +174,7 @@ def rows(work, dataset=None, runner="", model="", seed="", reasoning_hint=""):
         })
         row = out[-1]
         row.update(m3c_columns(s))
+        row.update(m3d_columns(s))
         ev, _ = taxonomy.evidence_from_dir(work, pid, e, pdir)
         row.update(ev)
         if row["pass"] != 1:

@@ -36,6 +36,11 @@ Secondary flags besides the other labels that hold: partial_pass (some hidden te
 self_check_off, lint_off, empty_replies, best_edit_restored; and M3c's gate_overridden (the mutation gate failed
 twice and the agent submitted anyway), gate_no_tb (the gate found no testbench of the agent's at least once) and
 interface_mismatch_unresolved (the last interface check before the end still reported a mismatch). No M3c label.
+M3d's flags: verify_let_through (a submit went through unverified: refused twice, or no room for another edit),
+spec_checks_passed / spec_checks_failed (the blind specification cases on the final design; spec_checks_passed on
+a failed row is the new kind: the agent's own checks and the spec checks passed, the hidden tests did not) and
+spec_failed_open (the spec call gave no usable cases, or they could not be built against the design). No M3d
+label.
 
 Inputs: work dirs (`--work NAME=dir`, a sweep's work dir with seed*/ or a single harness prefix with
 raw_result.json), or collect.py CSVs (positional, or `--arm NAME=a.csv,b.csv`). CSVs written by collect.py since
@@ -252,6 +257,15 @@ def label(r):
         flags.append("gate_no_tb")
     if str(r.get("interface_unresolved")) == "1":
         flags.append("interface_mismatch_unresolved")
+    if (_i(r.get("verify_let_through")) or 0) > 0:
+        flags.append("verify_let_through")
+    fs = str(r.get("spec_final_status") or "")
+    if fs == "pass":
+        flags.append("spec_checks_passed")
+    elif fs in ("fail", "timeout"):
+        flags.append("spec_checks_failed")
+    if str(r.get("spec_failed_open")) == "1" or fs in ("unbuildable", "error"):
+        flags.append("spec_failed_open")
     return primary, flags
 
 

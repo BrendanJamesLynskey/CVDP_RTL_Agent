@@ -39,6 +39,8 @@ HARNESS=${HARNESS:-langgraph}        # langgraph (the M1-M3 agent) | deepagents 
 MEMORY=${MEMORY:-}                   # a lessons snapshot in the repo (tools/learn_lessons.py); blank = none
 MUTATION_GATE=${MUTATION_GATE:-0}    # M3c: 1 = mutation-score gate before submit (langgraph only)
 INTERFACE_CHECK=${INTERFACE_CHECK:-0} # M3c: 1 = interface diff by elaboration after each edit (langgraph only)
+VERIFY_SUBMIT=${VERIFY_SUBMIT:-0}    # M3d: 1 = a submit is refused until the design passed a simulation (langgraph)
+SPEC_VECTORS=${SPEC_VECTORS:-0}      # M3d: 1 = VERIFY_SUBMIT plus blind reference cases from the spec (langgraph)
 STEP_BUDGET_S=${STEP_BUDGET_S:-}
 SEED_PROBLEM_WORST_S=${SEED_PROBLEM_WORST_S:-660}
 T0=$(date +%s)
@@ -54,6 +56,8 @@ bit() { [[ "$2" =~ ^[01]$ ]] || die "$1 must be 0 or 1, got '$2'"; }
 num BUDGET_USD "$BUDGET_USD"; int MAX_TURNS "$MAX_TURNS"; int THREADS "$THREADS"
 bit SELF_CHECK "$SELF_CHECK"; bit LINT "$LINT"; int SEEDS "$SEEDS"
 bit MUTATION_GATE "$MUTATION_GATE"; bit INTERFACE_CHECK "$INTERFACE_CHECK"
+bit VERIFY_SUBMIT "$VERIFY_SUBMIT"; bit SPEC_VECTORS "$SPEC_VECTORS"
+[ "$SPEC_VECTORS" = 0 ] || VERIFY_SUBMIT=1   # S is V plus the spec cases
 [[ "$SEED_OFFSET" =~ ^[0-9]+$ ]] || die "SEED_OFFSET must be a non-negative integer, got '$SEED_OFFSET'"
 case "$REASONING" in
   default|low|medium|high|off) ;;
@@ -67,6 +71,11 @@ case "$HARNESS" in langgraph|deepagents|claudecode) ;; *) die "HARNESS must be l
 if [ "$HARNESS" != langgraph ] && { [ "$MUTATION_GATE" = 1 ] || [ "$INTERFACE_CHECK" = 1 ]; }; then
   die "MUTATION_GATE and INTERFACE_CHECK are steps of the LangGraph graph: use HARNESS=langgraph"
 fi
+if [ "$HARNESS" != langgraph ] && [ "$VERIFY_SUBMIT" = 1 ]; then
+  die "VERIFY_SUBMIT and SPEC_VECTORS are steps of the LangGraph graph: use HARNESS=langgraph"
+fi
+if [ "$VERIFY_SUBMIT" = 1 ] && [ "$MUTATION_GATE" = 1 ]; then die "VERIFY_SUBMIT and MUTATION_GATE are separate arms"; fi
+if [ "$VERIFY_SUBMIT" = 1 ] && [ "$SELF_CHECK" = 0 ]; then die "VERIFY_SUBMIT needs SELF_CHECK=1 (it needs a testbench)"; fi
 if [ -n "$MEMORY" ]; then
   [[ "$MEMORY" =~ ^[A-Za-z0-9._/-]+\.json$ ]] || die "MEMORY must be a path to a .json snapshot, got '$MEMORY'"
   [ -f "$MEMORY" ] || die "MEMORY: no such file '$MEMORY'"
@@ -103,12 +112,15 @@ run_phase() {
     "$BUDGET_USD" "$n" "$SEEDS"); fi
   printf '{"problems": %s, "seeds": %s, "seed_offset": %s, "run_budget_usd": %s, "model": "%s", "reasoning": "%s", "provider_order": "%s"}\n' \
     "$n" "$SEEDS" "$SEED_OFFSET" "$guard" "$MODEL" "$REASONING" "$PROVIDER_ORDER" > "$work.run.json"
-  python3 - "$work.run.json" "$HARNESS" "$MEMORY" "$MUTATION_GATE" "$INTERFACE_CHECK" <<'EOF'
+  python3 - "$work.run.json" "$HARNESS" "$MEMORY" "$MUTATION_GATE" "$INTERFACE_CHECK" "$VERIFY_SUBMIT" \
+    "$SPEC_VECTORS" <<'EOF'
 import json, sys
 run = json.load(open(sys.argv[1]))
 run.update(harness=sys.argv[2], memory=sys.argv[3])
 if sys.argv[4] == "1" or sys.argv[5] == "1":  # M3c: named only when on, so an M3b run.json is unchanged
     run.update(mutation_gate=sys.argv[4] == "1", interface_check=sys.argv[5] == "1")
+if sys.argv[6] == "1":  # M3d, likewise
+    run.update(verify_submit=True, spec_vectors=sys.argv[7] == "1")
 json.dump(run, open(sys.argv[1], "w"))
 EOF
 
@@ -117,13 +129,13 @@ EOF
   export CVDP_MODEL="$MODEL" CVDP_BUDGET_USD="$BUDGET_USD" CVDP_MAX_TURNS="$MAX_TURNS" CVDP_SELF_CHECK="$SELF_CHECK" \
     CVDP_LINT="$LINT" CVDP_LEDGER_DIR=/ledger CVDP_RUN_BUDGET_USD="$guard" CVDP_REASONING="$REASONING" \
     CVDP_PROVIDER_ORDER="$PROVIDER_ORDER" CVDP_HARNESS="$HARNESS" CVDP_MUTATION_GATE="$MUTATION_GATE" \
-    CVDP_INTERFACE_CHECK="$INTERFACE_CHECK"
+    CVDP_INTERFACE_CHECK="$INTERFACE_CHECK" CVDP_VERIFY_SUBMIT="$VERIFY_SUBMIT" CVDP_SPEC_VECTORS="$SPEC_VECTORS"
   export CVDP_AGENT_MOUNTS="$ledger:/ledger"
   if [ -n "$MEMORY" ]; then  # the snapshot, read-only, at /memory/<its name> in the agent's container
     export CVDP_MEMORY="/memory/$(basename "$MEMORY")"
     export CVDP_AGENT_MOUNTS="$CVDP_AGENT_MOUNTS;$(cd "$(dirname "$MEMORY")" && pwd)/$(basename "$MEMORY"):$CVDP_MEMORY:ro"
   fi
-  export CVDP_AGENT_ENV=CVDP_PROVIDER,CVDP_MODEL,CVDP_BUDGET_USD,CVDP_MAX_TURNS,CVDP_SELF_CHECK,CVDP_LINT,CVDP_LEDGER_DIR,CVDP_RUN_BUDGET_USD,CVDP_REASONING,CVDP_SEED,CVDP_PROVIDER_ORDER,CVDP_HARNESS,CVDP_MEMORY,CVDP_MUTATION_GATE,CVDP_INTERFACE_CHECK
+  export CVDP_AGENT_ENV=CVDP_PROVIDER,CVDP_MODEL,CVDP_BUDGET_USD,CVDP_MAX_TURNS,CVDP_SELF_CHECK,CVDP_LINT,CVDP_LEDGER_DIR,CVDP_RUN_BUDGET_USD,CVDP_REASONING,CVDP_SEED,CVDP_PROVIDER_ORDER,CVDP_HARNESS,CVDP_MEMORY,CVDP_MUTATION_GATE,CVDP_INTERFACE_CHECK,CVDP_VERIFY_SUBMIT,CVDP_SPEC_VECTORS
   if [ "$CVDP_PROVIDER" = openrouter ]; then
     test -n "${OPENROUTER_API_KEY:-}" || die "OPENROUTER_API_KEY is not set"
     export CVDP_AGENT_ENV="OPENROUTER_API_KEY,$CVDP_AGENT_ENV"
