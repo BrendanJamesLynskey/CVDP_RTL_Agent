@@ -47,6 +47,12 @@ compared with the interface the agent was given; the findings go to reflect like
 its design, or the gate sends the survivors back to reflect (at most twice). Three arms, 3 runs each, on M3b's 86
 problems: A (neither), M (the gate), I (the interface check); M − A and I − A are pre-registered.
 
+**Claude Code ladder** (exploratory, [`docs/reports/claude_code_ladder.md`](docs/reports/claude_code_ladder.md)):
+Claude Code (`harness=claudecode`, on the owner's Max plan) as the agent, one run per model on the 86 evaluation
+problems, paired against M3c's arm A (LangGraph + `gpt-6-luna`). Opus 5.5 73.3% (+11.6 points [+1.9, +21.3]),
+Sonnet 5.5 69.8% (+8.1 [−0.4, +17.4]), Fable 5.1 67.4% (+5.8, 17 problems stopped on the 480 s wall cap), Haiku 5.5
+66.3% (+4.7). Both model and harness differ from the base.
+
 **M2a** (merged, [`docs/reports/M2a_report.md`](docs/reports/M2a_report.md)): reasoning limits, a retry on empty
 replies and unreadable decisions, and seeds. On the same 10 problems on Arm64, DeepSeek at `reasoning=off` passed
 6/10 for $0.0867 with no empty replies; at `low` it passed 7/10 for $0.3546 with 14 empty replies.
