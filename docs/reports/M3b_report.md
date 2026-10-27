@@ -336,6 +336,13 @@ Odd or worth knowing (none of it is a result: one run of 10 problems each):
 - **Common words count as not given.** `reachable.py` lists a plain word such as `clk` or `hour` as not given when
   it appears only in prose, which may be too strict for it. The 6 exclusions do not depend on this: each also reads
   an identifier-shaped name the agent is not given, such as `hour_pulse` or `CLK_FREQ` (`m3b/unreachable.md`).
+- **Compiled file paths were not checked** (found by the [unsolved-problem analysis](unsolved_analysis.md)).
+  `reachable.py` checked the names the hidden testbench reads, not the files it compiles, so it kept
+  `sync_serial_communication_0001` (compiles `sync_serial_communication_top.sv`, named nowhere) and
+  `cache_controller_0001` (`.sv`, while the prompt says "Verilog"). The check now exists (`--paths-md-out`,
+  reported as `unnamed_file` and `extension_mismatch`) and would have excluded 3 evaluation problems, those two and
+  `sigma_delta_audio_0001`: see [`reachable_paths.md`](reachable_paths.md). The evaluation set
+  (`tools/m3b_eval_ids.txt`) is frozen and not changed, so every M3b-and-later score still uses the 86.
 - **Rounds are not turns.** B and D's `turns` count model calls; A and C's count edit cycles. Compare the arms on
   cost and wall time, not on turns.
 - **Four comparisons, three runs.** None of the sign tests passes a Bonferroni threshold for four comparisons

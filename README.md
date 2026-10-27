@@ -62,6 +62,13 @@ counterfactual reruns. 7 are benchmark-limited with strong evidence (listed in `
 more are borderline, 3 are agent-limited, none is an environment failure. On the problems Claude Code won and our
 agent did not, the agent mostly submitted on a clean compile and lint without running any testbench.
 
+**Compiled-path check** ([`docs/reports/reachable_paths.md`](docs/reports/reachable_paths.md)): the gap that
+analysis found in `tools/reachable.py`, closed. It now also checks that every file the hidden harness compiles
+(`VERILOG_SOURCES`) is given, named, or the file of a given module in the stated language. Over the 92 agentic
+problems it flags 4 (`sync_serial_communication_0001`: file named nowhere; `cache_controller_0001`,
+`sigma_delta_audio_0001`, `spi_complex_mult_0002`: `.sv` while the prompt says "Verilog"), and 3 of them would have
+been excluded under M3b's rule. The frozen evaluation set is not changed.
+
 **M3d** ([`docs/reports/M3d_report.md`](docs/reports/M3d_report.md), pre-registered in
 [`docs/reports/m3d/preregistration.md`](docs/reports/m3d/preregistration.md)): two more fixed steps, each off by
 default. **Verify before submit** (`verify_submit`): a submit is refused until the design as it stands has passed a
@@ -409,7 +416,7 @@ empty (an old ledger and the harness's reuse of `raw_result.json` would make the
   interval, better/worse counts, an exact sign test, and the Pareto CSV and SVG; `--ids` keeps only the listed problems), `taxonomy.py` (one deterministic
   failure label per failed problem and run, from logs, trace and summary; `collect.py` writes it as
   `failure_label`), `interface_given.py` (M3c: how much of the hidden top module's interface the interface check is given), `reachable.py` (problems whose hidden
-  testbench reads names the agent is never given; made the M3b evaluation set `m3b_eval_ids.txt`), `learn_lessons.py`
+  testbench reads names the agent is never given; made the M3b evaluation set `m3b_eval_ids.txt`; `--paths-md-out` also checks the compiled file paths, `docs/reports/reachable_paths.md`), `learn_lessons.py`
   (builds a lessons snapshot from learning-set work dirs, refusing any evaluation-set problem), `retrieval.py` (which
   lessons each problem gets), `behaviour.py` (testbench use, turns and stop reasons per run), `key_usage.py` (the key's `usage` only), `models.py` (whether OpenRouter model IDs exist, their prices, context and `reasoning` support, from the public model list), `pick_ids.py` (the seeded M1 sample, `m1_ids.txt`), `amba_scan.py` and `amba_ids.txt`,
   `inventory.py`.
