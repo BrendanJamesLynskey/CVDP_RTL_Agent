@@ -21,9 +21,21 @@ For each problem record (`harness` holds the hidden files, `prompt` and `context
    missing name the agent never fails on is not evidence, and a failing problem whose names are all given is the
    agent's fault, not the benchmark's.
 
+4. **Compiled paths (added after brief 09; reported, does not change the frozen M3b set).** Every source the hidden
+   harness compiles (`VERILOG_SOURCES` in each `.env*` file) must be reachable: a file the task gives, a path or
+   file name written in the prompt or a document, or the name of a module the task gives with the extension of the
+   stated language (the file-per-module convention). Otherwise the path is unreachable, with one reason:
+   `extension_mismatch` (the stem is a given module name but the extension is the other language's: `.sv` when
+   the prompt says only "Verilog", `.v` when it says only "SystemVerilog", and no given `rtl/` file has that
+   extension) or `unnamed_file` (the stem is no name the task gives). As a separate note, not an unreachable
+   reason, `given_rtl_not_compiled` lists the `rtl/` files the task gives that no `.env` compiles: a design that
+   instantiates them fails to compile. The generic system message ("create a Verilog module") is not counted as a
+   stated language, because every problem has it.
+
 Usage: python3 tools/reachable.py <agentic.jsonl> --runs 'docs/reports/m3/runs/*.csv'
            [--ids-out tools/m3b_eval_ids.txt] [--excluded-out tools/m3b_excluded_ids.txt]
-           [--md-out docs/reports/m3b/unreachable.md]
+           [--md-out docs/reports/m3b/unreachable.md] [--paths-md-out docs/reports/reachable_paths.md]
+           [--ids tools/m3b_eval_ids.txt] [--limited tools/benchmark_limited_ids.txt]
 """
 import argparse
 import collections
@@ -133,6 +145,59 @@ from cvdp_agent.given import ID_SHAPED as _ID_SHAPED  # noqa: E402
 from cvdp_agent.given import code_spans as _code_spans  # noqa: E402,F401
 
 
+# ---------- source paths the hidden harness compiles ----------
+
+RTL_EXT = (".sv", ".v", ".svh", ".vh")
+
+
+def compiled_paths(record):
+    """{path relative to /code (e.g. 'rtl/top.sv'): [the .env files that compile it]} from `VERILOG_SOURCES`."""
+    out = collections.defaultdict(set)
+    for name, text in (record.get("harness") or {}).items():
+        if not os.path.basename(name).startswith(".env"):
+            continue
+        for m in re.finditer(r"(?m)^\s*VERILOG_SOURCES\s*=\s*(.*)$", text or ""):
+            for tok in m.group(1).split():
+                out[re.sub(r"^/code/", "", tok)].add(name)
+    return {k: sorted(v) for k, v in out.items()}
+
+
+def stated_language(record):
+    """'sv', 'v' or None: the HDL the prompt names. Both or neither named is None (no rule stated)."""
+    text = record.get("prompt") or ""
+    sv = re.search(r"System\s*Verilog", text, re.I)
+    v = re.search(r"(?<![\w-])(?<!System)(?<!System )Verilog\b", text, re.I)
+    return "sv" if sv and not v else "v" if v and not sv else None
+
+
+def path_reason(path, record, texts=None):
+    """None when the compiled `path` is reachable, else 'extension_mismatch' or 'unnamed_file'."""
+    ctx = record.get("context") or {}
+    if path in ctx:
+        return None
+    texts = texts or given_texts(record)
+    base = os.path.basename(path)
+    if is_given(base, texts) or is_given(path, texts):
+        return None
+    stem, ext = os.path.splitext(base)
+    if not is_given(stem, texts):
+        return "unnamed_file"
+    lang = stated_language(record)
+    given_exts = {os.path.splitext(n)[1] for n in ctx if n.startswith("rtl/")}
+    if ext not in given_exts and ((lang == "v" and ext == ".sv") or (lang == "sv" and ext == ".v")):
+        return "extension_mismatch"
+    return None
+
+
+def path_check(record):
+    """(unreachable compiled paths {path: reason}, given rtl/ files no .env compiles)."""
+    paths, texts = compiled_paths(record), given_texts(record)
+    bad = {p: r for p in paths if (r := path_reason(p, record, texts))}
+    not_compiled = sorted(n for n in (record.get("context") or {})
+                          if n.startswith("rtl/") and n.endswith(RTL_EXT) and n not in paths)
+    return bad, not_compiled
+
+
 # ---------- M3's labels ----------
 
 def m3_labels(paths):
@@ -154,9 +219,14 @@ def check(records, label_counts, runs):
         texts = given_texts(rec)
         missing = {n: w for n, w in h.items() if not is_given(n, texts)}
         bad = sum(label_counts.get(rec["id"], {}).get(lb, 0) for lb in LABELS)
+        paths_bad, not_compiled = path_check(rec)
+        # `unreachable` is M3b's rule and stays as it was (tools/m3b_eval_ids.txt is frozen); `paths_unreachable`
+        # is the same rule with the compiled-path check added
         out.append({"id": rec["id"], "cid": (rec.get("categories") or [""])[0], "handles": len(h), "missing": missing,
                     "interface_failures": bad, "runs": runs,
-                    "unreachable": bool(missing) and runs > 0 and bad * 2 >= runs})
+                    "unreachable": bool(missing) and runs > 0 and bad * 2 >= runs,
+                    "paths": paths_bad, "given_rtl_not_compiled": not_compiled,
+                    "paths_unreachable": bool(missing or paths_bad) and runs > 0 and bad * 2 >= runs})
     return out
 
 
@@ -191,6 +261,74 @@ def report_md(rows, runs):
     return "\n".join(lines) + "\n"
 
 
+def read_ids(path):
+    return {ln.strip() for ln in open(path) if ln.strip() and not ln.startswith("#")} if path else set()
+
+
+def paths_md(rows, runs, eval_ids=(), limited=()):
+    """docs/reports/reachable_paths.md: the compiled-path check over every problem."""
+    eval_ids, limited = set(eval_ids), set(limited)
+    short = lambda i: f"`{i.replace('cvdp_agentic_', '')}`"  # noqa: E731
+    bad = [r for r in rows if r["paths"]]
+    nc = [r for r in rows if r["given_rtl_not_compiled"]]
+    in_eval = [r for r in bad if r["id"] in eval_ids]
+    newly = [r for r in in_eval if r["paths_unreachable"] and not r["unreachable"]]
+    lines = ["# Compiled paths the agent cannot reach\n",
+             "Made by `tools/reachable.py --paths-md-out` from the dataset's hidden harness files (the revision "
+             f"pinned in `sweep.yml`; all {len(rows)} problems of the agentic split) and M3's {runs} runs. It adds "
+             "the check brief 09 found missing (`unsolved_analysis.md`, `sync_serial_communication_0001`): every "
+             "source file the hidden harness "
+             "compiles (`VERILOG_SOURCES` in its `.env` files) must be a file the task gives, a path or file name "
+             "the prompt or a document writes, or a module name the task gives with the extension of the stated "
+             "language. Otherwise the path is unreachable:\n",
+             "- `unnamed_file`: the file's stem is no name the task gives;",
+             "- `extension_mismatch`: the stem is a given module name, but the extension belongs to the other "
+             "language (`.sv` while the prompt says only \"Verilog\", or `.v` while it says only \"SystemVerilog\"), "
+             "and no given `rtl/` file has that extension.\n",
+             "**The M3b evaluation set is not changed.** `tools/m3b_eval_ids.txt` is frozen, because every scored "
+             "result since M3b depends on it. This report says what the check would have excluded.\n",
+             "## Summary\n",
+             f"- **{len(bad)} of {len(rows)} problems** compile a path the agent cannot reach; "
+             f"{len(in_eval)} of them are in the 86-problem evaluation set.",
+             f"- **{len(newly)} evaluation problem(s) would have been excluded** under M3b's rule (unreachable name "
+             "or path, and M3 labels the problem `signal_missing_hidden` or `compile_fail_hidden` in at least half "
+             f"of its {runs} runs): " + (", ".join(short(r["id"]) for r in newly) or "none") + "."]
+    flagged = {r["id"] for r in in_eval}
+    if limited:
+        lines.append(f"- Against `tools/benchmark_limited_ids.txt` ({len(limited)} problems): the path check flags "
+                     + (", ".join(short(i) for i in sorted(limited & flagged)) or "none") + "; it does not flag "
+                     + (", ".join(short(i) for i in sorted(limited - flagged)) or "none")
+                     + ", whose causes are behaviour or values, not file paths"
+                     + (" (except where the given-RTL note below applies)" if limited & {r["id"] for r in nc} else "")
+                     + ". Flagged and not in that list: "
+                     + (", ".join(short(r["id"]) for r in in_eval if r["id"] not in limited) or "none") + ".")
+    lines.append("- A flagged path with few interface or compile failures in M3 is one the agent happened to guess "
+                 "(for example the `.sv` extension when the prompt says \"Verilog\"): it is kept under M3b's rule, "
+                 "but it is still a gap in the task.")
+    lines += ["", "## Unreachable compiled paths\n",
+              "| Problem | In eval set | Path | Reason | Interface/compile failures in M3 | Excluded under M3b's rule "
+              "with paths |", "|---|---|---|---|---|---|"]
+    for r in bad:
+        for p, why in sorted(r["paths"].items()):
+            lines.append(f"| {short(r['id'])} | {'yes' if r['id'] in eval_ids else 'no (already excluded)'} | "
+                         f"`{p}` | `{why}` | {r['interface_failures']}/{runs} | "
+                         f"{'yes' if r['paths_unreachable'] else 'no'} |")
+    if not bad:
+        lines.append("| (none) | | | | | |")
+    lines += ["", "## Note: given RTL that no `.env` compiles\n",
+              "Not an unreachable reason by itself: it matters only when the design instantiates the given file "
+              "from its own file, as the task invites in `rc5_0001` (\"choose the appropriate CA design\"). A design "
+              "that does fails to compile; one that copies the module into a compiled file does not.\n",
+              "| Problem | In eval set | Given `rtl/` files not compiled |", "|---|---|---|"]
+    for r in nc:
+        names = ", ".join(f"`{n}`" for n in r["given_rtl_not_compiled"][:6])
+        more = f" and {len(r['given_rtl_not_compiled']) - 6} more" if len(r["given_rtl_not_compiled"]) > 6 else ""
+        lines.append(f"| {short(r['id'])} | {'yes' if r['id'] in eval_ids else 'no'} | {names}{more} |")
+    if not nc:
+        lines.append("| (none) | | |")
+    return "\n".join(lines) + "\n"
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("dataset")
@@ -199,6 +337,9 @@ def main(argv=None):
     ap.add_argument("--excluded-out", help="the unreachable ids (the lessons builder refuses these too)")
     ap.add_argument("--md-out")
     ap.add_argument("--json-out", help="every problem's handles check, for review")
+    ap.add_argument("--paths-md-out", help="the compiled-path report (docs/reports/reachable_paths.md)")
+    ap.add_argument("--ids", default="tools/m3b_eval_ids.txt", help="the evaluation set, for --paths-md-out")
+    ap.add_argument("--limited", default="tools/benchmark_limited_ids.txt", help="for --paths-md-out")
     a = ap.parse_args(argv)
     records = [json.loads(ln) for ln in open(a.dataset) if ln.strip()]
     counts, runs = m3_labels(sorted(glob.glob(a.runs)))
@@ -217,6 +358,9 @@ def main(argv=None):
     if a.md_out:
         with open(a.md_out, "w") as f:
             f.write(md)
+    if a.paths_md_out:
+        with open(a.paths_md_out, "w") as f:
+            f.write(paths_md(rows, runs, read_ids(a.ids), read_ids(a.limited)))
     if a.json_out:
         with open(a.json_out, "w") as f:
             json.dump(rows, f, indent=1)

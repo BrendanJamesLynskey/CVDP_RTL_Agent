@@ -447,3 +447,50 @@ def test_retrieval_runs_count_every_work_dir(tmp_path):
         (d / "summary.json").write_text(json.dumps({"lessons": ["L01", "L02"]}))
     picks = retrieval.from_runs([str(tmp_path / "C"), str(tmp_path / "D")])
     assert len(picks) == 2 and sum(len(v) for v in picks.values()) == 4
+
+
+# ---------- reachable.py: compiled paths (brief 12) ----------
+
+def path_record(prompt, context, sources):
+    return {"id": "cvdp_agentic_x_0001", "categories": ["cid005", "medium"], "prompt": prompt, "context": context,
+            "harness": {"src/.env": f"SIM = icarus\nVERILOG_SOURCES = {sources}\nTOPLEVEL = top\n",
+                        "src/test_top.py": "x = dut.y.value\n"}}
+
+
+def test_reachable_compiled_path_given_named_or_derived_is_reachable():
+    # given as a context file, named in the prompt, or the file of a given module in the stated language
+    rec = path_record("Design `top` in SystemVerilog, using `sub` and the file `rtl/helper.sv`.",
+                      {"rtl/sub.sv": "module sub; endmodule\n"},
+                      "/code/rtl/top.sv /code/rtl/sub.sv /code/rtl/helper.sv")
+    assert reachable.compiled_paths(rec) == {"rtl/top.sv": ["src/.env"], "rtl/sub.sv": ["src/.env"],
+                                             "rtl/helper.sv": ["src/.env"]}
+    assert reachable.path_check(rec) == ({}, [])
+
+
+def test_reachable_compiled_path_named_nowhere_is_unreachable():
+    rec = path_record("Design the top-level module `top` (output `y`) in SystemVerilog; it integrates `top_tx_rx`.",
+                      {}, "/code/rtl/top_top.sv")
+    bad, _ = reachable.path_check(rec)
+    assert bad == {"rtl/top_top.sv": "unnamed_file"}
+    row = reachable.check([rec], {"cvdp_agentic_x_0001": {"compile_fail_hidden": 14}}, 14)[0]
+    assert row["paths"] and row["paths_unreachable"] and not row["unreachable"]  # M3b's own rule is unchanged
+
+
+def test_reachable_compiled_path_extension_mismatch_is_its_own_reason():
+    rec = path_record("Design a Verilog module for `cache_ctl`.", {}, "/code/rtl/cache_ctl.sv")
+    assert reachable.stated_language(rec) == "v"
+    assert reachable.path_check(rec)[0] == {"rtl/cache_ctl.sv": "extension_mismatch"}
+    # SystemVerilog named, or both named, or a given rtl/ file already uses .sv: no mismatch
+    for prompt, ctx in (("Design a SystemVerilog module `cache_ctl`.", {}),
+                        ("Verilog or SystemVerilog: design `cache_ctl`.", {}),
+                        ("Design a Verilog module for `cache_ctl`.", {"rtl/other.sv": ""})):
+        assert reachable.path_check(path_record(prompt, ctx, "/code/rtl/cache_ctl.sv"))[0] == {}
+    # .v when the prompt says only SystemVerilog
+    rec = path_record("Write `cache_ctl` in System Verilog.", {}, "/code/rtl/cache_ctl.v")
+    assert reachable.path_check(rec)[0] == {"rtl/cache_ctl.v": "extension_mismatch"}
+
+
+def test_reachable_given_rtl_not_compiled_is_a_note():
+    rec = path_record("Design `enc` in SystemVerilog; choose one of the given CA modules.",
+                      {"rtl/CA_1.sv": "", "rtl/CA_2.sv": "", "docs/x.md": ""}, "/code/rtl/enc.sv")
+    assert reachable.path_check(rec) == ({}, ["rtl/CA_1.sv", "rtl/CA_2.sv"])
