@@ -275,8 +275,9 @@ def paths_md(rows, runs, eval_ids=(), limited=()):
     newly = [r for r in in_eval if r["paths_unreachable"] and not r["unreachable"]]
     lines = ["# Compiled paths the agent cannot reach\n",
              "Made by `tools/reachable.py --paths-md-out` from the dataset's hidden harness files (the revision "
-             f"pinned in `sweep.yml`; all {len(rows)} problems of the agentic split) and M3's {runs} runs. It adds the check brief 09 found missing "
-             "(`unsolved_analysis.md`, `sync_serial_communication_0001`): every source file the hidden harness "
+             f"pinned in `sweep.yml`; all {len(rows)} problems of the agentic split) and M3's {runs} runs. It adds "
+             "the check brief 09 found missing (`unsolved_analysis.md`, `sync_serial_communication_0001`): every "
+             "source file the hidden harness "
              "compiles (`VERILOG_SOURCES` in its `.env` files) must be a file the task gives, a path or file name "
              "the prompt or a document writes, or a module name the task gives with the extension of the stated "
              "language. Otherwise the path is unreachable:\n",
