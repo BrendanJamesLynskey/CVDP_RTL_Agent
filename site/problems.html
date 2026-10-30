@@ -1,0 +1,564 @@
+<title>CVDP Problem Browser</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Read the 86 CVDP agentic problems the RTL agent was scored on, each with its pass grid across every arm we ran, its failure labels, its benchmark flags and a short note on why it is easy or hard.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Martian+Mono:wght@300;500;700;800&display=swap">
+<style>
+/* Same visual system as site/story.html: a timing diagram on engineering paper (light), a monochrome scope
+   screen (dark), red only for failure. The list is a bank of signals; each row's pass grid is its trace. */
+:root {
+  --paper: #f1f4f2; --panel: #fafbfa; --grid: #d5e0df; --grid-2: #b4c6c5;
+  --ink: #17212b; --ink-2: #4c5b68; --ink-3: #74838f;
+  --ch1: #1b4f9c; --ch2: #9a5b00; --ch3: #8a3a9e; --x: #c4321b;
+  --x-soft: rgba(196, 50, 27, .14); --ch1-soft: rgba(27, 79, 156, .12);
+  --ch2-soft: rgba(154, 91, 0, .13); --ch3-soft: rgba(138, 58, 158, .12);
+  --f-disp: "Martian Mono", "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --f-body: "IBM Plex Sans", "Helvetica Neue", Arial, system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --measure: 72ch;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0b0b0b; --panel: #111111; --grid: #1c1c1c; --grid-2: #2e2e2e;
+    --ink: #e6e6e6; --ink-2: #a6a6a6; --ink-3: #777777;
+    --ch1: #f4f4f4; --ch2: #a8a8a8; --ch3: #7c7c7c; --x: #ff5a4a;
+    --x-soft: rgba(255, 90, 74, .16); --ch1-soft: rgba(255, 255, 255, .10);
+    --ch2-soft: rgba(255, 255, 255, .07); --ch3-soft: rgba(255, 255, 255, .05);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0b0b0b; --panel: #111111; --grid: #1c1c1c; --grid-2: #2e2e2e;
+  --ink: #e6e6e6; --ink-2: #a6a6a6; --ink-3: #777777;
+  --ch1: #f4f4f4; --ch2: #a8a8a8; --ch3: #7c7c7c; --x: #ff5a4a;
+  --x-soft: rgba(255, 90, 74, .16); --ch1-soft: rgba(255, 255, 255, .10);
+  --ch2-soft: rgba(255, 255, 255, .07); --ch3-soft: rgba(255, 255, 255, .05);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-padding-top: 60px; }
+body {
+  background-color: var(--paper);
+  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  color: var(--ink); font: 16px/1.6 var(--f-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0; overflow-x: hidden;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--paper); }
+a { color: var(--ch1); text-underline-offset: 3px; }
+a:hover { color: var(--ch3); }
+:focus-visible { outline: 2px solid var(--ch3); outline-offset: 2px; }
+code, kbd, .mono { font-family: var(--f-mono); font-size: .9em; }
+code { background: var(--ch1-soft); padding: 0 .3em; border-radius: 2px; overflow-wrap: anywhere; }
+h1, h2, h3, h4 { font-family: var(--f-disp); text-wrap: balance; letter-spacing: -.01em; }
+p, li { max-width: var(--measure); }
+p { margin: 0 0 1em; }
+.small { font-size: .875rem; color: var(--ink-2); }
+.num { font-variant-numeric: tabular-nums; }
+strong { font-weight: 600; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---- top bar ---- */
+.bar { position: fixed; z-index: 20; top: env(safe-area-inset-top, 0px); left: 0; right: 0; height: 44px; display: flex; align-items: center; gap: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background: var(--paper); border-bottom: 1px solid var(--grid-2); font: 500 12px/1 var(--f-mono); color: var(--ink-2); }
+.bar .file { color: var(--ink); white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.bar .file b { font-family: var(--f-disp); font-weight: 800; color: var(--ch1); }
+.bar .sp { flex: 1; }
+.bar a.nav { font: 600 11px/1 var(--f-mono); letter-spacing: .08em; color: var(--ink); text-decoration: none; border: 1px solid var(--grid-2); padding: 7px 9px; min-height: 30px; display: inline-flex; align-items: center; border-radius: 2px; background: var(--panel); white-space: nowrap; }
+.bar a.nav:hover { border-color: var(--ch3); color: var(--ch3); }
+.tbtn { font: 600 11px/1 var(--f-mono); letter-spacing: .08em; color: var(--ink); background: var(--panel);
+  border: 1px solid var(--grid-2); padding: 7px 9px; cursor: pointer; border-radius: 2px; min-height: 30px; white-space: nowrap; }
+.tbtn:hover { border-color: var(--ch3); }
+
+main { max-width: 1120px; margin: 0 auto; padding-top: calc(64px + env(safe-area-inset-top, 0px)); }
+.edge { font: 500 11px/1.4 var(--f-mono); color: var(--ink-3); margin-bottom: 8px; }
+h1 { font-size: clamp(1.7rem, 1.1rem + 3vw, 3rem); font-weight: 800; line-height: 1.05; margin: .1em 0 .35em; letter-spacing: -.03em; }
+h1 span { color: var(--ch1); }
+.dek { font-size: 1.06rem; color: var(--ink-2); max-width: 70ch; }
+.ios { border: 1px solid var(--grid-2); border-left: 3px solid var(--ch3); background: var(--panel); padding: 12px 16px; margin: 14px 0 16px; max-width: 80ch; }
+.ios .k { display: block; font: 600 10.5px/1 var(--f-mono); letter-spacing: .12em; color: var(--ch3); margin-bottom: 7px; }
+.ios p { margin: 0 0 .5em; font-size: .95rem; } .ios p:last-child { margin: 0; }
+
+/* ---- legend ---- */
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font: 500 12px/1.4 var(--f-mono); color: var(--ink-2); margin: 10px 0 4px; }
+.legend > span { display: inline-flex; align-items: center; gap: 6px; }
+.armkey { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 4px 18px; font: 500 12px/1.45 var(--f-mono); color: var(--ink-2); margin: 8px 0 0; padding: 0; list-style: none; }
+.armkey li { margin: 0; max-width: none; } .armkey b { color: var(--ink); font-weight: 600; }
+
+/* ---- pass cells: a glyph in every cell, so colour is never the only signal ---- */
+.g { display: inline-flex; flex-wrap: wrap; gap: 3px; align-items: center; }
+.g .arm { display: inline-flex; gap: 1px; padding-right: 4px; border-right: 1px solid var(--grid-2); }
+.g .arm:last-child { border-right: 0; padding-right: 0; }
+.c { display: inline-grid; place-items: center; width: 15px; height: 17px; font: 700 11px/1 var(--f-mono); border: 1px solid var(--grid-2); background: var(--panel); color: var(--ink-3); }
+.c.p { background: var(--ch1); border-color: var(--ch1); color: var(--panel); }
+.c.f { background: var(--x-soft); border-color: var(--x); color: var(--x); }
+.c.e { border-style: dashed; color: var(--ink-2); }
+.c.m { border-style: dotted; }
+
+/* ---- toolbar ---- */
+.tools { position: sticky; top: calc(44px + env(safe-area-inset-top, 0px)); z-index: 10; background: var(--paper); border: 1px solid var(--grid-2); border-top: 0; padding: 10px 12px; margin: 18px 0 0; display: grid; gap: 8px; }
+.tools .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tools input[type=search], .tools select { font: 500 13px var(--f-mono); background: var(--panel); color: var(--ink); border: 1px solid var(--grid-2); height: 36px; border-radius: 2px; padding: 0 8px; min-width: 0; }
+.tools input[type=search] { flex: 1 1 240px; }
+.tools select { flex: 0 1 auto; max-width: 100%; }
+.tg { display: inline-flex; align-items: center; gap: 6px; font: 600 11px/1 var(--f-mono); letter-spacing: .04em; color: var(--ink); border: 1px solid var(--grid-2); background: var(--panel); padding: 0 9px; height: 32px; border-radius: 2px; cursor: pointer; user-select: none; }
+.tg input { accent-color: var(--ch3); margin: 0; }
+.tg:has(input:checked) { border-color: var(--ch3); background: var(--ch3-soft); }
+.count { font: 500 12px var(--f-mono); color: var(--ink-2); }
+.tools .count { margin-left: auto; }
+button.clr { font: 600 11px/1 var(--f-mono); color: var(--ink); background: transparent; border: 1px dashed var(--grid-2); height: 32px; padding: 0 9px; cursor: pointer; border-radius: 2px; }
+
+/* ---- list ---- */
+.list { border: 1px solid var(--grid-2); border-top: 0; background: var(--panel); margin-bottom: 30px; }
+.item { border-bottom: 1px solid var(--grid); scroll-margin-top: var(--sm, 60px); }
+.item:last-child { border-bottom: 0; }
+a.rowl { display: grid; grid-template-columns: minmax(0, 1.5fr) auto minmax(0, 1fr); gap: 4px 16px; align-items: center; padding: 9px 12px; color: var(--ink); text-decoration: none; min-height: 44px; }
+a.rowl:hover { background: var(--ch1-soft); color: var(--ink); }
+.item.open > a.rowl { background: var(--ch3-soft); }
+.rowl .nm { min-width: 0; }
+.rowl .nm b { font: 600 13.5px/1.3 var(--f-mono); display: block; overflow-wrap: anywhere; }
+.rowl .nm span { font: 500 11.5px/1.3 var(--f-mono); color: var(--ink-3); }
+.rowl .rt { font: 600 12px var(--f-mono); color: var(--ink-2); white-space: nowrap; text-align: right; }
+.rowl .rt b { color: var(--ink); }
+.rowl .meta { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; justify-content: flex-end; }
+.chip { display: inline-block; font: 600 10px/1 var(--f-mono); letter-spacing: .06em; padding: 4px 6px; border: 1px solid currentColor; white-space: nowrap; color: var(--ink-2); }
+.chip.blim { color: var(--ch2); } .chip.border { color: var(--ch2); border-style: dashed; }
+.chip.uns { color: var(--x); } .chip.co { color: var(--ch3); } .chip.path { color: var(--ch2); border-style: dotted; }
+.chip.agent { color: var(--ink-2); border-style: dashed; } .chip.ex { color: var(--ink-3); border-style: dashed; }
+.chip.cid { color: var(--ch1); } .chip.d { color: var(--ink-3); }
+.empty { padding: 20px 12px; font: 500 13px var(--f-mono); color: var(--ink-2); }
+
+/* ---- detail ---- */
+.det { padding: 6px 12px 20px; border-top: 1px dashed var(--grid-2); }
+.det h2 { font-size: clamp(1.1rem, .9rem + 1vw, 1.45rem); margin: .5em 0 .3em; overflow-wrap: anywhere; }
+.det h3 { font: 700 12px/1.3 var(--f-disp); letter-spacing: .04em; margin: 1.4em 0 .6em; color: var(--ink); text-transform: uppercase; }
+.hdr { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font: 500 12px/1.5 var(--f-mono); color: var(--ink-2); }
+.cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 28px; }
+.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 12px; font-size: .92rem; margin: 0; }
+.kv dt { font: 600 11.5px/1.6 var(--f-mono); color: var(--ink-3); }
+.kv dd { margin: 0; min-width: 0; }
+.note { border: 1px solid var(--grid-2); border-left: 3px solid var(--ch2); background: var(--paper); padding: 10px 14px; margin: 12px 0 4px; max-width: 80ch; }
+.note .k { display: block; font: 600 10.5px/1.3 var(--f-mono); letter-spacing: .1em; color: var(--ch2); margin-bottom: 5px; }
+.note p { margin: 0; }
+.flag { border-left: 2px solid var(--grid-2); padding: 2px 0 2px 10px; margin: 6px 0; font-size: .92rem; max-width: 80ch; }
+.flag .chip { margin-right: 6px; }
+.big { overflow-x: auto; border: 1px solid var(--grid); background: var(--paper); padding: 8px 10px; }
+.big table { border-collapse: collapse; font: 500 12px/1.3 var(--f-mono); }
+.big th, .big td { text-align: left; padding: 3px 10px 3px 0; vertical-align: middle; white-space: nowrap; }
+.big th { color: var(--ink-3); font-weight: 600; }
+.big td.lab { color: var(--ink-2); }
+.lbls { margin: 0; padding-left: 1.1em; font-size: .9rem; } .lbls li { margin: .15em 0; }
+.lbls code { background: none; padding: 0; color: var(--ink); }
+.task { border: 1px solid var(--grid-2); background: var(--paper); padding: 12px 16px; margin: 6px 0 10px; font-size: .95rem; overflow-wrap: anywhere; max-width: 100%; overflow-x: auto; }
+.task > :first-child { margin-top: 0; }
+.task h1, .task h2, .task h3, .task h4, .task h5, .task h6 { font-family: var(--f-body); font-weight: 600; letter-spacing: 0; margin: 1em 0 .4em; font-size: 1rem; text-transform: none; color: var(--ink); }
+.task h1, .task h2 { font-size: 1.08rem; }
+.task ul, .task ol { padding-left: 1.4em; margin: 0 0 .8em; }
+.task li { margin: .15em 0; }
+.task pre { font: 12px/1.5 var(--f-mono); background: var(--panel); border: 1px solid var(--grid); padding: 8px 10px; overflow-x: auto; margin: 0 0 .9em; }
+.task pre code { background: none; padding: 0; overflow-wrap: normal; }
+.task hr { border: 0; border-top: 1px solid var(--grid-2); margin: 1em 0; }
+.task blockquote { margin: 0 0 .9em; padding-left: 12px; border-left: 2px solid var(--grid-2); color: var(--ink-2); }
+.task .tw { overflow-x: auto; margin: 0 0 .9em; }
+.task table { border-collapse: collapse; font-size: .85rem; }
+.task th, .task td { border: 1px solid var(--grid); padding: 4px 8px; text-align: left; vertical-align: top; }
+.task th { background: var(--panel); font-weight: 600; }
+details.doc { border: 1px dashed var(--grid-2); background: var(--paper); margin: 8px 0; }
+details.doc > summary { cursor: pointer; padding: 9px 12px; font: 600 12.5px/1.4 var(--f-mono); min-height: 44px; display: flex; align-items: center; gap: 10px; list-style: none; overflow-wrap: anywhere; }
+details.doc > summary::-webkit-details-marker { display: none; }
+details.doc > summary::before { content: "+"; color: var(--ch3); width: 1ch; flex: none; }
+details.doc[open] > summary::before { content: "\2212"; }
+details.doc > summary span { color: var(--ink-3); font-weight: 500; }
+details.doc > .task { margin: 0 10px 10px; }
+ul.files { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 4px 14px; font: 500 12.5px/1.6 var(--f-mono); }
+ul.files li { margin: 0; } ul.files span { color: var(--ink-3); }
+.closer { font: 600 11px/1 var(--f-mono); letter-spacing: .06em; color: var(--ink); background: var(--panel); border: 1px solid var(--grid-2); min-height: 32px; padding: 0 10px; cursor: pointer; border-radius: 2px; }
+.src { font: 500 11.5px/1.5 var(--f-mono); color: var(--ink-3); overflow-wrap: anywhere; }
+
+footer { border-top: 2px solid var(--ink); margin-top: 20px; padding-block: 18px 40px; display: grid; gap: 8px; font: 500 12.5px/1.6 var(--f-mono); color: var(--ink-2); }
+footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+
+@media (max-width: 760px) {
+  a.rowl { grid-template-columns: minmax(0, 1fr) auto; }
+  .rowl .g { grid-column: 1 / -1; grid-row: 2; }
+  .rowl .meta { grid-column: 1 / -1; justify-content: flex-start; }
+  .cols { grid-template-columns: minmax(0, 1fr); }
+  .tools .count { margin-left: 0; width: 100%; }
+  .tools { position: static; }
+}
+@media (max-width: 480px) {
+  .bar .file .long { display: none; }
+  .tools { padding: 8px; }
+  .tools select { flex: 1 1 45%; }
+  .det { padding: 4px 8px 16px; }
+  .task { padding: 10px; }
+  .kv { grid-template-columns: minmax(0, 1fr); gap: 0; } .kv dd { margin-bottom: 6px; }
+}
+</style>
+
+<div class="bar" role="banner">
+  <span class="file"><b>cvdp_rtl_agent</b><span class="long">/problems.vcd</span></span>
+  <span class="sp"></span>
+  <a class="nav" href="./">&larr; STORY</a>
+  <button class="tbtn" id="theme" type="button" aria-label="Switch between paper and scope themes">PAPER / SCOPE</button>
+</div>
+
+<main id="main">
+<header>
+  <div class="edge">CVDP 1.1.0 &middot; agentic, free split &middot; the evaluation set of M3b onwards</div>
+  <h1>The problems, <span>one by one</span></h1>
+  <p class="dek">Every problem our agent was scored on: the task as the agent saw it, how each arm did on it, why the failures failed, and a short note on what makes it easy or hard. Click a row, or link to one as <code>problems.html#&lt;id&gt;</code>.</p>
+  <div class="ios"><span class="k">WHAT IS AND IS NOT HERE</span>
+    <p><b>Shown:</b> the prompt and the <code>docs/</code> specifications exactly as the dataset gives them (rendered from Markdown), and the names and sizes of the given RTL and testbench files. <b>Not shown:</b> the hidden tests and harness files, which would make contamination worse, the contents of the given code files, and the files the reference solution writes, which the agent is never told.</p>
+    <p id="attrib" class="small"></p>
+  </div>
+  <div class="legend" aria-label="Legend for the pass grid">
+    <span><span class="c p" aria-hidden="true">&#x2713;</span> passed the hidden tests</span>
+    <span><span class="c f" aria-hidden="true">&#x2717;</span> failed</span>
+    <span><span class="c e" aria-hidden="true">!</span> no valid attempt (provider error)</span>
+    <span><span class="c m" aria-hidden="true">&middot;</span> not run</span>
+  </div>
+  <ul class="armkey" id="armkey"></ul>
+</header>
+
+<div class="tools" role="search" aria-label="Search and filter the problems">
+  <div class="row">
+    <label class="sr" for="q">Search</label>
+    <input type="search" id="q" placeholder="Search id, name, prompt, spec, note" autocomplete="off">
+    <label class="sr" for="fc">Category</label>
+    <select id="fc"><option value="">All categories</option></select>
+    <label class="sr" for="fd">Difficulty</label>
+    <select id="fd"><option value="">All difficulties</option><option>easy</option><option>medium</option><option>hard</option></select>
+    <label class="sr" for="so">Sort</label>
+    <select id="so">
+      <option value="id">Sort: id</option>
+      <option value="ours-asc">Sort: our pass rate, low first</option>
+      <option value="ours-desc">Sort: our pass rate, high first</option>
+      <option value="diff-desc">Sort: difficulty, hard first</option>
+      <option value="diff-asc">Sort: difficulty, easy first</option>
+      <option value="solved-asc">Sort: arms that solve it, fewest first</option>
+    </select>
+  </div>
+  <div class="row" id="toggles">
+    <label class="tg"><input type="checkbox" data-f="blim"> benchmark-limited</label>
+    <label class="tg"><input type="checkbox" data-f="unsall"> unsolved by every arm</label>
+    <label class="tg"><input type="checkbox" data-f="uns"> no Claude pass</label>
+    <label class="tg"><input type="checkbox" data-f="co"> Claude-only</label>
+    <label class="tg"><input type="checkbox" data-f="hi"> our agent &ge; 2/3</label>
+    <label class="tg"><input type="checkbox" data-f="hand"> hand-written note</label>
+    <label class="tg"><input type="checkbox" data-f="excl"> show the 6 excluded</label>
+    <button class="clr" id="clr" type="button">CLEAR</button>
+    <span class="count num" id="count" aria-live="polite"></span>
+  </div>
+</div>
+<div class="list" id="list" role="list" aria-label="Problems"><div class="empty">Loading the problem data&hellip;</div></div>
+
+<footer>
+  <div class="row"><span>$finish;</span><span>// end of problem list</span></div>
+  <div class="row">
+    <a href="./">The story page</a>
+    <a href="https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent">Repository</a>
+    <a href="https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent/tree/main/docs/reports">Milestone reports</a>
+    <a href="https://huggingface.co/datasets/nvidia/cvdp-benchmark-dataset">CVDP dataset (Hugging Face)</a>
+    <a href="https://github.com/NVlabs/cvdp_benchmark">CVDP benchmark (Apache-2.0 harness)</a>
+  </div>
+  <div class="row"><span>Every number on this page is computed from the repository's committed CSVs by <code>site/data/problems.py</code>, which checks its totals against the milestone reports. The notes are our analysis, not the benchmark's.</span></div>
+  <div class="row"><span>Built by <a href="https://brendanlynskey.com">Brendan Lynskey</a></span></div>
+</footer>
+</main>
+
+<script>
+(function () {
+"use strict";
+var root = document.documentElement;
+/* ---------- theme, as on the story page ---------- */
+var tb = document.getElementById("theme");
+try { var saved = localStorage.getItem("cvdp-theme"); if (saved === "dark" || saved === "light") root.setAttribute("data-theme", saved); } catch (e) {}
+function curTheme() { var a = root.getAttribute("data-theme"); return a ? a : matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; }
+function label() { tb.textContent = curTheme() === "dark" ? "SCOPE  > PAPER" : "PAPER  > SCOPE"; }
+tb.addEventListener("click", function () {
+  var t = curTheme() === "dark" ? "light" : "dark";
+  root.setAttribute("data-theme", t);
+  try { localStorage.setItem("cvdp-theme", t); } catch (e) {}
+  label();
+});
+label();
+
+function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+
+/* ---------- a small Markdown renderer: everything is escaped first, so no HTML from the data reaches the page ---------- */
+function inline(s) {
+  var codes = [];
+  s = esc(s).replace(/`([^`]+)`/g, function (m, c) { codes.push(c); return "\u0000" + (codes.length - 1) + "\u0000"; });
+  s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" rel="noopener">$1</a>')
+       .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/__([^_]+)__/g, "<strong>$1</strong>")
+       .replace(/(^|[^*\w])\*([^*\s][^*]*?)\*(?!\w)/g, "$1<em>$2</em>")
+       .replace(/&lt;br\s*\/?&gt;/gi, "<br>");
+  return s.replace(/\u0000(\d+)\u0000/g, function (m, i) { return "<code>" + codes[+i] + "</code>"; });
+}
+function md(src) {
+  var L = String(src).replace(/\r\n?/g, "\n").replace(/\t/g, "    ").split("\n"), out = [], i = 0;
+  function isTable(k) { return /^\s*\|.*\|\s*$/.test(L[k] || "") && /^\s*\|?\s*:?-{2,}/.test(L[k + 1] || ""); }
+  function cells(r) { return r.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map(function (c) { return c.trim(); }); }
+  while (i < L.length) {
+    var l = L[i], m;
+    if (/^\s*$/.test(l)) { i++; continue; }
+    if ((m = l.match(/^\s*(```+|~~~+)\s*(\S*)/))) {
+      var f = m[1], buf = []; i++;
+      while (i < L.length && L[i].trim().indexOf(f) !== 0) buf.push(L[i++]);
+      i++; out.push("<pre><code>" + esc(buf.join("\n")) + "</code></pre>"); continue;
+    }
+    if ((m = l.match(/^\s{0,3}(#{1,6})\s+(.*?)\s*#*\s*$/))) { var h = Math.min(6, m[1].length + 2); out.push("<h" + h + ">" + inline(m[2]) + "</h" + h + ">"); i++; continue; }
+    if (/^\s{0,3}([-*_])(\s*\1){2,}\s*$/.test(l)) { out.push("<hr>"); i++; continue; }
+    if (isTable(i)) {
+      var hd = cells(L[i]); i += 2; var t = "<div class=\"tw\"><table><thead><tr>" + hd.map(function (c) { return "<th>" + inline(c) + "</th>"; }).join("") + "</tr></thead><tbody>";
+      while (i < L.length && /^\s*\|.*\|?\s*$/.test(L[i]) && L[i].indexOf("|") >= 0) { t += "<tr>" + cells(L[i]).map(function (c) { return "<td>" + inline(c) + "</td>"; }).join("") + "</tr>"; i++; }
+      out.push(t + "</tbody></table></div>"); continue;
+    }
+    if (/^\s*>/.test(l)) { var q = []; while (i < L.length && /^\s*>/.test(L[i])) q.push(L[i++].replace(/^\s*>\s?/, "")); out.push("<blockquote>" + md(q.join("\n")) + "</blockquote>"); continue; }
+    if (/^\s*([-*+]|\d+[.)])\s+/.test(l)) {
+      /* a list, nested by indentation */
+      var stack = [], html = "";
+      while (i < L.length) {
+        var x = L[i], lm = x.match(/^(\s*)([-*+]|\d+[.)])\s+(.*)$/);
+        if (!lm) {
+          if (/^\s*$/.test(x)) { if (i + 1 < L.length && /^(\s*)([-*+]|\d+[.)])\s+/.test(L[i + 1])) { i++; continue; } break; }
+          if (/^\s+\S/.test(x) && stack.length) { html += " " + inline(x.trim()); i++; continue; }
+          break;
+        }
+        var ind = lm[1].length, tag = /\d/.test(lm[2]) ? "ol" : "ul";
+        while (stack.length && ind < stack[stack.length - 1].ind) { html += "</li></" + stack.pop().tag + ">"; }
+        if (!stack.length || ind > stack[stack.length - 1].ind) { html += "<" + tag + ">"; stack.push({ ind: ind, tag: tag }); }
+        else html += "</li>";
+        html += "<li>" + inline(lm[3]); i++;
+      }
+      while (stack.length) html += "</li></" + stack.pop().tag + ">";
+      out.push(html); continue;
+    }
+    var p = [];
+    while (i < L.length && !/^\s*$/.test(L[i]) && !/^\s*(```|~~~|#{1,6}\s|>)/.test(L[i]) && !/^\s*([-*+]|\d+[.)])\s+/.test(L[i]) && !isTable(i)) p.push(L[i++].trim());
+    if (p.length) out.push("<p>" + inline(p.join(" ")) + "</p>"); else i++;
+  }
+  return out.join("\n");
+}
+
+/* ---------- data ---------- */
+var D, P = [], byId = {}, list = document.getElementById("list");
+var DIFF = { easy: 0, medium: 1, hard: 2 };
+
+function cellsHTML(s) {
+  return s.split("").map(function (ch) {
+    if (ch === "1") return '<span class="c p" aria-hidden="true">&#x2713;</span>';
+    if (ch === "0") return '<span class="c f" aria-hidden="true">&#x2717;</span>';
+    if (ch === "e") return '<span class="c e" aria-hidden="true">!</span>';
+    return '<span class="c m" aria-hidden="true">&middot;</span>';
+  }).join("");
+}
+function words(s) { var k = 0, f = 0, e = 0; s.split("").forEach(function (c) { if (c === "1") k++; else if (c === "0") f++; else if (c === "e") e++; }); return k + " of " + s.length + " passed" + (e ? ", " + e + " without a valid attempt" : ""); }
+function grid(p) {
+  var lab = D.arms.map(function (a) { return a.label + ": " + words(p.grid[a.key]); }).join("; ");
+  return '<span class="g" role="img" aria-label="' + esc(lab) + '">' + D.arms.map(function (a) { return '<span class="arm" title="' + esc(a.label) + '">' + cellsHTML(p.grid[a.key]) + "</span>"; }).join("") + "</span>";
+}
+function chips(p) {
+  var c = [];
+  if (!p.eval) c.push('<span class="chip ex">EXCLUDED</span>');
+  (p.flags || []).forEach(function (f) {
+    if (f.k === "blim") c.push('<span class="chip blim">BENCHMARK-LIMITED</span>');
+    else if (f.k === "border") c.push('<span class="chip border">BORDERLINE</span>');
+    else if (f.k === "agentlim") c.push('<span class="chip agent">AGENT-LIMITED</span>');
+    else if (f.k === "path") c.push('<span class="chip path">PATH</span>');
+  });
+  if (p.unsolved_all) c.push('<span class="chip uns">UNSOLVED</span>');
+  else if (p.unsolved_claude) c.push('<span class="chip uns">NO CLAUDE PASS</span>');
+  if (p.claude_only) c.push('<span class="chip co">CLAUDE-ONLY</span>');
+  return c.join("");
+}
+function rate(p) { return p.ours ? p.ours[0] / p.ours[1] : -1; }
+function pct(k, n) { return n ? Math.round(100 * k / n) + "%" : "n/a"; }
+
+function rowHTML(p) {
+  var rt = p.eval ? '<span class="rt num" title="our agent: passes over all its arm-A runs"><b>' + p.ours[0] + "/" + p.ours[1] + "</b> ours</span>"
+                  : '<span class="rt">not scored</span>';
+  return '<div class="item" role="listitem" id="' + esc(p.id) + '" data-id="' + esc(p.id) + '">' +
+    '<a class="rowl" href="#' + esc(p.id) + '" aria-expanded="false" aria-controls="d-' + esc(p.id) + '">' +
+    '<span class="nm"><b>' + esc(p.id) + "</b><span>" + esc(p.name) + " &middot; " + esc(p.cid) + " " + esc(D.cid[p.cid] || "") + " &middot; " + esc(p.difficulty) + "</span></span>" +
+    (p.eval ? grid(p) : '<span class="small">excluded before scoring</span>') +
+    '<span class="meta">' + rt + chips(p) + "</span></a></div>";
+}
+
+function detailHTML(p) {
+  var t = p.task, h = [], hf = D.source.hf + "/viewer/" + D.source.config + "/eval?row=" + p.row;
+  h.push('<div class="det" id="d-' + esc(p.id) + '">');
+  h.push('<h2>' + esc(p.name) + "</h2>");
+  h.push('<div class="hdr"><code>' + esc(PFX + p.id) + '</code><span class="chip cid">' + esc(p.cid) + "</span><span>" + esc(D.cid[p.cid]) + ': ' + esc(D.cid_long[p.cid]) + '</span><span class="chip d">' + esc(p.difficulty.toUpperCase()) + "</span><span>difficulty as the dataset rates it</span>" +
+    '<a href="' + esc(hf) + '" rel="noopener">row ' + p.row + " on Hugging Face</a></div>");
+  h.push('<div class="note"><span class="k">WHY IT IS EASY OR HARD &middot; OUR ANALYSIS, ' + (p.note.by === "hand" ? "WRITTEN BY HAND FROM THE EVIDENCE" : "A SHORT NOTE FROM THE DATA") + ', NOT A SCORE</span><p>' + esc(p.note.text) + "</p></div>");
+  if (p.eval) {
+    h.push('<div class="cols"><div>');
+    h.push("<h3>Results</h3>");
+    h.push('<div class="big"><table><thead><tr><th>Arm</th><th>Runs</th><th></th></tr></thead><tbody>' + D.arms.map(function (a) {
+      var s = p.grid[a.key]; return '<tr><td class="lab">' + esc(a.label) + '</td><td><span class="g">' + cellsHTML(s) + '</span></td><td class="lab num">' + s.split("").filter(function (c) { return c === "1"; }).length + "/" + s.length + "</td></tr>";
+    }).join("") + "</tbody></table></div>");
+    h.push('<dl class="kv" style="margin-top:10px"><dt>OUR AGENT</dt><dd class="num"><b>' + p.ours[0] + "/" + p.ours[1] + "</b> = " + pct(p.ours[0], p.ours[1]) + " over every arm-A run of LangGraph + gpt-6-luna (" + D.ours.runs.length + " runs: M3, M3b, its confirming run, M3c, M3d)</dd>" +
+      "<dt>SOLVED BY</dt><dd class=\"num\">" + p.solved_by + " of " + D.arms.length + " arms in the grid (at least one passing run)</dd>" +
+      (p.iface ? "<dt>INTERFACE</dt><dd>" + (p.iface.src === "not given" ? "the top module's interface is not given" : "top-level interface given in the " + esc(p.iface.src)) + '; <span class="num">' + p.iface.given + " of the " + p.iface.read + "</span> top-level names the hidden test reads are in it</dd>" : "") +
+      "</dl>");
+    h.push("</div><div>");
+    h.push("<h3>Failure labels</h3>");
+    if (p.labels.length) {
+      var nf = D.arms.reduce(function (s, a) { return s + p.grid[a.key].split("").filter(function (c) { return c === "0" || c === "e"; }).length; }, 0);
+      h.push('<p class="small">Most common labels over the ' + nf + " failing runs in the grid (<code>tools/taxonomy.py</code>):</p><ul class=\"lbls\">" + p.labels.map(function (l) {
+        return '<li><code>' + esc(l[0]) + '</code> <span class="num">&times;' + l[1] + "</span>: " + esc(D.label_words[l[0]] || "") + "</li>";
+      }).join("") + "</ul>");
+    } else h.push('<p class="small">No failing run in the grid.</p>');
+    h.push("<h3>Flags</h3>");
+    if (p.flags.length) p.flags.forEach(function (f) {
+      var c = { blim: "blim", border: "border", agentlim: "agent", path: "path", given_nc: "ex" }[f.k];
+      var extra = f.cf && f.cf !== "—" ? " Counterfactual rerun: " + esc(f.cf) + "." : "";
+      if (f.k === "path") extra = f.excl ? " Under M3b's rule with this check it would have been excluded." : " Kept under M3b's rule with this check.";
+      var src = (f.k === "path" || f.k === "given_nc") ? "docs/reports/reachable_paths.md" : "docs/reports/unsolved_analysis.md";
+      h.push('<div class="flag"><span class="chip ' + c + '">' + esc(f.t.toUpperCase()) + "</span>" + esc(f.why) + "." + extra + ' <span class="src">(' + src + ")</span></div>");
+    });
+    else h.push('<p class="small">None.</p>');
+    h.push("</div></div>");
+  } else {
+    h.push("<h3>Why it is not in the evaluation set</h3><p>The hidden test reads names the task never gives: " + esc(p.excluded.names) + '. M3 labelled it an interface failure in <span class="num">' + p.excluded.m3_iface[0] + " of " + p.excluded.m3_iface[1] + '</span> runs, so <code>tools/reachable.py</code> excluded it before any scored run. In M3b\'s sweeps of the excluded problems it passed <span class="num">' + p.excluded.m3b[0] + " of " + p.excluded.m3b[1] + '</span> runs. <span class="src">(docs/reports/m3b/unreachable.md)</span></p>');
+  }
+  h.push("<h3>The task</h3>");
+  h.push('<div class="task">' + md(t.prompt) + "</div>");
+  if (t.given.length) h.push('<p class="small" style="margin:10px 0 4px">Files given in <code>rtl/</code> and <code>verif/</code> (names only; contents not reproduced):</p><ul class="files">' + t.given.map(function (g) { return "<li>" + esc(g.path) + " <span>(" + g.lines + " lines)</span></li>"; }).join("") + "</ul>");
+  if (t.docs.length) {
+    h.push('<p class="small" style="margin:12px 0 4px">Specifications given in <code>docs/</code>:</p>');
+    t.docs.forEach(function (d, j) { h.push('<details class="doc" data-doc="' + j + '"><summary>' + esc(d.path) + " <span>" + d.md.length.toLocaleString("en-GB") + " characters</span></summary></details>"); });
+  }
+  h.push('<p class="src" style="margin-top:12px">Task text: ' + esc(D.source.dataset) + " @ " + esc(D.source.revision.slice(0, 7)) + ", " + esc(D.source.split) + ", CC BY 4.0; rendered from Markdown, otherwise unchanged.</p>");
+  h.push('<button class="closer" type="button">CLOSE</button>');
+  h.push("</div>");
+  return h.join("");
+}
+var PFX = "cvdp_agentic_";
+
+function openItem(id, scroll) {
+  var it = document.getElementById(id);
+  if (!it || !byId[id]) return false;
+  if (!it.classList.contains("open")) {
+    it.insertAdjacentHTML("beforeend", detailHTML(byId[id]));
+    it.classList.add("open");
+    it.querySelector("a.rowl").setAttribute("aria-expanded", "true");
+    var p = byId[id];
+    it.querySelectorAll("details.doc").forEach(function (dd) {
+      dd.addEventListener("toggle", function () {
+        if (dd.open && !dd.querySelector(".task")) dd.insertAdjacentHTML("beforeend", '<div class="task">' + md(p.task.docs[+dd.getAttribute("data-doc")].md) + "</div>");
+      });
+    });
+    it.querySelector(".closer").addEventListener("click", function () { closeItem(id, true); });
+  }
+  if (scroll) it.scrollIntoView({ block: "start" });
+  return true;
+}
+function closeItem(id, focus) {
+  var it = document.getElementById(id);
+  if (!it) return;
+  var d = it.querySelector(".det"); if (d) d.remove();
+  it.classList.remove("open");
+  var a = it.querySelector("a.rowl"); a.setAttribute("aria-expanded", "false");
+  if (location.hash === "#" + id) history.replaceState(null, "", location.pathname + location.search);
+  if (focus) a.focus();
+}
+
+/* ---------- filters ---------- */
+var q = document.getElementById("q"), fc = document.getElementById("fc"), fd = document.getElementById("fd"), so = document.getElementById("so");
+var tg = Array.prototype.slice.call(document.querySelectorAll("#toggles input[data-f]"));
+function on(f) { return tg.some(function (x) { return x.getAttribute("data-f") === f && x.checked; }); }
+function hay(p) {
+  if (!p._h) p._h = [p.id, p.name, p.note.text, p.task.prompt].concat(p.task.docs.map(function (d) { return d.md; })).join("\n").toLowerCase();
+  return p._h;
+}
+function render() {
+  var terms = q.value.toLowerCase().split(/\s+/).filter(Boolean);
+  var showEx = on("excl");
+  var rows = P.filter(function (p) {
+    if (!p.eval && !showEx) return false;
+    if (fc.value && p.cid !== fc.value) return false;
+    if (fd.value && p.difficulty !== fd.value) return false;
+    if (on("blim") && !(p.flags || []).some(function (f) { return f.k === "blim" || f.k === "border"; })) return false;
+    if (on("unsall") && !p.unsolved_all) return false;
+    if (on("uns") && !p.unsolved_claude) return false;
+    if (on("co") && !p.claude_only) return false;
+    if (on("hi") && !(p.eval && p.ours[0] * 3 >= p.ours[1] * 2)) return false;
+    if (on("hand") && p.note.by !== "hand") return false;
+    for (var i = 0; i < terms.length; i++) if (hay(p).indexOf(terms[i]) < 0) return false;
+    return true;
+  });
+  var s = so.value;
+  rows.sort(function (a, b) {
+    var r = 0;
+    if (s === "ours-asc") r = rate(a) - rate(b);
+    else if (s === "ours-desc") r = rate(b) - rate(a);
+    else if (s === "diff-desc") r = DIFF[b.difficulty] - DIFF[a.difficulty];
+    else if (s === "diff-asc") r = DIFF[a.difficulty] - DIFF[b.difficulty];
+    else if (s === "solved-asc") r = (a.eval ? a.solved_by : 99) - (b.eval ? b.solved_by : 99);
+    return r || (a.eval === b.eval ? 0 : a.eval ? -1 : 1) || a.id.toLowerCase().localeCompare(b.id.toLowerCase());
+  });
+  var open = Array.prototype.map.call(list.querySelectorAll(".item.open"), function (x) { return x.id; });
+  list.innerHTML = rows.length ? rows.map(rowHTML).join("") : '<div class="empty">No problem matches. Clear a filter or the search.</div>';
+  open.forEach(function (id) { openItem(id, false); });
+  var ne = rows.filter(function (p) { return p.eval; }).length;
+  document.getElementById("count").textContent = ne + " of " + P.filter(function (p) { return p.eval; }).length + " evaluation problems" + (showEx ? ", " + (rows.length - ne) + " excluded" : "");
+}
+[q, fc, fd, so].forEach(function (el) { el.addEventListener("input", render); });
+tg.forEach(function (el) { el.addEventListener("change", render); });
+document.getElementById("clr").addEventListener("click", function () { q.value = ""; fc.value = ""; fd.value = ""; so.value = "id"; tg.forEach(function (x) { x.checked = false; }); render(); });
+
+/* ---------- clicks and keys: a row is a link to its anchor; arrows move between rows; Escape closes ---------- */
+list.addEventListener("click", function (e) {
+  var a = e.target.closest("a.rowl"); if (!a) return;
+  e.preventDefault();
+  var id = a.parentNode.id;
+  if (a.parentNode.classList.contains("open")) closeItem(id, false);
+  else { openItem(id, false); history.replaceState(null, "", "#" + id); }
+});
+list.addEventListener("keydown", function (e) {
+  var a = e.target.closest && e.target.closest("a.rowl");
+  if (e.key === "Escape") { var it = e.target.closest(".item.open"); if (it) { e.preventDefault(); closeItem(it.id, true); } return; }
+  if (!a || (e.key !== "ArrowDown" && e.key !== "ArrowUp" && e.key !== "Home" && e.key !== "End")) return;
+  var all = Array.prototype.slice.call(list.querySelectorAll("a.rowl")), i = all.indexOf(a);
+  var j = e.key === "ArrowDown" ? i + 1 : e.key === "ArrowUp" ? i - 1 : e.key === "Home" ? 0 : all.length - 1;
+  if (j >= 0 && j < all.length) { e.preventDefault(); all[j].focus(); }
+});
+function fromHash() {
+  var id = decodeURIComponent(location.hash.slice(1)).replace(PFX, "");
+  if (!id || !byId[id]) return;
+  if (!byId[id].eval && !on("excl")) { tg.forEach(function (x) { if (x.getAttribute("data-f") === "excl") x.checked = true; }); render(); }
+  if (!document.getElementById(id)) { document.getElementById("clr").click(); if (!byId[id].eval) { tg.forEach(function (x) { if (x.getAttribute("data-f") === "excl") x.checked = true; }); render(); } }
+  openItem(id, true);
+}
+window.addEventListener("hashchange", fromHash);
+
+/* the sticky toolbar must not cover an opened row: scroll rows to just below it */
+var tools = document.querySelector(".tools");
+function setOffset() {
+  var sticky = getComputedStyle(tools).position === "sticky";
+  root.style.setProperty("--sm", (sticky ? tools.offsetHeight + 52 : 60) + "px");
+}
+window.addEventListener("resize", setOffset);
+setOffset();
+
+/* ---------- load ---------- */
+function start(data) {
+  D = data; P = D.problems; P.forEach(function (p) { byId[p.id] = p; });
+  Object.keys(D.cid).forEach(function (k) { fc.insertAdjacentHTML("beforeend", '<option value="' + esc(k) + '">' + esc(k + " " + D.cid[k]) + "</option>"); });
+  document.getElementById("armkey").innerHTML = D.arms.map(function (a) { return "<li><b>" + esc(a.label) + "</b> " + esc(a.desc) + ' <span class="num">(' + a.k + "/" + a.n + ")</span></li>"; }).join("") +
+    "<li><b>Our agent</b> " + esc(D.ours.desc) + ' <span class="num">(' + D.ours.runs.length + " runs)</span></li>";
+  document.getElementById("attrib").innerHTML = 'Task text from <a href="' + esc(D.source.hf) + '" rel="noopener">CVDP</a> (' + esc(D.source.dataset) + ", revision <code>" + esc(D.source.revision.slice(0, 7)) + "</code>, split <code>" + esc(D.source.split) + '</code>) by NVIDIA, under <a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener">CC BY 4.0</a> (the dataset&rsquo;s licence for its non-code content). Rendered from Markdown; no other change. Code in the dataset is under Apache-2.0 or the upstream licence its NOTICE names, and is not reproduced here. No endorsement by the dataset&rsquo;s authors is implied.';
+  render();
+  fromHash();
+}
+fetch("problems.json").then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(start).catch(function (e) {
+  list.innerHTML = '<div class="empty">Could not load problems.json (' + esc(e.message) + ").</div>";
+});
+})();
+</script>

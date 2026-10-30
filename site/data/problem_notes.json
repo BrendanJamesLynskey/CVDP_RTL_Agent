@@ -1,0 +1,211 @@
+{
+ "_about": "Hand-written notes for the problem browser (site/data/problems.py). Our analysis, not the benchmark's: commentary, never a score. Written from the task text, the run CSVs and the reports named in src. No result counts here: those are computed from the CSVs.",
+ "traffic_light_controller_0001": {
+  "src": "docs/reports/unsolved_analysis.md",
+  "note": "Hard for a reason outside the agent. The prompt asks for a timer with short and long intervals and names the parameters, but never gives their values, while the hidden test counts cycles against fixed defaults. Every attempt picked its own values and failed a timing check; rerunning attempts with only the defaults changed made them pass. No testbench the agent writes can find a value the task does not contain."
+ },
+ "sync_serial_communication_0001": {
+  "src": "docs/reports/unsolved_analysis.md, docs/reports/reachable_paths.md",
+  "note": "Hard for a reason outside the agent: the hidden build compiles a file name that appears nowhere in the prompt, the specification or the given testbench, and the prompt points at a spec file name that differs from the one given. Every attempt named its file after the top module and failed to compile. With the RTL moved into the expected file, the Claude attempts pass; our agent's attempts still fail on behaviour."
+ },
+ "cache_controller_0001": {
+  "src": "docs/reports/unsolved_analysis.md, docs/reports/reachable_paths.md",
+  "note": "Two unstated details decide it. The prompt says \"Verilog\" and names no file, so most attempts wrote a .v file, but the hidden build compiles .sv. Past that, the test expects hit to stay high after the access has ended, which the short spec never says. Fixing either detail alone is not enough."
+ },
+ "secure_apb_history_shift_register_0001": {
+  "src": "docs/reports/unsolved_analysis.md",
+  "note": "The prompt says the security module uses the existing APB interface, so every attempt gated the unlock on a proper APB transfer (psel and penable). The hidden test drives the unlock writes without psel or penable, which is not a valid APB stimulus. A testbench written from the spec would pass a design the hidden test rejects."
+ },
+ "dynamic_equalizer_0008": {
+  "src": "docs/reports/unsolved_analysis.md",
+  "note": "The AWGN block's spec says only that the noise values come from a lookup table, but the hidden test compares against one exact table and reads instance names the task never gives. Attempts fail on the instance names or on their own table values. A long, multi-document task (six spec files) on top of that."
+ },
+ "rc5_0001": {
+  "src": "docs/reports/unsolved_analysis.md, docs/reports/reachable_paths.md",
+  "note": "The prompt gives four cellular-automaton modules as separate files and asks the agent to choose one, which invites instantiating it from its own file. The hidden build compiles only the top file, so a design that does that fails to compile. Past that, the prompt does not say on which cycles to sample the automaton for the S-box. Only an attempt that inlines the module and happens to sample at the right time passes."
+ },
+ "elevator_control_0004": {
+  "src": "docs/reports/unsolved_analysis.md",
+  "note": "A modification of a given elevator FSM. The hidden test expects the car to move off as soon as an overload clears, although the prompt says the doors stay open for a set time, and it expects the direction LED one cycle later than the prompt's literal definition. Every attempt followed the prompt and failed; attempts changed in both ways pass."
+ },
+ "dynamic_equalizer_0001": {
+  "src": "docs/reports/unsolved_analysis.md",
+  "note": "Borderline benchmark-limited. Three blocks of an LMS equalizer from four short spec files. The hidden test wants a bit-exact output after a fixed latency, and the spec gives neither the latency nor the fixed-point rounding of the coefficient update. The closest attempts get the latency right and still miss by a few LSBs."
+ },
+ "phase_rotation_0015": {
+  "src": "docs/reports/unsolved_analysis.md",
+  "note": "Borderline: the hidden test is not deterministic. It draws random stimulus for each simulation, and the same RTL passed in one rerun and failed a few cases in others, always during the pipeline's warm-up after reset. A modification of three given modules; a verify step can check warm-up behaviour, but cannot remove the test's randomness."
+ },
+ "hdbn_codec_0001": {
+  "src": "docs/reports/unsolved_analysis.md",
+  "note": "Agent-limited. The spec states the decoder latency in cycles, and the hidden test checks exactly that. Nearly every attempt built a slower decoder and tested only its own round trip, at its own latency. A testbench that checked every number the spec states would have caught it. A long spec (encoder, decoder and top)."
+ },
+ "phase_rotation_0013": {
+  "src": "docs/reports/unsolved_analysis.md",
+  "note": "Agent-limited, and an odd one: our agent solves it sometimes and no Claude model does. The prompt is vague about the new output levels, but the given slicer has four regions and the test keeps them. The attempts that kept the original module's structure and comparisons pass; the Claude models rewrote the inner levels as sums and fail. When modifying a given module, keep what the task does not ask to change."
+ },
+ "binary_search_tree_algorithms_0014": {
+  "src": "docs/reports/unsolved_analysis.md, docs/reports/reachable_paths.md",
+  "note": "Agent-limited, borderline. A top level over three given tree modules, with a latency the hidden test checks to the cycle. The closest attempts are one or two cycles over the spec's formula, and one misses the invalid-input flag the spec requires. One given module is never compiled by the hidden build. Counting cycles against the stated formula, and testing every stated error path, would have helped."
+ },
+ "nmea_gps_0008": {
+  "src": "docs/reports/unsolved_analysis.md part two",
+  "note": "Claude-only. A change to a given NMEA sentence decoder, with a testbench given. Every Claude model ran that testbench and debugged until its checks passed. Our agent submitted without running it, or ran only its own, and several of its runs here ended on provider errors. Easy once the given testbench is used."
+ },
+ "DES_0001": {
+  "src": "docs/reports/unsolved_analysis.md part two",
+  "note": "Large constant tables: the eight S-boxes and the permutations must be typed in exactly. The Claude attempts that passed generated them from the spec document with a script, then ran the given testbench. Our agent copied the tables by hand, made transcription errors it never found, and ran out of turns. A task where the method of writing constants matters more than the design."
+ },
+ "binary_search_tree_algorithms_0001": {
+  "src": "docs/reports/unsolved_analysis.md part two",
+  "note": "Claude-only. Modifying a given search module to delete nodes, with a long spec. The spec has a requirement on what the outputs become after a deletion that is easy to miss; the winning attempt found it with a randomized testbench and a reference model. Our agent submitted at its first turn without any testbench."
+ },
+ "ethernet_mii_0006": {
+  "src": "docs/reports/unsolved_analysis.md part two",
+  "note": "The longest specification in the set: an Ethernet MAC transmit path with a dual-port RAM, padding, backpressure, MAC programming and interrupts. The Claude attempts that passed read the whole spec and tested against a reference model. Our agent submitted after a clean compile, with no testbench."
+ },
+ "lfsr_0005": {
+  "src": "docs/reports/unsolved_analysis.md part two",
+  "note": "A one-line bug fix: the given LFSR has the wrong taps. The passing Claude attempts changed only the taps and checked the full maximal-length period. Our agent rewrote the module and tested only the short table in the prompt, which does not exercise the period the hidden test checks. Small fix, but the property to test is not the one the prompt shows."
+ },
+ "queue_0001": {
+  "src": "docs/reports/unsolved_analysis.md part two",
+  "note": "An unstated default decides much of it: the spec does not give the default data width, and the hidden test drives wider data than most of our agent's choices. The Claude attempts that passed picked a wide default and tested several parameter settings against a model; our agent never ran a testbench here."
+ },
+ "csr_using_apb_interface_0001": {
+  "src": "docs/reports/unsolved_analysis.md part two",
+  "note": "A design convention decides it: the hidden test reads prdata some cycles after the APB transfer, so a registered, held prdata passes and a combinational, cleared one fails. Simulation does not explain it, because an APB testbench sampling in the access phase passes both. No module interface is given; the agent writes its own."
+ },
+ "sigma_delta_audio_0001": {
+  "src": "docs/reports/reachable_paths.md",
+  "note": "The prompt says \"Verilog\", but the hidden build compiles a .sv file, so nearly every attempt fails in the hidden build's compile. reachable_paths.md flags it (extension mismatch), and under M3b's rule with that check it would have been excluded. It is not in tools/benchmark_limited_ids.txt: a Claude model solved it, so it was not one of the problems the unsolved analysis studied."
+ },
+ "spi_complex_mult_0002": {
+  "src": "docs/reports/reachable_paths.md",
+  "note": "Flagged for the same .v/.sv mismatch as sigma_delta_audio_0001, but our agent always guessed .sv, so the path is not why it fails: its attempts fail the hidden tests on behaviour, mostly without a testbench of their own. An SPI slave plus a complex multiplier, from a short spec."
+ },
+ "dual_port_memory_0004": {
+  "src": "docs/reports/m3d/runs/V*.csv",
+  "note": "Easy for almost everyone: add Hamming(7,4) ECC to a small given memory, with a testbench given. The odd result is M3d's arm V, which failed every run here: it ran its own checks, saw them fail, and submitted or hit the turn cap. Verifying before submit can hurt when the agent's own test is the thing that is wrong."
+ },
+ "64b66b_codec_0001": {
+  "src": "docs/reports/m3d/runs/S*.csv",
+  "note": "A top level wiring three given 64b/66b encoder and decoder modules, with a long spec. Our agent passes it almost every time at its first turn. M3d's arm S, which adds blind spec cases, failed every run, ending with its own checks passing in some runs and failing in others: the extra checking turns changed a design the base agent usually gets right at once. The sweep artefacts would show exactly what changed."
+ },
+ "universal_shift_reg_0003": {
+  "src": "docs/reports/m3d/runs/S*.csv, docs/reports/M3d_report.md",
+  "note": "Easy: extend a given shift register with more modes, with a testbench given. M3d's arm S misses two runs only because the whole-run spend guard refused the problem before its first call. Those are not attempts, and the grid shows them as fails."
+ },
+ "universal_shift_reg_0001": {
+  "src": "docs/reports/m3d/runs/S*.csv, docs/reports/M3d_report.md",
+  "note": "Easy: a standard shift register with hold, shift, rotate and load, from a short spec with a testbench given. M3d's arm S misses two runs only because the whole-run spend guard refused the problem before its first call; they are not attempts."
+ },
+ "swizzler_0001": {
+  "src": "docs/reports/m3c/runs, docs/reports/m3d/runs",
+  "note": "A lane-remapping block with optional parity, from a short spec with a testbench given. Every Claude model and M3d's arm S solve it, while our base agent passes only now and then: its failures are mostly first-turn submits without a testbench. M3d's arm V tested but often ran out of turns."
+ },
+ "async_fifo_compute_ram_application_0001": {
+  "src": "docs/reports/claude_code/runs",
+  "note": "The reverse of the usual gap: every run of our agent passes and most Claude models fail. The prompt is one line pointing at a long FIFO spec. Most Claude attempts failed the hidden build's compile, after more turns than ours took; our agent wrote the textbook design at its first turn."
+ },
+ "custom_fifo_0004": {
+  "src": "docs/reports/m3d/runs",
+  "note": "A bug fix in a given instruction-fetch FIFO (adapted from an open-source core) with a long prompt. Every Claude model fixes it; our agent passes only sometimes, and the M3d verify arms often ran into the wall-time cap while testing. A long task where time spent checking runs out."
+ },
+ "direct_map_cache_0003": {
+  "src": "docs/reports/m3d/runs, docs/reports/claude_code/runs",
+  "note": "Turn a given direct-mapped cache into a two-way set-associative one with a victim policy. Our agent passes it most of the time and M3d's arm V passed every run, close to the wall-time cap, while most Claude models fail it. The replacement policy is described only loosely."
+ },
+ "gcd_0007": {
+  "src": "docs/reports/m3c/runs, docs/reports/m3d/runs",
+  "note": "A crypto accelerator built from given GCD and modular-arithmetic modules, choosing among several given variants, with four spec documents. Our base agent's failures here are mostly simulations that never finish (a hang). The verify arms and every Claude model pass, so running a simulation before submitting seems to catch it."
+ },
+ "AES_encryption_decryption_0018": {
+  "src": "prompt, docs/reports/m3c/given_interface_eval86.md",
+  "note": "Passed in every run of every arm, although it is rated hard: the prompt states the new IV and counter layout with a worked example, gives the new module's parameters and ports, and the AES blocks are given. Most of the work is wiring and four padding modes."
+ },
+ "DES_0003": {
+  "src": "prompt, docs/reports/reachable_paths.md",
+  "note": "Passed in every run of every arm. Decryption is encryption with the round keys reversed, and the given des_enc and S-box files are the reference to copy from, with a testbench given. The hidden build does not compile the given des_enc file, which does not matter here."
+ },
+ "Min_Hamming_Distance_Finder_0001": {
+  "src": "prompt",
+  "note": "Passed in every run of every arm: connect three given small modules (bit difference, reduction) into a minimum-distance finder, with a spec that gives the interface and a testbench."
+ },
+ "PCIe_endpoint_0001": {
+  "src": "prompt, docs/reports/m3c/given_interface_eval86.md",
+  "note": "Passed in every run of every arm despite the PCIe name. The hidden test reads only one top-level name of the design, so its check is narrow, and a plausible FSM with the spec's ports passes."
+ },
+ "async_fifo_compute_ram_application_0006": {
+  "src": "prompt",
+  "note": "Passed in every run of every arm, though rated hard: the classic asynchronous FIFO, with the memory, both pointer synchronisers and both full and empty blocks given. The task is to connect them."
+ },
+ "async_filo_0001": {
+  "src": "prompt",
+  "note": "Passed in every run of every arm: a dual-clock last-in-first-out buffer, a small variation on a standard design, with the interface in the spec and a testbench given."
+ },
+ "axis_to_uart_0001": {
+  "src": "prompt",
+  "note": "Passed in every run of every arm: an AXI-Stream to UART transmitter, a textbook block whose parameters (clock, bit rate, word size, parity, stop bits) the spec names."
+ },
+ "axis_to_uart_0004": {
+  "src": "prompt",
+  "note": "Passed in every run of every arm: the matching UART receiver to AXI-Stream, with the same well-specified parameters."
+ },
+ "barrel_shifter_0001": {
+  "src": "prompt",
+  "note": "Passed in every run of every arm: a small bug fix in a given barrel shifter, with a failing input and the expected output stated in the prompt and a testbench given."
+ },
+ "barrel_shifter_0002": {
+  "src": "prompt",
+  "note": "Passed in every run of every arm: add an arithmetic shift mode to the same small shifter. Sign extension is the only new idea."
+ },
+ "binary_to_gray_0003": {
+  "src": "prompt",
+  "note": "Passed in every run of every arm: a combinational binary-to-Gray converter, the standard XOR of each bit with its neighbour, with a testbench given."
+ },
+ "byte_enable_ram_0002": {
+  "src": "prompt",
+  "note": "Passed in every run of every arm: a dual-port RAM with byte enables (adapted from an open-source core), with the parameters and the port behaviour fully specified and a testbench given."
+ },
+ "caesar_cipher_0001": {
+  "src": "prompt",
+  "note": "Passed in every run of every arm: a small bug fix in a given Caesar cipher, where the prompt says which outputs are wrong."
+ },
+ "cellular_automata_0002": {
+  "src": "prompt",
+  "note": "Passed in every run of every arm: a 16-bit cellular-automaton generator with Rule 30 and Rule 110 and wrap-around neighbours, all named in the prompt."
+ },
+ "cic_decimator_0001": {
+  "src": "prompt",
+  "note": "Passed in every run of every arm: a CIC decimator (adapted from an open-source DSP library) whose parameters and register width formula the prompt states."
+ },
+ "cipher_0001": {
+  "src": "prompt",
+  "note": "Passed in every run of every arm: a small Feistel cipher whose rounds, halves and key schedule the prompt describes step by step."
+ },
+ "cont_adder_0001": {
+  "src": "prompt",
+  "note": "Passed in every run of every arm: a configurable accumulator, with the file, the module and the interface named and a testbench given."
+ },
+ "dma_xfer_engine_0001": {
+  "src": "prompt",
+  "note": "Passed in every run of every arm: a DMA transfer engine whose control register fields and transfer sizes the spec lists one by one."
+ },
+ "event_scheduler_0001": {
+  "src": "prompt",
+  "note": "Passed in every run of every arm: an event scheduler with add, cancel and priority, whose parameters and error rules the prompt spells out, with a testbench given."
+ },
+ "multiplexer_0001": {
+  "src": "prompt",
+  "note": "Passed in every run of every arm: a configurable multiplexer, with the file, the module, the parameters and a testbench given."
+ },
+ "signed_comparator_0001": {
+  "src": "prompt",
+  "note": "Passed in every run of every arm: a configurable signed comparator, with the file, the module, the interface and a testbench given."
+ },
+ "swizzler_0005": {
+  "src": "prompt",
+  "note": "Passed in every run of every arm: a supervisor around a given swizzler that adds input handling, a checksum and error flags, with the ports in the spec and a testbench given."
+ }
+}
