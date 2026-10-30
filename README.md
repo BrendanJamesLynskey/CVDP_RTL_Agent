@@ -6,6 +6,12 @@ Verilator and cocotb), and records what every problem cost. Results are reported
 problem** and wall time, by category, against a null agent and against published leaderboard rows.
 
 **The story so far, as an animated page:** [cvdp-rtl-agent.vercel.app](https://cvdp-rtl-agent.vercel.app/) (also on [GitHub Pages](https://brendanjameslynskey.github.io/CVDP_RTL_Agent/)) (source in [`site/`](site/)).
+**Every problem, one by one:** [cvdp-rtl-agent.vercel.app/problems](https://cvdp-rtl-agent.vercel.app/problems) (also
+[on Pages](https://brendanjameslynskey.github.io/CVDP_RTL_Agent/problems.html)): the 86 evaluation problems' task
+text (CC BY 4.0, from the dataset), a pass grid for every arm, failure labels, benchmark flags and a note on why each
+is easy or hard. Data in [`docs/problems.json`](docs/problems.json), built by
+[`site/data/problems.py`](site/data/problems.py) from the committed CSVs; hand-written notes in
+[`site/data/problem_notes.json`](site/data/problem_notes.json).
 
 **Status:** milestone 2 done ([`docs/reports/M2_report.md`](docs/reports/M2_report.md), 23 October 2026). On all
 92 problems of the free agentic split, run once on x86-64 and once on Arm64: `anthropic/claude-haiku-5.5`

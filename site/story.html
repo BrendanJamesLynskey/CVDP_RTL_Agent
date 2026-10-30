@@ -105,6 +105,7 @@ strong { font-weight: 600; }
 .tbtn { font: 600 11px/1 var(--f-mono); letter-spacing: .08em; color: var(--ink); background: var(--panel);
   border: 1px solid var(--grid-2); padding: 7px 9px; cursor: pointer; border-radius: 2px; min-height: 30px; }
 .tbtn:hover { border-color: var(--ch3); }
+a.tbtn { text-decoration: none; display: inline-flex; align-items: center; white-space: nowrap; }
 .cursor { position: fixed; z-index: 15; left: 0; right: 0; top: 50%; height: 0; border-top: 1px dashed var(--ch3); opacity: .55; pointer-events: none; }
 .cursor span { position: absolute; right: max(10px, env(safe-area-inset-right, 0px)); top: -9px; font: 500 10px/1 var(--f-mono);
   background: var(--paper); color: var(--ch3); padding: 2px 4px; border: 1px solid var(--ch3); }
@@ -284,6 +285,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
 @media (max-width: 480px) {
   .meas > div:last-child:nth-child(odd) { grid-column: span 2; }
   .bar .file .long { display: none; }
+  .tread { display: none; }
   dl.gloss { grid-template-columns: minmax(0, 1fr); }
   dl.gloss dt { border-bottom: 0; padding-bottom: 0; }
   .ctl button { width: 44px; height: 44px; }
@@ -297,6 +299,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
   <span class="file"><b>cvdp_rtl_agent</b><span class="long">.vcd</span></span>
   <div class="ruler" aria-hidden="true"><div class="prog" id="prog"></div></div>
   <span class="tread num" id="tread" aria-hidden="true">T = 0 ns</span>
+  <a class="tbtn" href="problems.html" title="Read the 86 problems, each with its pass grid and a note">PROBLEMS</a>
   <button class="tbtn" id="theme" type="button" aria-label="Switch between paper and scope themes">PAPER / SCOPE</button>
 </div>
 <div class="cursor" aria-hidden="true"><span id="curlab">cursor</span></div>
@@ -571,7 +574,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
       <!-- src: docs/reports/M3b_report.md "In short" (3-run result, unchanged); docs/reports/m3b/confirm_result.md (the confirmation) -->
     </div>
     <!-- src: docs/reports/M3b_report.md "The question", "Arms and settings", "The two problem sets" -->
-    <p>M3b holds the model (gpt-6-luna), the Arm64 runner and every M2 default fixed, and changes two things in a 2&times;2 design: the harness that drives the model (M2's hand-built LangGraph graph, or <a class="gl" href="#g-deep">Deep Agents</a>), and whether the agent is given a frozen <a class="gl" href="#g-memory">lessons memory</a>. Each arm ran <span data-d="m3b_runs_arm">3</span> times on the <span data-d="m3b_n">86</span> problems of the evaluation set: the 92 minus 6 that no agent can reach, by a rule fixed before any scored run. Arm A is a fresh run of M2's agent on the same image, so all four arms share an image and a period.</p>
+    <p>M3b holds the model (gpt-6-luna), the Arm64 runner and every M2 default fixed, and changes two things in a 2&times;2 design: the harness that drives the model (M2's hand-built LangGraph graph, or <a class="gl" href="#g-deep">Deep Agents</a>), and whether the agent is given a frozen <a class="gl" href="#g-memory">lessons memory</a>. Each arm ran <span data-d="m3b_runs_arm">3</span> times on the <span data-d="m3b_n">86</span> problems of the evaluation set: the 92 minus 6 that no agent can reach, by a rule fixed before any scored run (<a href="problems.html">read every problem</a>, with its pass grid and why it is easy or hard). Arm A is a fresh run of M2's agent on the same image, so all four arms share an image and a period.</p>
     <div class="scope"><div class="hd"><span><b>four arms</b> · pooled pass@1 over <span data-d="m3b_pr_arm">258</span> problem-runs · $ per solved problem</span><span>arrows = paired effect [95%]</span></div>
       <div class="plot" id="c-m3bgrid"></div>
       <div class="ft"><!-- src: docs/reports/m3b/runs/*.csv (pass, cost_usd), recomputed by site/data/derive.py; intervals from docs/reports/m3b/arms_paired_eval86.md and arms_paired_secondary_eval86.md -->Under each arm: its passes in each of its three runs, of <span data-d="m3b_n">86</span>. A solid arrow is a comparison whose interval excludes zero; a dashed one includes it. Pre-registered primary comparisons: B &minus; A (harness) and C &minus; A (memory); secondary: D &minus; B and D &minus; C.</div>
@@ -740,7 +743,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
           <li><strong>A file name given nowhere.</strong> In <code>sync_serial_communication_0001</code> the hidden build compiles <code>sync_serial_communication_top.sv</code>, a name that appears nowhere in the prompt, the specification or the given testbench. Every Claude attempt passes once its RTL is put in a file of that name.</li>
           <li><strong>Default parameters the prompt never gives.</strong> In <code>traffic_light_controller_0001</code> the hidden test counts cycles against default timer values of <span data-d="u_tl_def">10 and 20</span>, while the prompt names the parameters and gives no values. Every attempt rerun with those defaults set, and nothing else changed, passes.</li>
         </ul>
-        <p><span data-d="u_border">2</span> more look benchmark-limited on weaker evidence (one hidden test is not deterministic), <span data-d="u_agent">3</span> are agent-limited, and none is an environment failure. M3b's <code>reachable.py</code> kept the file-name problem in the evaluation set because it checked the names the hidden test reads, not the file paths it compiles.</p>
+        <p><span data-d="u_border">2</span> more look benchmark-limited on weaker evidence (one hidden test is not deterministic), <span data-d="u_agent">3</span> are agent-limited, and none is an environment failure. M3b's <code>reachable.py</code> kept the file-name problem in the evaluation set because it checked the names the hidden test reads, not the file paths it compiles. Each of the twelve, with its evidence, is in the <a href="problems.html#sync_serial_communication_0001">problem browser</a>: filter it to &ldquo;no Claude pass&rdquo;, or open <a href="problems.html#traffic_light_controller_0001">traffic_light_controller_0001</a>.</p>
         <div class="scope" style="margin:10px 0"><div class="hd"><span><b>pass@1 on all <span data-d="m3b_n">86</span>, and on the <span data-d="u_n79">79</span> left without the <span data-d="u_blim">7</span></b></span><span>the 86 is the score; the 79 is beside it</span></div>
           <div class="plot" id="c-uns79"></div>
           <div class="ft"><!-- src: pass column of docs/reports/m3c/runs/A*.csv and docs/reports/claude_code/runs/*.csv, minus tools/benchmark_limited_ids.txt, by site/data/derive.py; match docs/reports/unsolved_analysis.md "In short" -->Arm A <span data-d="u_k79_A">158</span>/<span data-d="u_n79_A">237</span> = <span data-d="u_r79_A">66.7</span>% on the <span data-d="u_n79">79</span> against <span data-d="c_rate_A">61.6</span>% on the <span data-d="m3b_n">86</span>; Opus <span data-d="u_k79_opus">63</span>/<span data-d="u_n79_opus">79</span> = <span data-d="u_r79_opus">79.7</span>% against <span data-d="l_rate_opus">73.3</span>%. Nothing passed the <span data-d="u_blim">7</span> except one arm-A run of <code>rc5_0001</code>, so every rate rises and none falls. The full-<span data-d="m3b_n">86</span> score stays the reported one.</div>
@@ -1036,6 +1039,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
   <div class="row">
     <a href="https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent">Repository</a>
     <a href="https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent/tree/main/docs/reports">Milestone reports</a>
+    <a href="problems.html">The problems, one by one</a>
     <a href="https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent/blob/main/LICENSE">MIT licence</a>
     <a href="https://github.com/NVlabs/cvdp_benchmark">CVDP benchmark (Apache-2.0 harness)</a>
   </div>
