@@ -104,6 +104,19 @@ same (+12.2 model, +1.3 harness). The first dispatch's 67-problem results (+13.4
 report beside these. Opus ran its own testbench on every problem without being made to. It costs $0.359 per solved
 problem, 32× luna; $24.38 in all.
 
+**M3g** ([`docs/reports/M3g_report.md`](docs/reports/M3g_report.md), pre-registered in
+[`docs/reports/m3g/preregistration.md`](docs/reports/m3g/preregistration.md)): can a frozen pack of outside RTL design
+know-how, loaded as skills, help luna? `CVDP_SKILLS` (sweep input `skills`) points at a pack
+([`agent/cvdp_agent/skills/rtl_pack/`](agent/cvdp_agent/skills/rtl_pack/), 15 skills, checked against its manifest);
+the plan sees its index and names up to 3 skills, whose text goes into every edit prompt. The primary test is on a
+held-out set nobody had inspected: 100 of CVDP's non-agentic (copilot) problems, frozen in
+[`tools/m3g_heldout_ids.txt`](tools/m3g_heldout_ids.txt) before any run (`split=m3g_heldout`, built by
+[`tools/m3g_heldout.py`](tools/m3g_heldout.py)). **No detectable effect:** on the held-out set K − A
+**+1.0 points [−2.7, +4.7]** (52.0% against 51.0%, 9 better, 8 worse, p = 1); on the 86 (development set) −2.3
+[−7.4, +2.3], on the 79 −2.5 [−8.4, +2.5]. The pack was loaded as designed (`spec-reading` almost always), added
++57% prompt tokens on the held-out set, and did not reduce interface mismatches. 9 scored sweeps, $3.84 ($3.89 with
+smoke).
+
 **M2a** (merged, [`docs/reports/M2a_report.md`](docs/reports/M2a_report.md)): reasoning limits, a retry on empty
 replies and unreadable decisions, and seeds. On the same 10 problems on Arm64, DeepSeek at `reasoning=off` passed
 6/10 for $0.0867 with no empty replies; at `low` it passed 7/10 for $0.3546 with 14 empty replies.
@@ -460,6 +473,7 @@ empty (an old ledger and the harness's reuse of `raw_result.json` would make the
 | M3c | Mutation testing and elaboration in the loop: a mutation-score gate before submit, an interface diff after each edit |
 | M3d | Verify before submit: a refused submit until a testbench passes on the current design, and blind spec cases |
 | M3e | Harness or model: the LangGraph agent with Claude models, against Claude Code and against luna |
+| M3g | A frozen knowledge pack loaded as skills, tested on a held-out set of non-agentic problems frozen before any run |
 | M4 | Write-up, logs packed for the Si2 LBC-bench leaderboard |
 | M5 | Open AMBA verification track: test plan, cocotb testbench with coverage, SVA with SymbiYosys; scored by seeded-bug kill rate and false alarms |
 
