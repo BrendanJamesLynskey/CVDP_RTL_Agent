@@ -102,6 +102,12 @@ LG+Opus − LG+luna **+13.4 points [+4.0, +22.4]** (77.6% against 64.2%); **harn
 the model, not the harness. Opus ran its own testbench on every problem without being made to. It costs $0.329 per
 solved problem, 28× luna; $19.24 in all.
 
+**M3f** (pre-registered, scored runs not yet dispatched, [`docs/reports/M3f_report.md`](docs/reports/M3f_report.md),
+[`docs/reports/m3f/preregistration.md`](docs/reports/m3f/preregistration.md), smoke runs in
+[`docs/reports/m3f/smoke.md`](docs/reports/m3f/smoke.md)): which part of the model's job matters? Per-role models
+(`plan_model`, `spec_model`, blank by default) let a strong model read the spec and plan (arm P) or write the blind
+spec cases (arm T), while luna still writes and fixes the RTL.
+
 **M2a** (merged, [`docs/reports/M2a_report.md`](docs/reports/M2a_report.md)): reasoning limits, a retry on empty
 replies and unreadable decisions, and seeds. On the same 10 problems on Arm64, DeepSeek at `reasoning=off` passed
 6/10 for $0.0867 with no empty replies; at `low` it passed 7/10 for $0.3546 with 14 empty replies.
@@ -376,6 +382,10 @@ column.
 | `CVDP_INTERFACE_CHECK` | 0 | M3c: 1 runs the interface check after every edit (LangGraph harness only) |
 | `CVDP_VERIFY_SUBMIT` | 0 | M3d: 1 refuses a submit until the design as it stands passed a simulation (LangGraph only) |
 | `CVDP_SPEC_VECTORS` | 0 | M3d: 1 adds the blind specification cases (and turns `CVDP_VERIFY_SUBMIT` on) |
+| `CVDP_PLAN_MODEL` | | M3f: the plan call's own OpenRouter model (blank = `CVDP_MODEL`, which stays the edit/reflect model) |
+| `CVDP_SPEC_MODEL` | | M3f: the spec-cases call's own model, with `CVDP_SPEC_VECTORS=1` (blank = `CVDP_MODEL`) |
+| `CVDP_ROLE_REASONING` | | M3f: reasoning for the role models (blank = `CVDP_REASONING`) |
+| `CVDP_ROLE_BUDGET_USD` | 0.50 | M3f: per-problem budget of the role calls, kept apart from `CVDP_BUDGET_USD` |
 
 ## Running a sweep
 
@@ -387,7 +397,8 @@ whole-run budget, `reasoning` (default `low`), `seeds` (default 1), `seed_offset
 pools with distinct seeds), `harness` (`langgraph`, `deepagents` or `claudecode`), `memory` (blank, or a lessons snapshot path in
 the repo, e.g. `docs/reports/m3b/lessons/lessons_<hash>.json`, mounted read-only into the agent's container),
 `mutation_gate` and `interface_check` (M3c, both default false, LangGraph only), `verify_submit` and
-`spec_vectors` (M3d, both default false, LangGraph only, not with `mutation_gate`) and
+`spec_vectors` (M3d, both default false, LangGraph only, not with `mutation_gate`), `plan_model`, `spec_model`,
+`role_reasoning` and `role_budget_usd` (M3f, blank by default; LangGraph only; `spec_model` needs `spec_vectors`) and
 `provider_order` (blank: OpenRouter
 routes each call; the provider that served it is in the trace, and its price can differ from the list price).
 Tables and `results.csv` label each row with the model and its reasoning setting, e.g.
@@ -458,6 +469,7 @@ empty (an old ledger and the harness's reuse of `raw_result.json` would make the
 | M3c | Mutation testing and elaboration in the loop: a mutation-score gate before submit, an interface diff after each edit |
 | M3d | Verify before submit: a refused submit until a testbench passes on the current design, and blind spec cases |
 | M3e | Harness or model: the LangGraph agent with Claude models, against Claude Code and against luna |
+| M3f | Split the roles: a strong model reads the spec and plans, or writes the spec cases; luna writes the RTL |
 | M4 | Write-up, logs packed for the Si2 LBC-bench leaderboard |
 | M5 | Open AMBA verification track: test plan, cocotb testbench with coverage, SVA with SymbiYosys; scored by seeded-bug kill rate and false alarms |
 
