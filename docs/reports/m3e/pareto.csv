@@ -1,0 +1,3 @@
+arm,usd_per_problem,pass_rate,frontier,cost_lower_bound
+LG+luna,0.007519,0.6418,0,1
+LG+Opus,0.255444,0.7761,1,0
