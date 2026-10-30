@@ -106,6 +106,11 @@ def ladder_arm(key, label, stem):
             "cols": [{"tag": "1", "run": stem, "rows": rows(p)}] if os.path.exists(p) else []}
 
 
+def refused_note(cols):
+    n = sum(1 for c in cols for x in c["rows"] if x["stop_reason"] == "run_budget_exhausted")
+    return f"; {n} problems refused by the whole-run cost guard before any LLM call, shown as failures" if n else ""
+
+
 def m3e_arms():
     """M3e (brief 14): our LangGraph agent with Claude models through OpenRouter. One arm per model in the CSVs'
     `model` column, whatever the run tags are. Empty until its CSVs are committed."""
@@ -118,7 +123,7 @@ def m3e_arms():
         name = " ".join(w.capitalize() for w in model.replace("claude-", "").split("-"))
         name = re.sub(r"(\d) (\d)", r"\1.\2", name)
         out.append({"key": "m3e_" + re.sub(r"\W", "", model.replace("claude-", "").split("-")[0]),
-                    "label": f"LG + {name}", "group": "M3e", "desc": f"our LangGraph agent with {model}, {len(cols)} run(s)",
+                    "label": f"LG + {name}", "group": "M3e", "desc": f"our LangGraph agent with {model}, {len(cols)} run(s)" + refused_note(cols),
                     "cols": cols})
     return out
 
@@ -393,8 +398,11 @@ for a in data["arms"]:
         m = re.search(rf"^\| {re.escape(lab)} \| \d+: [^|]+ \| (\d+)/(\d+) = ", open(os.path.join(REP, f)).read(), re.M)
         check(m is not None and (a["k"], a["n"]) == (int(m.group(1)), int(m.group(2))), f"arm {a['key']} {a['k']}/{a['n']} vs {f}")
     elif a["group"] == "M3e":
-        rep = glob.glob(os.path.join(REP, "m3e", "*paired*86*.md"))
-        check(bool(rep), f"M3e arm {a['key']} has no paired report to check against")
+        # M3e's full-86 view (the guard-refused problems counted as failures), as ablate.py printed it
+        rep = glob.glob(os.path.join(REP, "m3e", "vs_luna_full86*.md"))
+        lab = "LG+" + a["label"].split("+ ")[-1].split()[0]
+        m = re.search(rf"^\| {re.escape(lab)} \| \d+: [^|]+ \| (\d+)/(\d+) = ", open(rep[0]).read(), re.M) if rep else None
+        check(m is not None and (a["k"], a["n"]) == (int(m.group(1)), int(m.group(2))), f"M3e arm {a['key']} {a['k']}/{a['n']} vs {rep}")
     check(a["n"] == 86 * len(a["runs"]), f"arm {a['key']} rows {a['n']}")
     check(sum(p["grid"][a["key"]].count("1") for p in ev) == a["k"], f"arm {a['key']} grid sum")
 story = json.load(open(STORY))

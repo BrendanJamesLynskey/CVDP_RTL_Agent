@@ -86,6 +86,11 @@ strong { font-weight: 600; }
 .tbtn { font: 600 11px/1 var(--f-mono); letter-spacing: .08em; color: var(--ink); background: var(--panel);
   border: 1px solid var(--grid-2); padding: 7px 9px; cursor: pointer; border-radius: 2px; min-height: 30px; white-space: nowrap; }
 .tbtn:hover { border-color: var(--ch3); }
+.tbtn.theme [data-m] { opacity: .6; font-weight: 500; }
+.tbtn.theme [data-m].on { opacity: 1; font-weight: 800; text-decoration: underline; text-underline-offset: 3px; }
+a.file { text-decoration: none; }
+a.back { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 8px 12px; border: 1.5px solid var(--ink); background: var(--panel); color: var(--ink); text-decoration: none; font: 600 12.5px/1.3 var(--f-mono); letter-spacing: .04em; }
+a.back:hover { border-color: var(--ch3); color: var(--ch3); }
 
 main { max-width: 1120px; margin: 0 auto; padding-top: calc(64px + env(safe-area-inset-top, 0px)); }
 .edge { font: 500 11px/1.4 var(--f-mono); color: var(--ink-3); margin-bottom: 8px; }
@@ -214,14 +219,15 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
 </style>
 
 <div class="bar" role="banner">
-  <span class="file"><b>cvdp_rtl_agent</b><span class="long">/problems.vcd</span></span>
+  <a class="file" href="./" title="The story's front page"><b>cvdp_rtl_agent</b><span class="long">/problems.vcd</span></a>
   <span class="sp"></span>
-  <a class="nav" href="./">&larr; STORY</a>
-  <button class="tbtn" id="theme" type="button" aria-label="Switch between paper and scope themes">PAPER / SCOPE</button>
+  <a class="nav" href="./">&larr; BACK TO THE STORY</a>
+  <button class="tbtn theme" id="theme" type="button" aria-pressed="false" aria-label="Dark theme" title="Switch between the dark and light themes"><span data-m="dark">DARK</span> / <span data-m="light">LIGHT</span></button>
 </div>
 
 <main id="main">
 <header>
+  <a class="back" href="./">&larr; Back to the story: what was built, what was measured, what we found</a>
   <div class="edge">CVDP 1.1.0 &middot; agentic, free split &middot; the evaluation set of M3b onwards</div>
   <h1>The problems, <span>one by one</span></h1>
   <p class="dek">Every problem our agent was scored on: the task as the agent saw it, how each arm did on it, why the failures failed, and a short note on what makes it easy or hard. Click a row, or link to one as <code>problems.html#&lt;id&gt;</code>.</p>
@@ -292,7 +298,12 @@ var root = document.documentElement;
 var tb = document.getElementById("theme");
 try { var saved = localStorage.getItem("cvdp-theme"); if (saved === "dark" || saved === "light") root.setAttribute("data-theme", saved); } catch (e) {}
 function curTheme() { var a = root.getAttribute("data-theme"); return a ? a : matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; }
-function label() { tb.textContent = curTheme() === "dark" ? "SCOPE  > PAPER" : "PAPER  > SCOPE"; }
+function label() {
+  var t = curTheme();
+  Array.prototype.forEach.call(tb.querySelectorAll("[data-m]"), function (x) { x.classList.toggle("on", x.getAttribute("data-m") === t); });
+  tb.setAttribute("aria-pressed", t === "dark" ? "true" : "false");
+  tb.setAttribute("title", t === "dark" ? "Dark theme on: switch to light" : "Light theme on: switch to dark");
+}
 tb.addEventListener("click", function () {
   var t = curTheme() === "dark" ? "light" : "dark";
   root.setAttribute("data-theme", t);

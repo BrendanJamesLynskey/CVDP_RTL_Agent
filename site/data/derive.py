@@ -496,7 +496,59 @@ m3d = {"arms": {a: public(v) for a, v in m3d_arms.items()}, "effects": m3d_eff, 
        "spec": spec_tab, "spec_generated": spec_gen, "guard_adj": guard_adj, "cost_scored": m3d_scored, "cost_smoke": m3d_smoke,
        "solved_x": {a: round(m3d_arms[a]["usd_solved"] / m3d_arms["A"]["usd_solved"], 1) for a in "VS"}}
 
-spend_all = round(spend_all + conf_cost + m3c_scored + m3c_smoke + m3d_scored + m3d_smoke, 2)  # + confirming run, M3c and M3d scored sweeps and smoke runs
+# ---- M3e: LangGraph + Opus 5.5, one run, exploratory; 67 attempted problems (docs/reports/M3e_report.md, m3e/) ----
+M3E = os.path.join(REP, "m3e")
+def ids_file(path):
+    return [l.strip() for l in open(path) if l.strip() and not l.startswith("#")]
+E_ATT = ids_file(os.path.join(M3E, "attempted_ids.txt"))
+E_REF = ids_file(os.path.join(M3E, "guard_refused_ids.txt"))
+E_ATT63 = [p for p in E_ATT if p not in BLIM]
+e_all = rows(os.path.join(M3E, "runs", "LG_opus_41040802008.csv"))
+def restrict(runs, ids):
+    keep = set(ids)
+    return [(t, rid, [x for x in r if x["id"] in keep]) for t, rid, r in runs]
+e_arms = {
+    "luna": pool(restrict(d_runs["A"], E_ATT)),
+    "opus": pool(restrict([("LG", "41040802008", e_all)], E_ATT)),
+    "cc": pool(restrict([("1", "claude-opus-5-5", rows(os.path.join(REP, "claude_code", "runs", "claude-opus-5-5.csv")))], E_ATT)),
+}
+def parse_plus(path):
+    """ablate.py effect rows whose arm names carry a '+' (LG+Opus, CC+Opus)."""
+    out, base = {}, None
+    for line in open(path):
+        m = re.match(r"#### Paired effect against the base \(`([\w+]+)`\)", line)
+        if m:
+            base = m.group(1); continue
+        m = re.match(r"\| ([\w+]+) \| ([^|]+) \| ([-+]?\d+\.\d) \[([-+]?\d+\.\d), ([-+]?\d+\.\d)\] \| (\d+) / (\d+) / (\d+) \| ([\d.]+) \| (\d+) \|", line)
+        if m and base:
+            out[m.group(1) + "-" + base] = {"finding": m.group(2).strip(), "eff": float(m.group(3)), "lo": float(m.group(4)),
+                "hi": float(m.group(5)), "better": int(m.group(6)), "worse": int(m.group(7)), "same": int(m.group(8)),
+                "p": float(m.group(9)), "n": int(m.group(10))}
+    return out
+e_eff = {**parse_plus(os.path.join(M3E, "vs_luna_attempted67.md")), **parse_plus(os.path.join(M3E, "harness_opus_attempted67.md"))}
+e_eff63 = {**parse_plus(os.path.join(M3E, "vs_luna_attempted63.md")), **parse_plus(os.path.join(M3E, "harness_opus_attempted63.md"))}
+E_KEYS = {"model": "LG+Opus-LG+luna", "harness": "CC+Opus-LG+Opus", "total": "CC+Opus-LG+luna"}
+def paired_ids(arm, base, ids):
+    d = [arm["_rate"][p] - base["_rate"][p] for p in ids]
+    b, w = sum(1 for x in d if x > 0), sum(1 for x in d if x < 0)
+    return (round(100 * sum(d) / len(d), 1), b, w, len(d) - b - w)
+e_chk = {"model": paired_ids(e_arms["opus"], e_arms["luna"], E_ATT), "harness": paired_ids(e_arms["cc"], e_arms["opus"], E_ATT),
+         "total": paired_ids(e_arms["cc"], e_arms["luna"], E_ATT)}
+e_chk63 = {"model": paired_ids(e_arms["opus"], e_arms["luna"], E_ATT63), "harness": paired_ids(e_arms["cc"], e_arms["opus"], E_ATT63)}
+e_opus_rows = [x for x in e_all if x["id"] in set(E_ATT)]
+e_luna_rows = [x for _, _, r in restrict(d_runs["A"], E_ATT) for x in r]
+e_nosc = {"opus": round(100 * sum(1 for x in e_opus_rows if int(x["selfcheck_runs"] or 0) == 0) / len(e_opus_rows)),
+          "luna": round(100 * sum(1 for x in e_luna_rows if int(x["selfcheck_runs"] or 0) == 0) / len(e_luna_rows))}
+e_smoke = round(sum(float(x["cost_usd"] or 0) for f in sorted(glob.glob(os.path.join(M3E, "smoke", "*.csv"))) for x in rows(f)), 4)
+e_scored = round(sum(float(x["cost_usd"] or 0) for x in e_all), 4)
+e_refused = sum(1 for x in e_all if x["stop_reason"] == "run_budget_exhausted")
+rep3e = open(os.path.join(REP, "M3e_report.md")).read()
+m3e = {"arms": {a: public(v) for a, v in e_arms.items()}, "effects": {k: e_eff[v] for k, v in E_KEYS.items()},
+       "effects63": {k: e_eff63[E_KEYS[k]] for k in ("model", "harness")}, "n": len(E_ATT), "n63": len(E_ATT63),
+       "refused": e_refused, "nosc": e_nosc, "cost_scored": e_scored, "cost_smoke": e_smoke,
+       "solved_x": round(e_arms["opus"]["usd_solved"] / e_arms["luna"]["usd_solved"])}
+
+spend_all = round(spend_all + conf_cost + m3c_scored + m3c_smoke + m3d_scored + m3d_smoke + e_scored + e_smoke, 2)  # + confirming run, M3c, M3d and M3e scored sweeps and smoke runs
 
 # Prose numbers in story.html: <span data-d="key">value</span>; --inject rewrites the value from here.
 MINUS = "−"
@@ -612,6 +664,24 @@ prose["d_sp_fail_pct"] = f"{100 * spec_tab['fail'][0] / sum(spec_tab['fail']):.0
 prose["d_sp_gen"] = str(spec_gen)
 prose["d_guard"] = str(m3d_extra["S"]["guard"]); prose["d_guard_adj"] = sg(guard_adj)
 prose["d_scored"] = f"{m3d_scored:.2f}"; prose["d_unrep"] = str(sum(a["unreported"] for a in m3d_arms.values()))
+# M3e
+for k, e in m3e["effects"].items():
+    put_eff(f"e3_{k}_", e)
+for k, e in m3e["effects63"].items():
+    prose[f"e3_{k}_e63"] = sg(e["eff"]); prose[f"e3_{k}_ci63"] = ci(e)
+for a, v in e_arms.items():
+    prose[f"e3_rate_{a}"] = f"{v['rate']:.1f}"; prose[f"e3_k_{a}"] = str(v["k"]); prose[f"e3_n_{a}"] = str(v["n"])
+prose["e3_n"] = str(m3e["n"]); prose["e3_n63"] = str(m3e["n63"]); prose["e3_refused"] = str(e_refused)
+prose["e3_nosc_opus"] = str(e_nosc["opus"]); prose["e3_nosc_luna"] = str(e_nosc["luna"])
+prose["e3_cost"] = f"{e_arms['opus']['cost']:.2f}"; prose["e3_upp"] = f"{e_arms['opus']['cost'] / e_arms['opus']['n']:.3f}"
+prose["e3_ups"] = f"{e_arms['opus']['cost'] / e_arms['opus']['k']:.3f}"; prose["e3_us_luna"] = f"{e_arms['luna']['usd_solved']:.4f}"
+prose["e3_sx"] = str(m3e["solved_x"]); prose["e3_smoke"] = f"{e_smoke:.2f}"; prose["e3_spend"] = f"{e_scored + e_smoke:.2f}"
+prose["e3_wall_opus"] = str(e_arms["opus"]["wall_med"]); prose["e3_wall_luna"] = str(e_arms["luna"]["wall_med"])
+# the front page: process changes on gpt-6-luna with no detectable effect (M3's six ablations, M3b's memory, M3c's two checks, M3d's two steps)
+proc = [effects[a] for a in "BCDEFG"] + [m3b_eff["C-A"]] + [m3c_eff[k] for k in ("M-A", "I-A")] + [m3d_eff[k] for k in ("V-A", "S-A")]
+prose["proc_n"] = str(len(proc)); prose["proc_null"] = str(sum(1 for e in proc if e["lo"] <= 0 <= e["hi"]))
+prose["proc_det"] = str(sum(1 for e in proc if e["lo"] > 0 or e["hi"] < 0))
+prose["e3_model_p"] = f"{m3e['effects']['model']['p']:.1g}"  # 0.0009, as the report prints it
 m3b["prose"] = prose
 
 data = {
@@ -631,7 +701,7 @@ data = {
     "external": ext,
     "m3b": m3b,
     "m3b_confirm": m3b_conf, "m3c": m3c, "ladder": claude_ladder,
-    "unsolved": unsolved, "m3d": m3d,
+    "unsolved": unsolved, "m3d": m3d, "m3e": m3e,
 }
 
 # ---- checks against the reports ----
@@ -839,6 +909,28 @@ m = re.search(r"The (\d+) refused problem-runs \(`run_budget_exhausted`\).*?abou
 check(m is not None and int(m.group(1)) == m3d_extra["S"]["guard"] == 8 and float(m.group(2)) == guard_adj and m3d_extra["V"]["guard"] == m3d_extra["A"]["guard"] == 0, f"M3d guard {m3d_extra['S']['guard']} {guard_adj}")
 check(p2_pass["V"] <= p2_pass["A"] and p2_pass["S"] <= p2_pass["A"] and "None of the 7 problems from brief 09's part two is won" in rep3d, f"M3d part-two problems {p2_pass}")
 check(round(m3d_scored, 4) == 7.899 and "provider-reported cost is $7.8990" in rep3d and m3d_smoke == 0.26, f"M3d spend {m3d_scored} {m3d_smoke}")
+
+# M3e (docs/reports/M3e_report.md and the ablate.py outputs in m3e/)
+check(len(E_ATT) == 67 and len(E_REF) == 19 and sorted(E_ATT + E_REF) == sorted(EVAL) and e_refused == 19, f"M3e ids {len(E_ATT)} {len(E_REF)} {e_refused}")
+check(sum(int(x["pass"]) + int(x["llm_calls"] or 0) for x in e_all if x["id"] in set(E_REF)) == 0, "M3e refused rows made no LLM call")
+for k, key in E_KEYS.items():
+    e = e_eff[key]
+    check((e["eff"], e["better"], e["worse"], e["same"]) == e_chk[k] and e["n"] == 67, f"M3e {k} effect {e} vs {e_chk[k]}")
+for k in ("model", "harness"):
+    e = e_eff63[E_KEYS[k]]
+    check((e["eff"], e["better"], e["worse"], e["same"]) == e_chk63[k] and e["n"] == 63 == len(E_ATT63), f"M3e {k} effect on 63 {e} vs {e_chk63[k]}")
+check(f"**+13.4 points [+4.0, +22.4]** (19 better, 3 worse, 45 same; sign test p = {prose['e3_model_p']})" in rep3e and m3e["effects"]["model"]["eff"] == 13.4, "M3e model effect in report")
+check("**CC+Opus − LG+Opus = −4.5 points [−13.4, +4.5]** (3 better, 6 worse, 58 same, p = 0.51)" in rep3e, "M3e harness effect in report")
+check("**+9.0 [−1.0, +18.9]**" in rep3e and m3e["effects"]["total"]["eff"] == 9.0, "M3e total in report")
+check("model +14.3 [+4.2, +23.8], harness\n  −4.8 [−14.3, +4.8]" in rep3e, "M3e 63-problem view in report")
+check((e_arms["opus"]["k"], e_arms["opus"]["n"], e_arms["luna"]["k"], e_arms["luna"]["n"], e_arms["cc"]["k"], e_arms["cc"]["n"]) == (52, 67, 129, 201, 49, 67)
+      and "**52/67 = 77.6% [67.2, 86.6]**" in rep3e and "129/201 = 64.2%" in rep3e and "49/67 = 73.1%" in rep3e, "M3e pooled rates")
+check(f"$17.11 on 67 problems: **${prose['e3_upp']} per problem, ${prose['e3_ups']} per solved problem**" in rep3e
+      and round(e_arms["opus"]["cost"], 2) == 17.11 and f"({m3e['solved_x']}× as much)" in rep3e, f"M3e cost {prose['e3_upp']} {prose['e3_ups']} {m3e['solved_x']}")
+check(f"smoke runs ${e_smoke:.2f}" in rep3e and f"Spend for this brief: ${e_scored + e_smoke:.2f}" in rep3e, f"M3e spend {e_scored} {e_smoke}")
+check(e_nosc == {"opus": 0, "luna": 49} and "| LG+Opus | 67 | 1 / 2.15 | 34 (51%) | 3 / 5.30 | 1 / 1.99 | 0 (0%) |" in open(os.path.join(M3E, "secondary_tables_attempted67.md")).read(), f"M3e no-self-check {e_nosc}")
+check((e_arms["opus"]["wall_med"], e_arms["luna"]["wall_med"]) == (44, 84), f"M3e median wall {e_arms['opus']['wall_med']} {e_arms['luna']['wall_med']}")
+check(prose["proc_null"] == prose["proc_n"] == "11" and prose["proc_det"] == "0", f"process changes null {prose['proc_null']} of {prose['proc_n']}")
 
 json.dump(data, open(OUT, "w"), indent=1, sort_keys=False)
 if errors:
