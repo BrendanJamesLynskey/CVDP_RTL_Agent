@@ -1,0 +1,4 @@
+# M3g smoke problems: eligible but not in the held-out set (seed 20261031)
+cvdp_copilot_car_parking_management_0015
+cvdp_copilot_clock_jitter_detection_module_0003
+cvdp_copilot_single_number_0001
