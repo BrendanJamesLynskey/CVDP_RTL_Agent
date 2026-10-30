@@ -80,6 +80,15 @@ S 56.2%. The agent now tests before it submits (runs with no self-check fall fro
 "testbench passed, hidden tests failed" and to wall-cap stops. Where all the blind spec cases passed, the hidden tests
 passed 61% of the time; where some failed, 57%. $8.19 in all.
 
+**M3e** (exploratory, partly run, [`docs/reports/M3e_report.md`](docs/reports/M3e_report.md), pre-registered in
+[`docs/reports/m3e/preregistration.md`](docs/reports/m3e/preregistration.md)): harness or model? Our unchanged
+LangGraph agent with `anthropic/claude-opus-5.5` (reasoning low) through OpenRouter, one run. The $20 spend cap let it
+attempt 67 of the 86 problems (the guard refused the last 19), and Sonnet was not run. On those 67: **model effect**
+LG+Opus − LG+luna **+13.4 points [+4.0, +22.4]** (77.6% against 64.2%); **harness effect** Claude Code + Opus − LG+Opus
+**−4.5 [−13.4, +4.5]**, no detectable effect. So Claude Code + Opus's lead over our luna agent (+9.0 on these 67) is
+the model, not the harness. Opus ran its own testbench on every problem without being made to. It costs $0.329 per
+solved problem, 28× luna; $19.24 in all.
+
 **M2a** (merged, [`docs/reports/M2a_report.md`](docs/reports/M2a_report.md)): reasoning limits, a retry on empty
 replies and unreadable decisions, and seeds. On the same 10 problems on Arm64, DeepSeek at `reasoning=off` passed
 6/10 for $0.0867 with no empty replies; at `low` it passed 7/10 for $0.3546 with 14 empty replies.
@@ -435,6 +444,7 @@ empty (an old ledger and the harness's reuse of `raw_result.json` would make the
 | M3b | Harness against self-improvement: Deep Agents vs LangGraph, and a frozen lessons memory, on a fixed evaluation set |
 | M3c | Mutation testing and elaboration in the loop: a mutation-score gate before submit, an interface diff after each edit |
 | M3d | Verify before submit: a refused submit until a testbench passes on the current design, and blind spec cases |
+| M3e | Harness or model: the LangGraph agent with Claude models, against Claude Code and against luna |
 | M4 | Write-up, logs packed for the Si2 LBC-bench leaderboard |
 | M5 | Open AMBA verification track: test plan, cocotb testbench with coverage, SVA with SymbiYosys; scored by seeded-bug kill rate and false alarms |
 
