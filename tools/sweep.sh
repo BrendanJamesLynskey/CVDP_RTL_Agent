@@ -41,6 +41,10 @@ MUTATION_GATE=${MUTATION_GATE:-0}    # M3c: 1 = mutation-score gate before submi
 INTERFACE_CHECK=${INTERFACE_CHECK:-0} # M3c: 1 = interface diff by elaboration after each edit (langgraph only)
 VERIFY_SUBMIT=${VERIFY_SUBMIT:-0}    # M3d: 1 = a submit is refused until the design passed a simulation (langgraph)
 SPEC_VECTORS=${SPEC_VECTORS:-0}      # M3d: 1 = VERIFY_SUBMIT plus blind reference cases from the spec (langgraph)
+PLAN_MODEL=${PLAN_MODEL:-}           # M3f: the plan role's own OpenRouter model (blank = MODEL)
+SPEC_MODEL=${SPEC_MODEL:-}           # M3f: the spec-cases role's own model, with SPEC_VECTORS=1 (blank = MODEL)
+ROLE_REASONING=${ROLE_REASONING:-}   # M3f: reasoning for the role models (blank = REASONING)
+ROLE_BUDGET_USD=${ROLE_BUDGET_USD:-0.50} # M3f: per-problem budget of the role models' calls, apart from BUDGET_USD
 STEP_BUDGET_S=${STEP_BUDGET_S:-}
 SEED_PROBLEM_WORST_S=${SEED_PROBLEM_WORST_S:-660}
 T0=$(date +%s)
@@ -81,6 +85,18 @@ if [ -n "$MEMORY" ]; then
   [ -f "$MEMORY" ] || die "MEMORY: no such file '$MEMORY'"
 fi
 [[ "$MODEL" =~ ^[A-Za-z0-9._:/-]+$ ]] || die "MODEL has unexpected characters: '$MODEL'"
+for v in PLAN_MODEL SPEC_MODEL; do
+  [[ "${!v}" =~ ^[A-Za-z0-9._:/-]*$ ]] || die "$v has unexpected characters: '${!v}'"
+done
+num ROLE_BUDGET_USD "$ROLE_BUDGET_USD"
+case "$ROLE_REASONING" in
+  ""|default|low|medium|high|off) ;;
+  *) die "ROLE_REASONING must be blank, default, low, medium, high or off, got '$ROLE_REASONING'" ;;
+esac
+if [ -n "$PLAN_MODEL$SPEC_MODEL" ]; then
+  [ "$HARNESS" = langgraph ] || die "PLAN_MODEL and SPEC_MODEL are roles of the LangGraph graph: use HARNESS=langgraph"
+fi
+if [ -n "$SPEC_MODEL" ] && [ "$SPEC_VECTORS" = 0 ]; then die "SPEC_MODEL is the spec-cases role: set SPEC_VECTORS=1"; fi
 case "$PHASE" in all|run|collect) ;; *) die "phase must be all, run or collect" ;; esac
 
 repo=$(cd "$(dirname "$0")/.." && pwd)
@@ -113,7 +129,7 @@ run_phase() {
   printf '{"problems": %s, "seeds": %s, "seed_offset": %s, "run_budget_usd": %s, "model": "%s", "reasoning": "%s", "provider_order": "%s"}\n' \
     "$n" "$SEEDS" "$SEED_OFFSET" "$guard" "$MODEL" "$REASONING" "$PROVIDER_ORDER" > "$work.run.json"
   python3 - "$work.run.json" "$HARNESS" "$MEMORY" "$MUTATION_GATE" "$INTERFACE_CHECK" "$VERIFY_SUBMIT" \
-    "$SPEC_VECTORS" <<'EOF'
+    "$SPEC_VECTORS" "$PLAN_MODEL" "$SPEC_MODEL" "$ROLE_REASONING" "$ROLE_BUDGET_USD" <<'EOF'
 import json, sys
 run = json.load(open(sys.argv[1]))
 run.update(harness=sys.argv[2], memory=sys.argv[3])
@@ -121,6 +137,9 @@ if sys.argv[4] == "1" or sys.argv[5] == "1":  # M3c: named only when on, so an M
     run.update(mutation_gate=sys.argv[4] == "1", interface_check=sys.argv[5] == "1")
 if sys.argv[6] == "1":  # M3d, likewise
     run.update(verify_submit=True, spec_vectors=sys.argv[7] == "1")
+if sys.argv[8] or sys.argv[9]:  # M3f, likewise: the role models, named only when set
+    run.update(plan_model=sys.argv[8], spec_model=sys.argv[9], role_reasoning=sys.argv[10] or run["reasoning"],
+               role_budget_usd=float(sys.argv[11]))
 json.dump(run, open(sys.argv[1], "w"))
 EOF
 
@@ -130,12 +149,19 @@ EOF
     CVDP_LINT="$LINT" CVDP_LEDGER_DIR=/ledger CVDP_RUN_BUDGET_USD="$guard" CVDP_REASONING="$REASONING" \
     CVDP_PROVIDER_ORDER="$PROVIDER_ORDER" CVDP_HARNESS="$HARNESS" CVDP_MUTATION_GATE="$MUTATION_GATE" \
     CVDP_INTERFACE_CHECK="$INTERFACE_CHECK" CVDP_VERIFY_SUBMIT="$VERIFY_SUBMIT" CVDP_SPEC_VECTORS="$SPEC_VECTORS"
+  if [ -n "$PLAN_MODEL$SPEC_MODEL" ]; then  # M3f: passed only when set, so a default run's agent env is unchanged
+    export CVDP_PLAN_MODEL="$PLAN_MODEL" CVDP_SPEC_MODEL="$SPEC_MODEL" CVDP_ROLE_REASONING="$ROLE_REASONING" \
+      CVDP_ROLE_BUDGET_USD="$ROLE_BUDGET_USD"
+  fi
   export CVDP_AGENT_MOUNTS="$ledger:/ledger"
   if [ -n "$MEMORY" ]; then  # the snapshot, read-only, at /memory/<its name> in the agent's container
     export CVDP_MEMORY="/memory/$(basename "$MEMORY")"
     export CVDP_AGENT_MOUNTS="$CVDP_AGENT_MOUNTS;$(cd "$(dirname "$MEMORY")" && pwd)/$(basename "$MEMORY"):$CVDP_MEMORY:ro"
   fi
   export CVDP_AGENT_ENV=CVDP_PROVIDER,CVDP_MODEL,CVDP_BUDGET_USD,CVDP_MAX_TURNS,CVDP_SELF_CHECK,CVDP_LINT,CVDP_LEDGER_DIR,CVDP_RUN_BUDGET_USD,CVDP_REASONING,CVDP_SEED,CVDP_PROVIDER_ORDER,CVDP_HARNESS,CVDP_MEMORY,CVDP_MUTATION_GATE,CVDP_INTERFACE_CHECK,CVDP_VERIFY_SUBMIT,CVDP_SPEC_VECTORS
+  if [ -n "$PLAN_MODEL$SPEC_MODEL" ]; then
+    export CVDP_AGENT_ENV="$CVDP_AGENT_ENV,CVDP_PLAN_MODEL,CVDP_SPEC_MODEL,CVDP_ROLE_REASONING,CVDP_ROLE_BUDGET_USD"
+  fi
   if [ "$CVDP_PROVIDER" = openrouter ]; then
     test -n "${OPENROUTER_API_KEY:-}" || die "OPENROUTER_API_KEY is not set"
     export CVDP_AGENT_ENV="OPENROUTER_API_KEY,$CVDP_AGENT_ENV"

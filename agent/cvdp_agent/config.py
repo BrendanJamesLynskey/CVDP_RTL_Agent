@@ -45,6 +45,12 @@ class Config:
     verify_submit: bool = False         # M3d: a submit is refused until the current design passed a simulation
     spec_vectors: bool = False          # M3d: verify_submit plus reference cases written blind from the spec
     verify_max_refusals: int = 2        # refusals per problem; after that, the submit is let through
+    # M3f: per-role models. Blank = the role uses `model`, and the agent is exactly the M3d one. `model` itself is
+    # then the edit-and-fix model (edit, reflect); these name the model for the other LLM calls.
+    plan_model: str = ""                # plan: reads the task, docs/ and the given files, and writes the plan
+    spec_model: str = ""                # spec (M3d's blind spec cases, with spec_vectors): the tester
+    role_reasoning: str = ""            # reasoning level for the override roles; blank = `reasoning`
+    role_budget_usd: float = 0.50       # per problem, for the override roles' calls (kept apart from budget_usd)
     out_dir: str = ""                   # default <root>/rundir/agent_out
     fake_script: str = ""               # fake provider: a JSON file or inline JSON list of responses
     ledger_dir: str = ""                # whole-run spend guard: shared directory of per-problem costs
@@ -76,17 +82,28 @@ class Config:
             # M3d switches, likewise only when on
             **({"verify_submit": True} if self.verify_submit else {}),
             **({"spec_vectors": True} if self.spec_vectors else {}),
+            # M3f per-role models, likewise only when set
+            **({"plan_model": self.plan_model} if self.plan_model else {}),
+            **({"spec_model": self.spec_model} if self.spec_model else {}),
+            **({"role_reasoning": self.role_reasoning or self.reasoning, "role_budget_usd": self.role_budget_usd}
+               if self.role_models() else {}),
         }
+
+    def role_models(self):
+        """{node: model} for the roles given their own model (M3f); {} for the default agent."""
+        return {k: v for k, v in (("plan", self.plan_model), ("spec", self.spec_model)) if v}
 
     def __post_init__(self):
         if self.spec_vectors:  # S is V plus the spec cases: the spec testbench is applied by V's rule
             self.verify_submit = True
 
 
-def _reasoning(name):
+def _reasoning(name, default="default"):
     from .llm import REASONING
 
-    v = (os.environ.get(name) or "default").strip().lower()
+    v = (os.environ.get(name) or default).strip().lower()
+    if v == "" and default == "":
+        return ""
     if v not in REASONING:
         raise ValueError(f"{name} must be one of {', '.join(REASONING)}, got {v!r}")
     return v
@@ -120,6 +137,10 @@ def from_env():
         interface_check=_flag("CVDP_INTERFACE_CHECK", False),
         verify_submit=_flag("CVDP_VERIFY_SUBMIT", False),
         spec_vectors=_flag("CVDP_SPEC_VECTORS", False),
+        plan_model=os.environ.get("CVDP_PLAN_MODEL", "").strip(),
+        spec_model=os.environ.get("CVDP_SPEC_MODEL", "").strip(),
+        role_reasoning=_reasoning("CVDP_ROLE_REASONING", default=""),
+        role_budget_usd=_num("CVDP_ROLE_BUDGET_USD", 0.50, float),
         out_dir=os.environ.get("CVDP_OUT_DIR", ""),
         fake_script=os.environ.get("CVDP_FAKE_SCRIPT", ""),
         ledger_dir=os.environ.get("CVDP_LEDGER_DIR", ""),

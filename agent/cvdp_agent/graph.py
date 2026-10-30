@@ -87,9 +87,19 @@ class State(TypedDict, total=False):
 class Runtime:
     """What the nodes share that is not graph state: settings, the LLM, the tools, and the running totals."""
 
-    def __init__(self, cfg, llm, tracer=None, checker=None, tools=None, clock=time.monotonic):
+    def __init__(self, cfg, llm, tracer=None, checker=None, tools=None, clock=time.monotonic, role_llms=None):
         self.cfg = cfg
         self.llm = llm
+        # M3f: a client per role given its own model ({} for the default agent: every call goes to `llm`)
+        if role_llms is None:
+            from .llm import make_role
+
+            role_llms = {node: make_role(cfg, m, llm) for node, m in cfg.role_models().items()}
+        self.role_llms = role_llms
+        self.role_reasoning = cfg.role_reasoning or cfg.reasoning  # the roles' level, with its own fallback
+        self.role_spent = 0.0    # provider-reported cost of the role calls, kept apart from the edit loop's budget
+        self.role_calls = 0
+        self.cost_by_model = {}  # model -> provider-reported cost (summary field only with roles set)
         self.clock = clock
         self.t0 = clock()
         self.tracer = tracer or Tracer(cfg.agent_out)
@@ -155,22 +165,34 @@ class Runtime:
     def time_left(self):
         return self.cfg.wall_s - self.elapsed()
 
-    def llm_cap(self):
-        """The reason not to start another LLM call, or None."""
+    def llm_cap(self, node=None):
+        """The reason not to start another LLM call (for `node`, or the edit loop's calls), or None. With M3f's
+        role models, a role call is held to role_budget_usd and the rest to budget_usd, each on its own spend;
+        with none, role_spent is 0 and this is the M3d rule."""
         if self.elapsed() >= self.cfg.wall_s or self.time_left() < MIN_LLM_S:
             return "wall_time"
         if self.cost_unreported:
             return "cost_unreported"  # the budget can no longer be enforced from reported cost
-        if self.spent >= self.cfg.budget_usd:
+        if node in self.role_llms:
+            if self.role_spent >= self.cfg.role_budget_usd:
+                return "budget"
+        elif self.spent - self.role_spent >= self.cfg.budget_usd:
             return "budget"
         return None
+
+    def llm_for(self, node):
+        return self.role_llms.get(node, self.llm)
+
+    def level_for(self, node):
+        """The node's current reasoning level: the problem's, or (M3f) the roles' own."""
+        return self.role_reasoning if node in self.role_llms else self.reasoning
 
     def cap(self, state, nxt):
         """The reason to stop instead of running `nxt`, or None."""
         if self.elapsed() >= self.cfg.wall_s:
             return "wall_time"
         if nxt in LLM_NODES:
-            reason = self.llm_cap()
+            reason = self.llm_cap(nxt)
             if reason:
                 return reason
         if nxt == "edit" and state.get("turn", 0) >= self.cfg.max_turns:
@@ -200,7 +222,8 @@ class Runtime:
         checkpoint(self, state)  # if the harness kills us mid-call, the call shows as unreported
         try:
             extra = {"tools": tools} if tools is not None else {}  # Deep Agents only
-            r = run_with_deadline(lambda: self.llm.invoke(
+            client = self.llm_for(node)
+            r = run_with_deadline(lambda: client.invoke(
                 node, messages, max_tokens=max_tokens, timeout=min(150.0, seconds), reasoning=level,
                 max_retries=0 if seconds < SHORT_CALL_S else None, **extra), seconds)
         finally:
@@ -213,7 +236,8 @@ class Runtime:
         wall cap. If the model refuses the reasoning field, that is traced and the call is made again: at the
         problem's own level when only a retry's lower level was refused (say `off` on a model that must reason),
         otherwise without the field, and the problem then stays at "default" for good."""
-        level = reasoning or self.reasoning
+        level = reasoning or self.level_for(node)
+        base = self.level_for(node)
         remaining = self.time_left()
         self.llm_calls += 1
         call_id = self.llm_calls
@@ -222,19 +246,22 @@ class Runtime:
                 r = self._attempt(node, messages, level, state, tools)
             except ReasoningRejected as e:  # refused before generating anything: not billed, never fails the problem
                 self.reasoning_rejected += 1
-                fallback = self.reasoning if level != self.reasoning else "default"
-                self.tracer.log("llm", node=node, model=getattr(self.llm, "model", None), turn=state.get("turn", 0),
+                fallback = base if level != base else "default"
+                self.tracer.log("llm", node=node, model=getattr(self.llm_for(node), "model", None), turn=state.get("turn", 0),
                                 call_id=call_id, retry_of=retry_of, reasoning=level, reasoning_rejected=True,
                                 cost=0.0, error=truncate(redact(f"{type(e).__name__}: {e}"), 1000),
                                 fallback=fallback)
                 if fallback == "default":
-                    self.reasoning = "default"
+                    if node in self.role_llms:
+                        self.role_reasoning = "default"
+                    else:
+                        self.reasoning = "default"
                 level = fallback
                 r = self._attempt(node, messages, level, state, tools)
         except Exception as e:  # provider errors and missed deadlines end the run; the best edit is still kept
             self.cost_unreported += 1  # an errored, timed-out or abandoned call may still have been billed
-            self.tracer.log("llm", node=node, model=getattr(self.llm, "model", None), turn=state.get("turn", 0),
-                            call_id=call_id, retry_of=retry_of, reasoning=level, cost=None,
+            self.tracer.log("llm", node=node, model=getattr(self.llm_for(node), "model", None),
+                            turn=state.get("turn", 0), call_id=call_id, retry_of=retry_of, reasoning=level, cost=None,
                             deadline_missed=isinstance(e, CallDeadline),
                             error=truncate(redact(f"{type(e).__name__}: {e}"), 1000), remaining_s=round(remaining, 1))
             checkpoint(self, state)
@@ -249,10 +276,15 @@ class Runtime:
         if r.completion_tokens and r.latency_s >= 1.0:
             self.out_tokens += r.completion_tokens
             self.out_seconds += r.latency_s
+        if node in self.role_llms:
+            self.role_calls += 1
         if r.cost is None:
             self.cost_unreported += 1
         else:
             self.spent += r.cost
+            if node in self.role_llms:
+                self.role_spent += r.cost
+            self.cost_by_model[r.model] = self.cost_by_model.get(r.model, 0.0) + r.cost
         checkpoint(self, state)
         return r
 
@@ -264,7 +296,7 @@ class Runtime:
         if r is None or not r.empty:
             return r
         self.empty_replies += 1
-        if self.llm_cap():
+        if self.llm_cap(node):
             return r  # the node traces it, marked empty
         self.log_llm(node, r, state, decision="empty")
         self.empty_retries += 1
@@ -865,6 +897,12 @@ def make_summary(rt, state, stop, kept, compiled):
         extra.update(json.loads(json.dumps(rt.verify_stats)))
     if rt.cfg.spec_vectors:
         extra.update(json.loads(json.dumps(rt.spec_stats)))
+    if rt.role_llms:  # M3f: who did what, and what each part cost
+        extra.update({"role_models": {n: getattr(c, "model", None) for n, c in sorted(rt.role_llms.items())},
+                      "role_reasoning_used": rt.role_reasoning, "role_calls": rt.role_calls,
+                      "role_cost_usd": round(rt.role_spent, 8),
+                      "main_cost_usd": round(rt.spent - rt.role_spent, 8),
+                      "cost_by_model": {m: round(c, 8) for m, c in sorted(rt.cost_by_model.items())}})
     return {**_summary(rt, state, stop, kept, compiled), **rt.summary_extra, **extra}
 
 

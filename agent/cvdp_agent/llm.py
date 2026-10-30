@@ -241,3 +241,30 @@ def make(cfg, clock=None):
     if cfg.provider == "openrouter":
         return OpenRouterLLM(cfg.model, provider_order=cfg.provider_order)
     raise ValueError(f"unknown CVDP_PROVIDER {cfg.provider!r}")
+
+
+class RoleLLM:
+    """The fake provider's per-role model (M3f): the run's own scripted FakeLLM, answering as `model`. The script
+    is shared, so a test scripts the calls in the order the graph makes them, and each recorded request names the
+    model it was routed to."""
+
+    def __init__(self, inner, model):
+        self.inner = inner
+        self.model = model
+
+    def invoke(self, node, messages, **kw):
+        r = self.inner.invoke(node, messages, **kw)
+        if getattr(self.inner, "requests", None):
+            self.inner.requests[-1]["model"] = self.model
+        r.model = self.model
+        return r
+
+
+def make_role(cfg, model, base):
+    """The client for a role given its own model (M3f). OpenRouter routes it freely: `provider_order` pins the
+    run's main model and is not applied to a role model, which another provider may serve."""
+    if cfg.provider == "fake":
+        return RoleLLM(base, model)
+    if cfg.provider == "openrouter":
+        return OpenRouterLLM(model)
+    raise ValueError(f"per-role models need CVDP_PROVIDER fake or openrouter, got {cfg.provider!r}")

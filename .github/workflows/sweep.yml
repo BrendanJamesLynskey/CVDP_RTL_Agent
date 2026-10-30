@@ -91,6 +91,23 @@ on:
         description: "Pin OpenRouter providers, comma-separated, in order, no fallbacks (blank = OpenRouter routes)"
         type: string
         default: ""
+      plan_model:
+        description: "M3f: OpenRouter model for the plan role (blank = model)"
+        type: string
+        default: ""
+      spec_model:
+        description: "M3f: OpenRouter model for the spec-cases role, needs spec_vectors (blank = model)"
+        type: string
+        default: ""
+      role_reasoning:
+        description: "M3f: reasoning for the role models (blank = reasoning)"
+        type: choice
+        options: ["", low, default, medium, high, "off"]
+        default: ""
+      role_budget_usd:
+        description: "M3f: per-problem budget of the role models' calls, USD, apart from budget_usd"
+        type: string
+        default: "0.50"
   pull_request:
 
 permissions:
@@ -123,6 +140,10 @@ env:
   INTERFACE_CHECK: ${{ (github.event_name == 'workflow_dispatch' && inputs.interface_check) && '1' || '0' }}
   VERIFY_SUBMIT: ${{ (github.event_name == 'workflow_dispatch' && inputs.verify_submit) && '1' || '0' }}
   SPEC_VECTORS: ${{ (github.event_name == 'workflow_dispatch' && inputs.spec_vectors) && '1' || '0' }}
+  PLAN_MODEL: ${{ github.event_name == 'pull_request' && '' || inputs.plan_model }}
+  SPEC_MODEL: ${{ github.event_name == 'pull_request' && '' || inputs.spec_model }}
+  ROLE_REASONING: ${{ github.event_name == 'pull_request' && '' || inputs.role_reasoning }}
+  ROLE_BUDGET_USD: ${{ github.event_name == 'pull_request' && '0.50' || inputs.role_budget_usd }}
   RUNNER: ${{ github.event_name == 'pull_request' && 'ubuntu-24.04' || inputs.runner }}
   WORK: work
   REAL_MODEL: ${{ github.event_name == 'workflow_dispatch' && inputs.model != 'fake' }}
