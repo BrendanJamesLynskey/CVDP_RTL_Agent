@@ -570,7 +570,74 @@ m3e["full"] = {"arms": {a: public(v) for a, v in e86_arms.items()}, "effects": {
                "cost_finish": e_finish, "tail": e_tail, "nosc": e86_nosc,
                "solved_x": round(e86_arms["opus"]["usd_solved"] / e86_arms["luna"]["usd_solved"])}
 
-spend_all = round(spend_all + conf_cost + m3c_scored + m3c_smoke + m3d_scored + m3d_smoke + e_scored + e_smoke + e_finish, 2)  # + confirming run, M3c, M3d and M3e scored sweeps (with brief 14b's two) and smoke runs
+# ---- M3g: a frozen knowledge pack loaded as skills, K against A (docs/reports/M3g_report.md, m3g/) ----
+# Only aggregates leave this block: no held-out problem id, text or test reaches the page or the data block.
+M3G = os.path.join(REP, "m3g")
+G_HO = ids_file(os.path.join(ROOT, "tools", "m3g_heldout_ids.txt"))
+g_hdr = [l[1:].strip() for l in open(os.path.join(ROOT, "tools", "m3g_heldout_ids.txt")) if l.startswith("#")]
+g_hdrs = "\n".join(g_hdr)
+g_set = {
+    "file": re.search(r"source: [^,]+, (\S+\.jsonl)", g_hdrs).group(1),
+    "rev": re.search(r"revision: ([0-9a-f]{7})", g_hdrs).group(1),
+    "seed": re.search(r"random\.Random\((\d+)\)", g_hdrs).group(1),
+    "eligible": int(re.search(r"eligible: (\d+)", g_hdrs).group(1)),
+    "of": int(re.search(r"excluded from (\d+)", g_hdrs).group(1)),
+    "cid": {c: int(n) for c, n in re.findall(r"(cid00\d) \([^)]*\) (\d+)", g_hdrs)},
+}
+def g_load(stem):
+    out = []
+    for f in sorted(glob.glob(os.path.join(M3G, "runs", stem + "*.csv"))):
+        tag, run_id = os.path.basename(f)[:-4].rsplit("_", 1)
+        out.append((tag.split("_")[1], run_id, rows(f)))
+    return out
+g_runs = {"hA": g_load("heldout_A"), "hK": g_load("heldout_K"), "dK": g_load("dev_K"), "dA": d_runs["A"]}
+g_arms = {k: pool(v) for k, v in g_runs.items()}
+g_rows = {k: [x for _, _, r in v for x in r] for k, v in g_runs.items()}
+g_eff = {"ho": parse_sections(os.path.join(M3G, "heldout_paired.md"))["K-A"],
+         "d86": parse_sections(os.path.join(M3G, "dev_paired_eval86.md"))["K-A"],
+         "d79": parse_sections(os.path.join(M3G, "dev_paired_eval79.md"))["K-A"]}
+g_chk = {"ho": paired_ids(g_arms["hK"], g_arms["hA"], G_HO), "d86": paired_ids(g_arms["dK"], g_arms["dA"], EVAL),
+         "d79": paired_ids(g_arms["dK"], g_arms["dA"], EVAL79)}
+def g_r79(k):
+    r = [x for x in g_rows[k] if x["id"] in EVAL79]
+    return round(100 * sum(int(x["pass"]) for x in r) / len(r), 1)
+Krows = g_rows["hK"] + g_rows["dK"]
+g_sk = {}
+for k in ("hK", "dK"):
+    for x in g_rows[k]:
+        for s in x["skills_loaded"].split("+"):
+            if s:
+                g_sk.setdefault(s, {"hK": 0, "dK": 0})[k] += 1
+g_cfg = open(os.path.join(ROOT, "agent", "cvdp_agent", "config.py")).read()
+g_pack = os.path.join(ROOT, "agent", "cvdp_agent", "skills", "rtl_pack")
+def g_mean(k, col):
+    return sum(int(x[col] or 0) for x in g_rows[k]) / len(g_rows[k])
+def g_sc(k):
+    return round(100 * sum(1 for x in g_rows[k] if int(x["selfcheck_runs"] or 0) > 0) / len(g_rows[k]), 1)
+def g_iface(k):
+    return g_arms[k]["labels"].get("compile_fail_hidden", 0) + g_arms[k]["labels"].get("signal_missing_hidden", 0)
+g_smoke = round(sum(float(x["cost_usd"] or 0) for f in sorted(glob.glob(os.path.join(M3G, "smoke", "*.csv"))) for x in rows(f)), 4)
+g_scored = round(sum(a["cost"] for k, a in g_arms.items() if k != "dA"), 4)
+m3g = {
+    "arms": {k: public(v) for k, v in g_arms.items()}, "effects": g_eff, "set": g_set, "n_ho": len(G_HO), "n": len(EVAL), "n79": len(EVAL79),
+    "r79": {k: g_r79(k) for k in ("dA", "dK")},
+    "loaded": sum(1 for x in Krows if x["skills_status"] == "loaded"), "k_rows": len(Krows),
+    "skills": dict(sorted(g_sk.items(), key=lambda kv: -(kv[1]["hK"] + kv[1]["dK"]))),
+    "unknown": sum(len([u for u in x["skills_unknown"].split("+") if u]) for x in Krows),
+    "truncated": sum(1 for x in Krows if int(x["skills_truncated"] or 0) > 0),
+    "bytes_mean": {k: round(g_mean(k, "skills_bytes")) for k in ("hK", "dK")}, "bytes_max": max(int(x["skills_bytes"] or 0) for x in Krows),
+    "ptok": {k: round(g_mean(k, "prompt_tokens")) for k in g_rows}, "sc": {k: g_sc(k) for k in g_rows},
+    "iface": {k: g_iface(k) for k in g_rows},
+    "max_skills": int(re.search(r"skills_max: int = (\d+)", g_cfg).group(1)),
+    "cap_bytes": int(re.search(r"skills_cap_bytes: int = ([\d_]+)", g_cfg).group(1).replace("_", "")),
+    "pack_n": len([f for f in os.listdir(g_pack) if f.endswith(".md") and f not in ("INDEX.md", "PROVENANCE.md")]),
+    "pack_sha": sorted({x["skills_pack"] for x in Krows}),
+    "cost_scored": g_scored, "cost_smoke": g_smoke,
+}
+m3g["ptok_x"] = {s: round(100 * (m3g["ptok"][s + "K"] / m3g["ptok"][s + "A"] - 1)) for s in "hd"}
+m3g["money_x"] = round(100 * (g_arms["hK"]["cost"] / g_arms["hA"]["cost"] - 1))
+
+spend_all = round(spend_all + conf_cost + m3c_scored + m3c_smoke + m3d_scored + m3d_smoke + e_scored + e_smoke + e_finish + g_scored + g_smoke, 2)  # + confirming run, M3c, M3d, M3e (with brief 14b's two) and M3g scored sweeps and smoke runs
 
 # Prose numbers in story.html: <span data-d="key">value</span>; --inject rewrites the value from here.
 MINUS = "−"
@@ -720,6 +787,41 @@ proc = [effects[a] for a in "BCDEFG"] + [m3b_eff["C-A"]] + [m3c_eff[k] for k in 
 prose["proc_n"] = str(len(proc)); prose["proc_null"] = str(sum(1 for e in proc if e["lo"] <= 0 <= e["hi"]))
 prose["proc_det"] = str(sum(1 for e in proc if e["lo"] > 0 or e["hi"] < 0))
 prose["e3_model_p"] = f"{m3e['effects']['model']['p']:.1g}"  # 0.0009, as the report prints it
+# M3g (prefix g_; the M3c gate's g_runs, g_skip, ... keep their names, and no key may be written twice)
+G = m3g
+g_before = set(prose)
+g_new = {}
+for k, e in G["effects"].items():
+    g_new[f"g_{k}_e"] = sg(e["eff"]); g_new[f"g_{k}_ci"] = ci(e); g_new[f"g_{k}_p"] = f"{e['p']:.2g}"
+    g_new[f"g_{k}_bws"] = f"{e['better']} / {e['worse']} / {e['same']}"
+for k, v in g_arms.items():
+    g_new[f"g_rate_{k}"] = f"{v['rate']:.1f}"; g_new[f"g_k_{k}"] = str(v["k"]); g_new[f"g_n_{k}"] = str(v["n"])
+    g_new[f"g_us_{k}"] = f"{v['usd_solved']:.4f}"; g_new[f"g_ptok_{k}"] = f"{G['ptok'][k]:,}"; g_new[f"g_sc_{k}"] = f"{G['sc'][k]:.1f}"
+    g_new[f"g_iface_{k}"] = str(G["iface"][k]); g_new[f"g_stp_{k}"] = str(v["labels"].get("tests_failed_selfcheck_passed", 0))
+    g_new[f"g_nst_{k}"] = str(v["labels"].get("tests_failed_no_selfcheck", 0))
+    g_new[f"g_ge_{k}"] = "≥ " if v["unreported"] else ""
+for k in ("dA", "dK"):
+    g_new[f"g_r79_{k}"] = f"{G['r79'][k]:.1f}"
+g_new["g_ho_n"] = str(G["n_ho"]); g_new["g_runs_arm"] = str(len(g_runs["hA"]))
+g_new["g_set_file"] = G["set"]["file"]; g_new["g_set_rev"] = G["set"]["rev"]; g_new["g_set_seed"] = G["set"]["seed"]
+g_new["g_set_elig"] = str(G["set"]["eligible"]); g_new["g_set_of"] = str(G["set"]["of"])
+for c, n in G["set"]["cid"].items():
+    g_new[f"g_set_{c}"] = str(n)
+g_new["g_loaded"] = str(G["loaded"]); g_new["g_krows"] = str(G["k_rows"])
+sr = G["skills"]["spec-reading"]; sc_ = G["skills"]["self-check-and-cocotb"]
+g_new["g_spec_pct"] = f"{100 * (sr['hK'] + sr['dK']) / G['k_rows']:.0f}"
+g_new["g_selfsk_lo"] = f"{100 * min(sc_['hK'] / g_arms['hK']['n'], sc_['dK'] / g_arms['dK']['n']):.0f}"
+g_new["g_selfsk_hi"] = f"{100 * max(sc_['hK'] / g_arms['hK']['n'], sc_['dK'] / g_arms['dK']['n']):.0f}"
+g_new["g_unknown"] = str(G["unknown"]); g_new["g_trunc"] = str(G["truncated"])
+g_new["g_bytes_h"] = f"{G['bytes_mean']['hK']:,}"; g_new["g_bytes_max"] = f"{G['bytes_max']:,}"
+g_new["g_max"] = str(G["max_skills"]); g_new["g_cap"] = f"{G['cap_bytes']:,}"; g_new["g_pack_n"] = str(G["pack_n"])
+g_new["g_pack_sha"] = G["pack_sha"][0][:8]
+g_new["g_ptok_hx"] = f"+{G['ptok_x']['h']}"; g_new["g_ptok_dx"] = f"+{G['ptok_x']['d']}"; g_new["g_money_x"] = f"+{G['money_x']}"
+g_new["g_scored"] = f"{G['cost_scored']:.2f}"; g_new["g_smoke"] = f"{G['cost_smoke']:.2f}"; g_new["g_spend"] = f"{G['cost_scored'] + G['cost_smoke']:.2f}"
+g_new["g_ho_hi"] = sg(G["effects"]["ho"]["hi"]); g_new["g_unrep"] = str(sum(g_arms[k]["unreported"] for k in ("hA", "hK", "dK")))
+g_new["g_wall_hA"] = str(g_arms["hA"]["wall_med"]); g_new["g_wall_hK"] = str(g_arms["hK"]["wall_med"])
+g_clash = sorted(set(g_new) & g_before)
+prose.update(g_new)
 m3b["prose"] = prose
 
 data = {
@@ -739,7 +841,7 @@ data = {
     "external": ext,
     "m3b": m3b,
     "m3b_confirm": m3b_conf, "m3c": m3c, "ladder": claude_ladder,
-    "unsolved": unsolved, "m3d": m3d, "m3e": m3e,
+    "unsolved": unsolved, "m3d": m3d, "m3e": m3e, "m3g": m3g,
 }
 
 # ---- checks against the reports ----
@@ -989,6 +1091,53 @@ check(f"$22.25 on 86 problems: **${prose['e3f_upp']} per problem, ${prose['e3f_u
 check(f"**Spend for brief 14b: ${e_finish:.2f}**" in rep3e and f"**M3e in all: ${e_scored + e_smoke + e_finish:.2f}**" in rep3e, f"M3e finish spend {e_finish}")
 check(e_tail == {"opus": 10, "cc": 14} and "LG+Opus solved 10 of them, Claude Code + Opus 14" in rep3e, f"M3e tail {e_tail}")
 check(e86_nosc == 0 and "| LG+Opus | 86 | 2 / 2.30 | 40 (47%) | 5 / 5.60 | 1 / 2.06 | 0 (0%) |" in open(os.path.join(M3E, "secondary_tables_eval86.md")).read(), f"M3e full no-self-check {e86_nosc}")
+# M3g (docs/reports/M3g_report.md and the ablate.py / taxonomy.py / m3g_tables.py outputs in m3g/)
+rep3g = open(os.path.join(REP, "M3g_report.md")).read()
+g_tab = {s: open(os.path.join(M3G, f"tables_{s}.md")).read() for s in ("heldout", "dev")}
+check(not g_clash, f"M3g prose keys clash with existing ones: {g_clash}")
+check(len(G_HO) == 100 == len(set(G_HO)) and not set(G_HO) & set(EVAL), f"M3g held-out ids {len(G_HO)}")
+check(all(sorted(x["id"] for x in r) == sorted(G_HO) for k in ("hA", "hK") for _, _, r in g_runs[k]), "M3g held-out runs cover the 100 ids")
+check(all(sorted(x["id"] for x in r) == sorted(EVAL) for _, _, r in g_runs["dK"]) and len(g_runs["dK"]) == 3, "M3g dev K runs cover the 86")
+g_cid_of = {}
+for x in g_rows["hA"] + g_rows["hK"]:
+    g_cid_of.setdefault(x["id"], set()).add(x["cid"])
+check(all(len(c_) == 1 for c_ in g_cid_of.values()), "M3g one cid per held-out id")
+g_cids = {}
+for c_ in g_cid_of.values():
+    g_cids[min(c_)] = g_cids.get(min(c_), 0) + 1
+check(g_cids == G["set"]["cid"] == {"cid002": 42, "cid003": 41, "cid004": 17}, f"M3g cid counts {g_cids} {G['set']['cid']}")
+check((G["set"]["eligible"], G["set"]["seed"], G["set"]["rev"]) == (193, "20261030", "5b807d9") and "from the 193 eligible cid002/003/004 problems" in rep3g
+      and "sampled (seed 20261030)" in rep3g and G["set"]["file"] in rep3g, f"M3g held-out set {G['set']}")
+for k, e in g_eff.items():
+    check((e["eff"], e["better"], e["worse"], e["same"]) == g_chk[k], f"M3g {k} effect {e} vs recomputed {g_chk[k]}")
+check(f"**K − A = +1.0 points [−2.7, +4.7]** (9 better," in rep3g and (g_eff["ho"]["eff"], g_eff["ho"]["lo"], g_eff["ho"]["hi"]) == (1.0, -2.7, 4.7), "M3g held-out effect in report")
+check("| 86 problems | 60.9% | 58.5% | **−2.3 [−7.4, +2.3]** | 11 / 12 / 63 | 1 |" in rep3g and g_eff["d86"]["eff"] == -2.3
+      and (prose["g_rate_dA"], prose["g_rate_dK"]) == ("60.9", "58.5"), "M3g 86 effect in report")
+check("| 79 problems (7 benchmark-limited left out) | 66.2% | 63.7% | **−2.5 [−8.4, +2.5]** | 11 / 12 / 56 | 1 |" in rep3g
+      and (G["r79"]["dA"], G["r79"]["dK"]) == (66.2, 63.7) and g_eff["d79"]["eff"] == -2.5, "M3g 79 view in report")
+check("| pass@1, 100 problems × 3 runs | 153/300 = 51.0% | 156/300 = 52.0% |" in rep3g and (g_arms["hA"]["k"], g_arms["hK"]["k"]) == (153, 156), "M3g pooled held-out rates")
+check(f"loaded skills in {G['loaded']} of {G['k_rows']} problem-runs" in rep3g and (G["loaded"], G["k_rows"]) == (552, 558), f"M3g loaded {G['loaded']}")
+check(f"`self-check-and-cocotb` in {prose['g_selfsk_lo']}–{prose['g_selfsk_hi']}%" in rep3g and prose["g_spec_pct"] == "99"
+      and (G["skills"]["spec-reading"]["hK"], G["skills"]["spec-reading"]["dK"]) == (299, 253), "M3g skill shares")
+check(f"{G['unknown']} names asked for in 558 problem-runs were near misses" in rep3g and G["truncated"] == 0 and "Cut by the cap: 0." in g_tab["heldout"]
+      and "Cut by the cap: 0." in g_tab["dev"], f"M3g unknown {G['unknown']} truncated {G['truncated']}")
+check(f"Bytes loaded: mean {G['bytes_mean']['hK']}" in g_tab["heldout"] and f"Bytes loaded: mean {G['bytes_mean']['dK']}" in g_tab["dev"]
+      and f"at most {G['bytes_max']:,}" in rep3g, f"M3g bytes {G['bytes_mean']} {G['bytes_max']}")
+check((G["max_skills"], G["cap_bytes"], G["pack_n"]) == (3, 13000, 15) and "names up to 3 skills; their text (≤ 13,000 bytes)" in rep3g
+      and "15 skills written from outside sources" in rep3g and f"manifest SHA-256 `{prose['g_pack_sha']}…`" in rep3g and len(G["pack_sha"]) == 1, "M3g pack settings")
+for s, k in (("heldout", "hA"), ("heldout", "hK"), ("dev", "dA"), ("dev", "dK")):
+    check(f"| {k[1]} | {g_arms[k]['n']} | {G['ptok'][k]:,} /" in g_tab[s] and f"({G['sc'][k]:.1f}%) |" in g_tab[s], f"M3g tokens / self-check {k}")
+check(f"| K, held-out | $0.0033 | ${prose['g_us_hK']} | {prose['g_wall_hK']} s | {prose['g_ptok_hK']} | +4,693 ({prose['g_ptok_hx']}%) |" in rep3g
+      and f"| {prose['g_ptok_dK']} | +8,487 ({prose['g_ptok_dx']}%) |" in rep3g and f"{G['money_x']}% more money" in rep3g
+      and f"≥${prose['g_us_hA']} per solved problem" in rep3g, "M3g cost lines in report")
+g_tax = [("tests failed, own testbench passed", "stp"), ("tests failed, no own testbench", "nst")]
+for lab, sh in g_tax:
+    check(f"| {lab} | {prose['g_' + sh + '_hA']} | {prose['g_' + sh + '_hK']} | {prose['g_' + sh + '_dA']} | {prose['g_' + sh + '_dK']} |" in rep3g, f"M3g taxonomy {lab}")
+check(f"| interface mismatch (`compile_fail_hidden` + `signal_missing_hidden`) | {G['iface']['hA']} | {G['iface']['hK']} | {G['iface']['dA']} | {G['iface']['dK']} |" in rep3g, "M3g interface mismatches")
+check(abs(g_scored - 3.8428) < 0.0002 and g_smoke == 0.0437 and "smoke $0.0437, scored $3.8428, **M3g total $3.8865**" in rep3g
+      and f"M3g cost **${prose['g_scored']}** for the 9 scored sweeps, **${prose['g_spend']}** with the smoke" in rep3g, f"M3g spend {g_scored} {g_smoke}")
+check(prose["g_unrep"] == "6" and "so the 6 unreported calls cost about nothing" in rep3g, f"M3g unreported {prose['g_unrep']}")
+check(78.5 < spend_all < 79.5, f"spend M1 to M3g {spend_all}")
 check(prose["proc_null"] == prose["proc_n"] == "11" and prose["proc_det"] == "0", f"process changes null {prose['proc_null']} of {prose['proc_n']}")
 
 json.dump(data, open(OUT, "w"), indent=1, sort_keys=False)

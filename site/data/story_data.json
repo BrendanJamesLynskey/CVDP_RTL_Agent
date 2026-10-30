@@ -1167,7 +1167,7 @@
   "cost_total": 10.8709,
   "n_eval": 86,
   "prose": {
-   "spend_all": "75.14",
+   "spend_all": "79.03",
    "m3b_n": "86",
    "m3b_runs_arm": "3",
    "m3b_pr_arm": "258",
@@ -1547,7 +1547,94 @@
    "e3f_wall_luna": "74",
    "proc_n": "11",
    "proc_null": "11",
-   "proc_det": "0"
+   "proc_det": "0",
+   "g_ho_e": "+1.0",
+   "g_ho_ci": "[\u22122.7, +4.7]",
+   "g_ho_p": "1",
+   "g_ho_bws": "9 / 8 / 83",
+   "g_d86_e": "\u22122.3",
+   "g_d86_ci": "[\u22127.4, +2.3]",
+   "g_d86_p": "1",
+   "g_d86_bws": "11 / 12 / 63",
+   "g_d79_e": "\u22122.5",
+   "g_d79_ci": "[\u22128.4, +2.5]",
+   "g_d79_p": "1",
+   "g_d79_bws": "11 / 12 / 56",
+   "g_rate_hA": "51.0",
+   "g_k_hA": "153",
+   "g_n_hA": "300",
+   "g_us_hA": "0.0054",
+   "g_ptok_hA": "8,286",
+   "g_sc_hA": "24.0",
+   "g_iface_hA": "26",
+   "g_stp_hA": "5",
+   "g_nst_hA": "103",
+   "g_ge_hA": "\u2265 ",
+   "g_rate_hK": "52.0",
+   "g_k_hK": "156",
+   "g_n_hK": "300",
+   "g_us_hK": "0.0064",
+   "g_ptok_hK": "12,979",
+   "g_sc_hK": "30.0",
+   "g_iface_hK": "26",
+   "g_stp_hK": "11",
+   "g_nst_hK": "95",
+   "g_ge_hK": "",
+   "g_rate_dK": "58.5",
+   "g_k_dK": "151",
+   "g_n_dK": "258",
+   "g_us_dK": "0.0134",
+   "g_ptok_dK": "34,527",
+   "g_sc_dK": "44.6",
+   "g_iface_dK": "17",
+   "g_stp_dK": "14",
+   "g_nst_dK": "52",
+   "g_ge_dK": "\u2265 ",
+   "g_rate_dA": "60.9",
+   "g_k_dA": "157",
+   "g_n_dA": "258",
+   "g_us_dA": "0.0112",
+   "g_ptok_dA": "26,040",
+   "g_sc_dA": "44.6",
+   "g_iface_dA": "14",
+   "g_stp_dA": "16",
+   "g_nst_dA": "55",
+   "g_ge_dA": "\u2265 ",
+   "g_r79_dA": "66.2",
+   "g_r79_dK": "63.7",
+   "g_ho_n": "100",
+   "g_runs_arm": "3",
+   "g_set_file": "cvdp_v1.1.0_nonagentic_code_generation_no_commercial.jsonl",
+   "g_set_rev": "5b807d9",
+   "g_set_seed": "20261030",
+   "g_set_elig": "193",
+   "g_set_of": "227",
+   "g_set_cid002": "42",
+   "g_set_cid003": "41",
+   "g_set_cid004": "17",
+   "g_loaded": "552",
+   "g_krows": "558",
+   "g_spec_pct": "99",
+   "g_selfsk_lo": "41",
+   "g_selfsk_hi": "52",
+   "g_unknown": "18",
+   "g_trunc": "0",
+   "g_bytes_h": "11,809",
+   "g_bytes_max": "12,554",
+   "g_max": "3",
+   "g_cap": "13,000",
+   "g_pack_n": "15",
+   "g_pack_sha": "e6ca1610",
+   "g_ptok_hx": "+57",
+   "g_ptok_dx": "+33",
+   "g_money_x": "+21",
+   "g_scored": "3.84",
+   "g_smoke": "0.04",
+   "g_spend": "3.89",
+   "g_ho_hi": "+4.7",
+   "g_unrep": "6",
+   "g_wall_hA": "32",
+   "g_wall_hK": "36"
   }
  },
  "m3b_confirm": {
@@ -2715,5 +2802,340 @@
    "nosc": 0,
    "solved_x": 32
   }
+ },
+ "m3g": {
+  "arms": {
+   "hA": {
+    "runs": [
+     {
+      "tag": "A1",
+      "run": "41109382939",
+      "k": 50,
+      "n": 100
+     },
+     {
+      "tag": "A2",
+      "run": "41109399217",
+      "k": 52,
+      "n": 100
+     },
+     {
+      "tag": "A3",
+      "run": "41109414912",
+      "k": 51,
+      "n": 100
+     }
+    ],
+    "k": 153,
+    "n": 300,
+    "rate": 51.0,
+    "cost": 0.8214,
+    "usd_problem": 0.0027,
+    "usd_solved": 0.0054,
+    "unreported": 1,
+    "labels": {
+     "signal_missing_hidden": 16,
+     "tests_failed_no_selfcheck": 103,
+     "compile_fail_hidden": 10,
+     "tests_failed_selfcheck_failed": 3,
+     "sim_incomplete": 9,
+     "tests_failed_selfcheck_passed": 5,
+     "llm_error": 1
+    },
+    "fails": 147,
+    "tokens": 3583321,
+    "turn_cap": 4,
+    "wall_cap": 0,
+    "wall_cap_failed": 0,
+    "wall_med": 32
+   },
+   "hK": {
+    "runs": [
+     {
+      "tag": "K1",
+      "run": "41114032101",
+      "k": 51,
+      "n": 100
+     },
+     {
+      "tag": "K2",
+      "run": "41114048258",
+      "k": 53,
+      "n": 100
+     },
+     {
+      "tag": "K3",
+      "run": "41114063795",
+      "k": 52,
+      "n": 100
+     }
+    ],
+    "k": 156,
+    "n": 300,
+    "rate": 52.0,
+    "cost": 0.9968,
+    "usd_problem": 0.0033,
+    "usd_solved": 0.0064,
+    "unreported": 0,
+    "labels": {
+     "tests_failed_no_selfcheck": 95,
+     "signal_missing_hidden": 16,
+     "tests_failed_selfcheck_passed": 11,
+     "compile_fail_hidden": 10,
+     "stopped_by_cap": 2,
+     "sim_incomplete": 10
+    },
+    "fails": 144,
+    "tokens": 5023558,
+    "turn_cap": 3,
+    "wall_cap": 0,
+    "wall_cap_failed": 0,
+    "wall_med": 36
+   },
+   "dK": {
+    "runs": [
+     {
+      "tag": "K1",
+      "run": "41118692095",
+      "k": 50,
+      "n": 86
+     },
+     {
+      "tag": "K2",
+      "run": "41118707002",
+      "k": 50,
+      "n": 86
+     },
+     {
+      "tag": "K3",
+      "run": "41118721524",
+      "k": 51,
+      "n": 86
+     }
+    ],
+    "k": 151,
+    "n": 258,
+    "rate": 58.5,
+    "cost": 2.0245,
+    "usd_problem": 0.0078,
+    "usd_solved": 0.0134,
+    "unreported": 5,
+    "labels": {
+     "tests_failed_selfcheck_failed": 7,
+     "tests_failed_no_selfcheck": 52,
+     "compile_fail_hidden": 8,
+     "signal_missing_hidden": 9,
+     "tests_failed_selfcheck_passed": 14,
+     "sim_incomplete": 5,
+     "llm_error": 5,
+     "no_edit": 1,
+     "stopped_by_cap": 6
+    },
+    "fails": 107,
+    "tokens": 10943228,
+    "turn_cap": 6,
+    "wall_cap": 2,
+    "wall_cap_failed": 2,
+    "wall_med": 56
+   },
+   "dA": {
+    "runs": [
+     {
+      "tag": "A1",
+      "run": "40353853802",
+      "k": 49,
+      "n": 86
+     },
+     {
+      "tag": "A2",
+      "run": "40368004835",
+      "k": 52,
+      "n": 86
+     },
+     {
+      "tag": "A3",
+      "run": "40376808643",
+      "k": 56,
+      "n": 86
+     }
+    ],
+    "k": 157,
+    "n": 258,
+    "rate": 60.9,
+    "cost": 1.7592,
+    "usd_problem": 0.0068,
+    "usd_solved": 0.0112,
+    "unreported": 4,
+    "labels": {
+     "llm_error": 2,
+     "tests_failed_selfcheck_passed": 16,
+     "sim_incomplete": 5,
+     "tests_failed_no_selfcheck": 55,
+     "compile_fail_hidden": 10,
+     "stopped_by_cap": 7,
+     "signal_missing_hidden": 4,
+     "tests_failed_selfcheck_failed": 2
+    },
+    "fails": 101,
+    "tokens": 8621964,
+    "turn_cap": 8,
+    "wall_cap": 3,
+    "wall_cap_failed": 2,
+    "wall_med": 74
+   }
+  },
+  "effects": {
+   "ho": {
+    "finding": "no detectable effect",
+    "eff": 1.0,
+    "lo": -2.7,
+    "hi": 4.7,
+    "better": 9,
+    "worse": 8,
+    "same": 83,
+    "p": 1.0
+   },
+   "d86": {
+    "finding": "no detectable effect",
+    "eff": -2.3,
+    "lo": -7.4,
+    "hi": 2.3,
+    "better": 11,
+    "worse": 12,
+    "same": 63,
+    "p": 1.0
+   },
+   "d79": {
+    "finding": "no detectable effect",
+    "eff": -2.5,
+    "lo": -8.4,
+    "hi": 2.5,
+    "better": 11,
+    "worse": 12,
+    "same": 56,
+    "p": 1.0
+   }
+  },
+  "set": {
+   "file": "cvdp_v1.1.0_nonagentic_code_generation_no_commercial.jsonl",
+   "rev": "5b807d9",
+   "seed": "20261030",
+   "eligible": 193,
+   "of": 227,
+   "cid": {
+    "cid002": 42,
+    "cid003": 41,
+    "cid004": 17
+   }
+  },
+  "n_ho": 100,
+  "n": 86,
+  "n79": 79,
+  "r79": {
+   "dA": 66.2,
+   "dK": 63.7
+  },
+  "loaded": 552,
+  "k_rows": 558,
+  "skills": {
+   "spec-reading": {
+    "hK": 299,
+    "dK": 253
+   },
+   "self-check-and-cocotb": {
+    "hK": 156,
+    "dK": 105
+   },
+   "fsm-design": {
+    "hK": 84,
+    "dK": 67
+   },
+   "arithmetic-and-widths": {
+    "hK": 71,
+    "dK": 59
+   },
+   "synthesisable-subset-and-parameters": {
+    "hK": 40,
+    "dK": 57
+   },
+   "reset-strategy": {
+    "hK": 66,
+    "dK": 28
+   },
+   "sequential-and-combinational-coding": {
+    "hK": 46,
+    "dK": 32
+   },
+   "pipelining-and-latency": {
+    "hK": 18,
+    "dK": 49
+   },
+   "valid-ready-handshake": {
+    "hK": 29,
+    "dK": 19
+   },
+   "clock-domain-crossing": {
+    "hK": 11,
+    "dK": 20
+   },
+   "counters-timers-and-edges": {
+    "hK": 16,
+    "dK": 12
+   },
+   "fifo-design": {
+    "hK": 10,
+    "dK": 17
+   },
+   "memories-and-register-files": {
+    "hK": 9,
+    "dK": 17
+   },
+   "arbiters-encoders-and-muxes": {
+    "hK": 15,
+    "dK": 5
+   },
+   "bus-and-register-interfaces": {
+    "hK": 13,
+    "dK": 5
+   }
+  },
+  "unknown": 18,
+  "truncated": 0,
+  "bytes_mean": {
+   "hK": 11809,
+   "dK": 11572
+  },
+  "bytes_max": 12554,
+  "ptok": {
+   "hA": 8286,
+   "hK": 12979,
+   "dK": 34527,
+   "dA": 26040
+  },
+  "sc": {
+   "hA": 24.0,
+   "hK": 30.0,
+   "dK": 44.6,
+   "dA": 44.6
+  },
+  "iface": {
+   "hA": 26,
+   "hK": 26,
+   "dK": 17,
+   "dA": 14
+  },
+  "max_skills": 3,
+  "cap_bytes": 13000,
+  "pack_n": 15,
+  "pack_sha": [
+   "e6ca1610e84fc775a89d812d4f6fcd96cf3afce7d2a24d5add0a9caeae2a7245"
+  ],
+  "cost_scored": 3.8427,
+  "cost_smoke": 0.0437,
+  "ptok_x": {
+   "h": 57,
+   "d": 33
+  },
+  "money_x": 21
  }
 }
