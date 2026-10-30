@@ -104,6 +104,16 @@ same (+12.2 model, +1.3 harness). The first dispatch's 67-problem results (+13.4
 report beside these. Opus ran its own testbench on every problem without being made to. It costs $0.359 per solved
 problem, 32× luna; $24.38 in all.
 
+**M3g** (pre-registered, not yet run: [`docs/reports/M3g_report.md`](docs/reports/M3g_report.md),
+[`docs/reports/m3g/preregistration.md`](docs/reports/m3g/preregistration.md), smoke in
+[`docs/reports/m3g/smoke.md`](docs/reports/m3g/smoke.md)): can a frozen pack of outside RTL design know-how, loaded
+as skills, help luna? `CVDP_SKILLS` (sweep input `skills`) points at a pack
+([`agent/cvdp_agent/skills/rtl_pack/`](agent/cvdp_agent/skills/rtl_pack/), 15 skills, checked against its manifest);
+the plan sees its index and names up to 3 skills, whose text goes into every edit prompt. The primary test is on a
+held-out set nobody has inspected: 100 of CVDP's non-agentic (copilot) problems, frozen in
+[`tools/m3g_heldout_ids.txt`](tools/m3g_heldout_ids.txt) before any run (`split=m3g_heldout`, built by
+[`tools/m3g_heldout.py`](tools/m3g_heldout.py)); the 86 are a development set.
+
 **M2a** (merged, [`docs/reports/M2a_report.md`](docs/reports/M2a_report.md)): reasoning limits, a retry on empty
 replies and unreadable decisions, and seeds. On the same 10 problems on Arm64, DeepSeek at `reasoning=off` passed
 6/10 for $0.0867 with no empty replies; at `low` it passed 7/10 for $0.3546 with 14 empty replies.
