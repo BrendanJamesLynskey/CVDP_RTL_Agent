@@ -1,0 +1,1634 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.4 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<meta property="og:title" content="Results, M0 to M3b · CVDP RTL Agent">
+<meta property="og:description" content="The milestones, three models on 92 problems (M2), six ablations with no detectable effect (M3), and the Deep Agents harness and lessons memory (M3b).">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://cvdp-rtl-agent.vercel.app/results-m2-m3b">
+<meta name="twitter:card" content="summary">
+<link rel="canonical" href="https://cvdp-rtl-agent.vercel.app/results-m2-m3b">
+</head>
+<body>
+<title>Results, M0 to M3b · CVDP RTL Agent</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="The milestones, three models on 92 problems (M2), six ablations with no detectable effect (M3), and the Deep Agents harness and lessons memory (M3b).">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Martian+Mono:wght@300;500;700;800&display=swap">
+<style>
+/* Layout concept: the page is a waveform viewer. Time runs down the page; a cursor line and a ns readout
+   follow the scroll; each section is a signal group named in a left gutter, opened by a clock edge.
+   Light theme = a timing diagram printed on engineering paper. Dark theme = a monochrome scope screen, red only for failures. */
+:root {
+  --paper: #f1f4f2;        /* engineering paper */
+  --panel: #fafbfa;        /* plotted panels */
+  --grid: #d5e0df;         /* fine grid */
+  --grid-2: #b4c6c5;       /* major grid / rules */
+  --ink: #17212b;          /* text, traces */
+  --ink-2: #4c5b68;        /* secondary text */
+  --ink-3: #74838f;        /* tertiary, axes */
+  --ch1: #1b4f9c;          /* channel 1: primary trace (blue ink) */
+  --ch2: #9a5b00;          /* channel 2: secondary trace (ochre ink) */
+  --ch3: #8a3a9e;          /* channel 3: markers, cursor (violet ink) */
+  --x: #c4321b;            /* unknown / failing state */
+  --x-soft: rgba(196, 50, 27, .14);
+  --ch1-soft: rgba(27, 79, 156, .12);
+  --ch2-soft: rgba(154, 91, 0, .13);
+  --ch3-soft: rgba(138, 58, 158, .12);
+  --dim: .28;              /* opacity of not-yet-reached frames */
+  --glow: none;
+  --f-disp: "Martian Mono", "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --f-body: "IBM Plex Sans", "Helvetica Neue", Arial, system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --gut: 196px;
+  --measure: 68ch;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0b0b0b; --panel: #111111; --grid: #1c1c1c; --grid-2: #2e2e2e;
+    --ink: #e6e6e6; --ink-2: #a6a6a6; --ink-3: #777777;
+    --ch1: #f4f4f4; --ch2: #a8a8a8; --ch3: #7c7c7c; --x: #ff5a4a;
+    --x-soft: rgba(255, 90, 74, .16); --ch1-soft: rgba(255, 255, 255, .10);
+    --ch2-soft: rgba(255, 255, 255, .07); --ch3-soft: rgba(255, 255, 255, .05);
+    --dim: .22; --glow: none;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0b0b0b; --panel: #111111; --grid: #1c1c1c; --grid-2: #2e2e2e;
+  --ink: #e6e6e6; --ink-2: #a6a6a6; --ink-3: #777777;
+  --ch1: #f4f4f4; --ch2: #a8a8a8; --ch3: #7c7c7c; --x: #ff5a4a;
+  --x-soft: rgba(255, 90, 74, .16); --ch1-soft: rgba(255, 255, 255, .10);
+  --ch2-soft: rgba(255, 255, 255, .07); --ch3-soft: rgba(255, 255, 255, .05);
+  --dim: .22; --glow: none;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 64px; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  color: var(--ink);
+  font: 16px/1.6 var(--f-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0;
+  overflow-x: hidden;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--paper); }
+a { color: var(--ch1); text-underline-offset: 3px; }
+a:hover { color: var(--ch3); }
+:focus-visible { outline: 2px solid var(--ch3); outline-offset: 2px; }
+code, kbd, .mono { font-family: var(--f-mono); font-size: .9em; }
+code { background: var(--ch1-soft); padding: 0 .3em; border-radius: 2px; overflow-wrap: anywhere; }
+h1, h2, h3 { font-family: var(--f-disp); text-wrap: balance; letter-spacing: -.01em; }
+h2 { font-size: clamp(1.35rem, 1rem + 1.6vw, 1.9rem); font-weight: 700; line-height: 1.2; margin: .2em 0 .5em; }
+h3 { font-size: 1rem; font-weight: 700; margin: 1.6em 0 .5em; letter-spacing: 0; }
+p, li { max-width: var(--measure); }
+p { margin: 0 0 1em; }
+ul, ol { padding-left: 1.2em; margin: 0 0 1em; }
+li { margin: .25em 0; }
+.small { font-size: .875rem; color: var(--ink-2); }
+.num { font-variant-numeric: tabular-nums; }
+strong { font-weight: 600; }
+
+/* ---- top bar: file name, ruler, cursor time, theme switch ---- */
+.bar {
+  position: fixed; z-index: 20; top: env(safe-area-inset-top, 0px); left: 0; right: 0;
+  height: 44px; display: flex; align-items: center; gap: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background: var(--paper); border-bottom: 1px solid var(--grid-2);
+  font: 500 12px/1 var(--f-mono); color: var(--ink-2);
+}
+.bar .file { color: var(--ink); white-space: nowrap; }
+.bar .file b { font-family: var(--f-disp); font-weight: 800; color: var(--ch1); }
+.ruler { flex: 1; height: 100%; min-width: 0; position: relative;
+  background:
+    repeating-linear-gradient(90deg, var(--grid-2) 0 1px, transparent 1px 10px) left bottom / 100% 6px no-repeat,
+    repeating-linear-gradient(90deg, var(--ink-3) 0 1px, transparent 1px 50px) left bottom / 100% 12px no-repeat; }
+.ruler .prog { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--ch3); width: 0; }
+.tread { white-space: nowrap; color: var(--ch3); min-width: 15ch; text-align: right; }
+.tbtn { font: 600 11px/1 var(--f-mono); letter-spacing: .08em; color: var(--ink); background: var(--panel);
+  border: 1px solid var(--grid-2); padding: 7px 9px; cursor: pointer; border-radius: 2px; min-height: 30px; white-space: nowrap; }
+.tbtn:hover { border-color: var(--ch3); }
+a.tbtn { text-decoration: none; display: inline-flex; align-items: center; white-space: nowrap; }
+.tbtn.theme [data-m] { opacity: .6; font-weight: 500; }
+.tbtn.theme [data-m].on { opacity: 1; font-weight: 800; text-decoration: underline; text-underline-offset: 3px; }
+a.file { text-decoration: none; }
+.cursor { position: fixed; z-index: 15; left: 0; right: 0; top: 50%; height: 0; border-top: 1px dashed var(--ch3); opacity: .55; pointer-events: none; }
+.cursor span { position: absolute; right: max(10px, env(safe-area-inset-right, 0px)); top: -9px; font: 500 10px/1 var(--f-mono);
+  background: var(--paper); color: var(--ch3); padding: 2px 4px; border: 1px solid var(--ch3); }
+
+/* ---- page frame and sections ---- */
+main { max-width: 1120px; margin: 0 auto; padding-top: calc(64px + env(safe-area-inset-top, 0px)); }
+.sec { display: grid; grid-template-columns: var(--gut) minmax(0, 1fr); gap: 0 28px; position: relative; padding-block: 28px 56px; }
+.gutter { position: relative; border-right: 1px solid var(--grid-2); }
+.gutter .sticky { position: sticky; top: 70px; padding: 4px 14px 0 0; display: grid; gap: 6px; }
+.sig { font: 600 12px/1.3 var(--f-mono); color: var(--ink); overflow-wrap: anywhere; }
+.sig::before { content: "\25B8\00a0"; color: var(--ink-3); }
+.lz { --c: var(--ch1); display: inline-flex; align-items: center; justify-content: center; min-height: 22px; padding: 0 14px;
+  font: 600 11px/1 var(--f-mono); color: var(--c); background: color-mix(in srgb, var(--c) 12%, transparent);
+  clip-path: polygon(8px 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 8px 100%, 0 50%);
+  border: 0; white-space: nowrap; max-width: 100%; }
+.lz.x { --c: var(--x); }
+.lz.c2 { --c: var(--ch2); }
+.lz.c3 { --c: var(--ch3); }
+.stamp { font: 500 10.5px/1 var(--f-mono); color: var(--ink-3); }
+.clk { position: absolute; right: -1px; top: 0; bottom: 0; width: 14px; color: var(--ch1); opacity: .55;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='48'%3E%3Cpath d='M1 0V24H13V48' fill='none' stroke='black' stroke-width='1.5'/%3E%3C/svg%3E") repeat-y;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='48'%3E%3Cpath d='M1 0V24H13V48' fill='none' stroke='black' stroke-width='1.5'/%3E%3C/svg%3E") repeat-y; }
+.body { min-width: 0; }
+.edge { display: flex; align-items: center; gap: 10px; font: 500 11px/1 var(--f-mono); color: var(--ink-3); margin-bottom: 8px; flex-wrap: wrap; }
+.edge svg { flex: none; color: var(--ch1); }
+.edge .lz { min-height: 20px; }
+
+.ios { border: 1px solid var(--grid-2); border-left: 3px solid var(--ch3); background: var(--panel); padding: 12px 16px; margin: 4px 0 22px; max-width: 72ch; }
+.ios .k { display: block; font: 600 10.5px/1 var(--f-mono); letter-spacing: .12em; color: var(--ch3); margin-bottom: 7px; }
+.ios p { margin: 0; font-size: 1.06rem; line-height: 1.5; color: var(--ink); }
+
+details.why { border: 1px dashed var(--grid-2); background: var(--panel); margin: 14px 0; max-width: 72ch; }
+details.why summary { cursor: pointer; padding: 10px 14px; font: 600 12.5px/1.4 var(--f-mono); color: var(--ink); list-style: none; display: flex; gap: 10px; align-items: baseline; min-height: 44px; align-items: center; }
+details.why summary::-webkit-details-marker { display: none; }
+details.why summary::before { content: "+"; font-family: var(--f-mono); color: var(--ch3); width: 1ch; flex: none; }
+details.why[open] summary::before { content: "\2212"; }
+details.why summary .wk { color: var(--ch3); font-weight: 600; letter-spacing: .06em; flex: none; }
+details.why > div { padding: 0 14px 12px 34px; font-size: .95rem; }
+details.why > div p:last-child { margin-bottom: 0; }
+
+a.gl { color: inherit; text-decoration: underline dotted var(--ch3); text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
+a.gl:hover { color: var(--ch3); }
+
+/* ---- hero ---- */
+.hero h1 { font-size: clamp(2rem, 1.2rem + 4.2vw, 3.9rem); font-weight: 800; line-height: 1.02; margin: .1em 0 .25em; letter-spacing: -.035em; }
+.hero h1 span { color: var(--ch1); filter: var(--glow); }
+.dek { font-size: 1.13rem; color: var(--ink-2); max-width: 64ch; }
+.meas { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0; border: 1px solid var(--grid-2); background: var(--panel); margin: 22px 0 8px; }
+@media (min-width: 861px) { .meas { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.meas > div { padding: 10px 14px; border-right: 1px solid var(--grid); border-bottom: 1px solid var(--grid); min-width: 0; }
+.meas .k { font: 600 10px/1.2 var(--f-mono); letter-spacing: .1em; color: var(--ink-3); text-transform: uppercase; }
+.meas .v { font: 700 1.35rem/1.25 var(--f-disp); color: var(--ch1); font-variant-numeric: tabular-nums; filter: var(--glow); }
+.meas .v.x { color: var(--x); }
+.meas .s { font-size: .78rem; color: var(--ink-2); line-height: 1.35; }
+.meas.four { margin-top: 18px; }
+@media (min-width: 861px) { .meas.four { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+a.way { display: grid; gap: 4px; max-width: 72ch; margin: 0 0 6px; padding: 12px 16px; border: 1.5px solid var(--ink); background: var(--panel); color: var(--ink); text-decoration: none; }
+a.way:hover { border-color: var(--ch3); }
+a.way .wk { font: 700 14px/1.3 var(--f-mono); letter-spacing: .06em; color: var(--ch1); }
+a.way:hover .wk { color: var(--ch3); }
+a.way .wd { font-size: .95rem; color: var(--ink-2); }
+ol.found { list-style: none; padding: 0; margin: 4px 0 16px; display: grid; gap: 0; max-width: 80ch; border-top: 1px solid var(--grid-2); }
+ol.found li { display: grid; grid-template-columns: 9.5ch minmax(0, 1fr); gap: 12px; align-items: start; padding: 11px 0; border-bottom: 1px solid var(--grid); margin: 0; max-width: none; }
+ol.found li .lz { justify-self: start; margin-top: 2px; }
+ol.found li a { white-space: nowrap; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; margin: 6px 0 4px; }
+.card { border: 1px solid var(--grid-2); background: var(--panel); padding: 12px 14px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+.card a.ct { display: grid; gap: 4px; text-decoration: none; color: var(--ink); }
+.card a.ct .k { font: 600 10.5px/1.2 var(--f-mono); letter-spacing: .1em; color: var(--ch3); }
+.card a.ct b { font: 700 1.02rem/1.3 var(--f-disp); color: var(--ch1); }
+.card a.ct:hover b { color: var(--ch3); text-decoration: underline; }
+.card p { margin: 0; font-size: .9rem; color: var(--ink-2); }
+.card ul.cl { list-style: none; padding: 0; margin: 2px 0 0; display: flex; flex-wrap: wrap; gap: 4px 12px; font: 500 12px/1.4 var(--f-mono); }
+.card ul.cl li { margin: 0; }
+nav.crumb { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; padding: 4px 0 14px; border-bottom: 1px solid var(--grid-2); font: 500 12.5px/1.5 var(--f-mono); color: var(--ink-2); }
+nav.crumb b { color: var(--ink); font-weight: 600; }
+nav.pnav { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; margin: 8px 0 0; padding: 14px 0; border-top: 1px solid var(--grid-2); font: 600 12.5px/1.4 var(--f-mono); }
+nav.pnav a { text-decoration: none; border: 1px solid var(--grid-2); background: var(--panel); padding: 9px 12px; color: var(--ink); min-width: 0; }
+nav.pnav a:hover { border-color: var(--ch3); color: var(--ch3); }
+nav.pnav a small { display: block; font: 500 10.5px/1.3 var(--f-mono); letter-spacing: .08em; color: var(--ink-3); }
+nav.pnav .nx { text-align: right; grid-column: 3; }
+nav.pnav .up { grid-column: 2; align-self: center; }
+@media (max-width: 560px) { nav.pnav { grid-template-columns: 1fr; } nav.pnav .nx, nav.pnav .up { grid-column: auto; text-align: left; } }
+@media print { .bar, .cursor, nav.pnav, .ctl { display: none !important; } main { padding-top: 0; } }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 18px; }
+.two > div { min-width: 0; }
+.two h3 { margin-top: 0; }
+
+/* ---- instrument panels (charts) ---- */
+.scope { border: 1px solid var(--grid-2); background: var(--panel); margin: 18px 0 10px; position: relative; }
+.scope .hd { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 8px 12px; border-bottom: 1px solid var(--grid);
+  font: 600 11px/1.3 var(--f-mono); color: var(--ink-2); letter-spacing: .04em; }
+.scope .hd b { color: var(--ink); font-weight: 600; }
+.scope .plot { padding: 8px 10px 6px; overflow-x: auto; }
+.scope .plot svg { display: block; overflow: visible; }
+.scope .ft { padding: 6px 12px 9px; font-size: .8rem; color: var(--ink-2); border-top: 1px solid var(--grid); }
+.cap { font: 500 12.5px/1.45 var(--f-mono); color: var(--ink); padding: 8px 12px; border-top: 1px solid var(--grid); min-height: 3.2em; }
+.cap b { color: var(--ch3); font-weight: 600; }
+.ctl { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-top: 1px solid var(--grid); flex-wrap: wrap; }
+.ctl button { width: 36px; height: 32px; display: inline-grid; place-items: center; background: transparent; color: var(--ink);
+  border: 1px solid var(--grid-2); border-radius: 2px; cursor: pointer; padding: 0; }
+.ctl button:hover { border-color: var(--ch3); color: var(--ch3); }
+.ctl button svg { width: 14px; height: 14px; }
+.ctl input[type=range] { flex: 1 1 120px; min-width: 90px; accent-color: var(--ch3); height: 28px; }
+.ctl select { font: 500 12px var(--f-mono); background: var(--panel); color: var(--ink); border: 1px solid var(--grid-2); height: 32px; border-radius: 2px; }
+.ctl .ix { font: 500 11.5px var(--f-mono); color: var(--ink-2); min-width: 9ch; text-align: right; }
+.player:focus-visible { outline: 2px solid var(--ch3); outline-offset: 3px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* svg text and marks */
+svg text { font-family: var(--f-mono); fill: var(--ink-2); }
+svg .t-ink { fill: var(--ink); }
+svg .t-3 { fill: var(--ink-3); }
+svg .t-c1 { fill: var(--ch1); }
+svg .t-c2 { fill: var(--ch2); }
+svg .t-c3 { fill: var(--ch3); }
+svg .t-x { fill: var(--x); }
+svg .grid { stroke: var(--grid); stroke-width: 1; fill: none; }
+svg .grid2 { stroke: var(--grid-2); stroke-width: 1; fill: none; }
+svg .trace { stroke: var(--ch1); stroke-width: 1.8; fill: none; color: var(--ch1); filter: var(--glow); }
+svg .trace2 { stroke: var(--ch2); stroke-width: 1.6; fill: none; color: var(--ch2); filter: var(--glow); }
+svg .trace3 { stroke: var(--ch3); stroke-width: 1.6; fill: none; color: var(--ch3); }
+svg .tracex { stroke: var(--x); stroke-width: 1.8; fill: none; color: var(--x); filter: var(--glow); }
+svg .f1 { fill: var(--ch1); } svg .f2 { fill: var(--ch2); } svg .f3 { fill: var(--ch3); } svg .fx { fill: var(--x); }
+svg .fink { fill: var(--ink); } svg .fink2 { fill: var(--ink-3); } svg .fpanel { fill: var(--panel); } svg .fgrid { fill: var(--grid-2); }
+svg .s1 { fill: var(--ch1-soft); stroke: var(--ch1); } svg .s2 { fill: var(--ch2-soft); stroke: var(--ch2); }
+svg .s3 { fill: var(--ch3-soft); stroke: var(--ch3); } svg .sx { fill: url(#hatch); stroke: var(--x); }
+svg .dim { opacity: var(--dim); }
+svg .sxs { fill: var(--x-soft); stroke: var(--x); stroke-width: 1.6; }
+svg .o2 { fill: var(--panel); stroke: var(--ch2); stroke-width: 1.4; } svg .o0 { fill: var(--panel); stroke: var(--ink-3); stroke-width: 1.4; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 8px 12px; border-top: 1px solid var(--grid); font: 500 11.5px/1.3 var(--f-mono); color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend svg { flex: none; }
+svg .hit { cursor: crosshair; }
+
+/* ---- milestone bus ---- */
+.bus { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin: 18px 0; }
+.ms { border: 1px solid var(--grid-2); background: var(--panel); padding: 10px 12px; min-width: 0; display: grid; gap: 6px; align-content: start; }
+.ms .lz { justify-self: start; }
+.ms .d { font: 500 11px var(--f-mono); color: var(--ink-3); }
+.ms .q { font-size: .9rem; } .ms .a { font-size: .9rem; color: var(--ink-2); }
+.ms .q b, .ms .a b { font: 600 10.5px var(--f-mono); letter-spacing: .08em; color: var(--ch3); display: block; }
+.ms.plan { border-style: dashed; }
+
+/* ---- tables ---- */
+.tw { overflow-x: auto; margin: 14px 0 18px; border: 1px solid var(--grid-2); background: var(--panel); }
+table { border-collapse: collapse; width: 100%; font-size: .88rem; }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+th { font: 600 11px/1.3 var(--f-mono); color: var(--ink-2); letter-spacing: .04em; background: color-mix(in srgb, var(--grid) 40%, var(--panel)); }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+.chip { display: inline-block; font: 600 10px/1 var(--f-mono); letter-spacing: .08em; padding: 4px 6px; border: 1px solid currentColor; white-space: nowrap; }
+.chip.done { color: var(--ch1); } .chip.part { color: var(--ch2); } .chip.plan { color: var(--ch3); border-style: dashed; } .chip.no { color: var(--x); }
+
+/* ---- log excerpt ---- */
+pre.log { font: 12px/1.55 var(--f-mono); background: var(--panel); border: 1px solid var(--grid-2); padding: 10px 12px; overflow-x: auto; margin: 12px 0; color: var(--ink); }
+pre.log .lx { color: var(--x); } pre.log .lt { color: var(--ink-3); } pre.log .lo { color: var(--ch1); }
+
+/* ---- compare groups ---- */
+.grp { border: 1px solid var(--grid-2); background: var(--panel); margin: 16px 0; }
+.grp > .gh { padding: 9px 12px; border-bottom: 1px solid var(--grid); font: 700 12px/1.3 var(--f-disp); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.grp > .gb { padding: 10px 12px; }
+.ctx { display: grid; gap: 12px; }
+.ctx > div { border-left: 2px solid var(--grid-2); padding-left: 12px; }
+.ctx .v { font: 700 1rem var(--f-disp); color: var(--ch2); }
+.ctx .w { font-size: .9rem; color: var(--ink-2); }
+
+/* ---- M3b lessons ---- */
+.lessons { display: grid; gap: 10px; margin: 4px 0 18px; max-width: 76ch; }
+.lesson { border: 1px solid var(--grid-2); border-left: 3px solid var(--ch2); background: var(--panel); padding: 10px 14px; margin: 0; }
+.lesson .lh { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font: 500 11.5px/1.3 var(--f-mono); color: var(--ink-2); margin-bottom: 6px; }
+.lesson blockquote { margin: 0; font-size: .98rem; line-height: 1.5; color: var(--ink); }
+
+/* ---- faq and glossary ---- */
+.faq details { border-bottom: 1px solid var(--grid-2); max-width: 76ch; }
+.faq summary { cursor: pointer; padding: 12px 0; font-weight: 600; list-style: none; display: flex; gap: 12px; min-height: 44px; align-items: baseline; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary .qn { font: 600 11px var(--f-mono); color: var(--ch3); flex: none; width: 3.2ch; }
+.faq details > div { padding: 0 0 12px calc(3.2ch + 12px); font-size: .95rem; }
+.faq .src { font: 500 11.5px var(--f-mono); color: var(--ink-3); display: block; margin-top: 4px; }
+dl.gloss { display: grid; grid-template-columns: minmax(0, 13rem) minmax(0, 1fr); gap: 0; border-top: 1px solid var(--grid-2); max-width: 82ch; }
+dl.gloss dt, dl.gloss dd { padding: 9px 0; border-bottom: 1px solid var(--grid); margin: 0; }
+dl.gloss dt { font: 600 12.5px/1.4 var(--f-mono); color: var(--ch1); padding-right: 14px; scroll-margin-top: 70px; }
+dl.gloss dd { font-size: .93rem; }
+dl.gloss dt:target, dl.gloss dt:target + dd { background: var(--ch3-soft); }
+ul.threats { list-style: none; padding: 0; display: grid; gap: 0; max-width: 80ch; border-top: 1px solid var(--grid-2); }
+ul.threats li { padding: 9px 0 9px 30px; border-bottom: 1px solid var(--grid); position: relative; max-width: none; margin: 0; }
+ul.threats li::before { content: "X"; position: absolute; left: 0; top: 9px; width: 20px; height: 20px; display: grid; place-items: center;
+  font: 700 11px/1 var(--f-mono); color: var(--x); background: var(--x-soft); }
+ul.threats li b { font-weight: 600; }
+
+footer { border-top: 2px solid var(--ink); margin-top: 20px; padding-block: 18px 40px; display: grid; gap: 8px; font: 500 12.5px/1.6 var(--f-mono); color: var(--ink-2); }
+footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+
+@media (max-width: 860px) {
+  :root { --gut: 0px; }
+  .sec { grid-template-columns: minmax(0, 1fr); padding-block: 22px 40px; }
+  .gutter { border-right: 0; border-bottom: 1px solid var(--grid-2); margin-bottom: 14px; }
+  .gutter .sticky { position: static; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 0 0 8px; }
+  .clk { display: none; }
+  .two { grid-template-columns: 1fr; }
+  .ruler { display: none; }
+  .bar { justify-content: space-between; }
+}
+@media (max-width: 860px) { .cursor span { display: none; } .cursor { opacity: .35; } }
+@media (max-width: 480px) {
+  .meas > div:last-child:nth-child(odd) { grid-column: span 2; }
+  .bar .file .long { display: none; }
+  .tread { display: none; }
+  dl.gloss { grid-template-columns: minmax(0, 1fr); }
+  dl.gloss dt { border-bottom: 0; padding-bottom: 0; }
+  .ctl button { width: 44px; height: 44px; }
+  .ctl select { height: 44px; }
+  .faq details > div { padding-left: 0; }
+  .meas { grid-template-columns: 1fr 1fr; }
+  ol.found li { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+}
+</style>
+
+<div class="bar" role="banner">
+  <a class="file" href="./" title="The front page"><b>cvdp_rtl_agent</b><span class="long">.vcd</span></a>
+  <div class="ruler" aria-hidden="true"><div class="prog" id="prog"></div></div>
+  <span class="tread num" id="tread" aria-hidden="true">T = 0 ns</span>
+  <a class="tbtn" href="problems.html" title="Read the 86 problems, each with its pass grid and a note">BROWSE PROBLEMS</a>
+  <button class="tbtn theme" id="theme" type="button" aria-pressed="false" aria-label="Dark theme" title="Switch between the dark and light themes"><span data-m="dark">DARK</span> / <span data-m="light">LIGHT</span></button>
+</div>
+<div class="cursor" aria-hidden="true"><span id="curlab">cursor</span></div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="6" height="6" fill="var(--x-soft)"></rect>
+      <line x1="0" y1="0" x2="0" y2="6" stroke="var(--x)" stroke-width="1.6"></line>
+    </pattern>
+    <pattern id="hatch3" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
+      <rect width="6" height="6" fill="var(--ch3-soft)"></rect>
+      <line x1="0" y1="0" x2="0" y2="6" stroke="var(--ch3)" stroke-width="1.2"></line>
+    </pattern>
+  </defs>
+</svg>
+
+<main id="main">
+<nav class="crumb" aria-label="Where you are"><a href="./">&larr; Front page</a><span><b>Part 2 of 5</b> &middot; Results, M0 to M3b</span><span>On this page: <a href="#milestones">Milestones</a> &middot; <a href="#m2">M2</a> &middot; <a href="#m3">M3</a> &middot; <a href="#m3b">M3b</a></span></nav>
+
+<!-- ================================================================== MILESTONES -->
+<section class="sec" id="milestones" data-page="results-m2-m3b" data-sig="milestone[3:0]" data-val="M0..M3E">
+  <div class="gutter"><div class="clk"></div><div class="sticky"><span class="sig">milestone[3:0]</span><span class="lz">M0..M3E</span><span class="stamp num" data-stamp></span></div></div>
+  <div class="body">
+    <div class="edge" data-edge></div>
+    <h2>Milestones, M0 to M3e</h2>
+    <div class="ios"><span class="k">IN ONE SENTENCE</span>
+      <p>Each milestone asked one question and answered it with runs anyone can download: does the harness run (M0), does the agent work (M1), how do models and reasoning settings compare (M2a, M2), do the agent's own checks pay for themselves (M3), does a richer harness or a memory of lessons help (M3b, then a confirming run), do two model-free checks run as fixed steps help (M3c), why do the problems no model solves fail (the unsolved analysis), does making the agent test before it submits help (M3d), and is the gap to Claude Code the harness or the model (M3e).</p>
+    </div>
+    <div class="bus" id="msbus">
+      <!-- src: README.md M0 table -->
+      <div class="ms"><span class="lz">M0</span><span class="d">22 Oct</span>
+        <div class="q"><b>ASKED</b>Does the harness run in Actions on both architectures, and what does an agent that changes nothing score?</div>
+        <div class="a"><b>ANSWERED</b>Golden check 1/1 on both. Null agent 0/92 on x86-64 and Arm64, 0/75 on the heavy split. Every pass after this is the agent's own.</div></div>
+      <!-- src: docs/reports/M1_report.md -->
+      <div class="ms"><span class="lz">M1</span><span class="d">22&ndash;23 Oct</span>
+        <div class="q"><b>ASKED</b>Does the agent work end to end, with every cent accounted for?</div>
+        <div class="a"><b>ANSWERED</b>On 10 problems: Haiku 5.5 6/10, DeepSeek V4.1 Flash 5/10. 8 of DeepSeek's 49 calls came back empty after spending the whole token cap on reasoning. 55 tests, none needing an LLM.</div></div>
+      <!-- src: docs/reports/M2a_report.md -->
+      <div class="ms"><span class="lz">M2a</span><span class="d">23 Oct</span>
+        <div class="q"><b>ASKED</b>Are the empty replies a reasoning limit, and what does reasoning cost?</div>
+        <div class="a"><b>ANSWERED</b>Yes, <code>max_tokens</code> truncation. DeepSeek at <code>off</code>: 6/10 for $0.0867; at <code>low</code>: 7/10 for $0.3546 with 14 empty replies. Retries and seeds added.</div></div>
+      <!-- src: docs/reports/M2_report.md -->
+      <div class="ms"><span class="lz">M2</span><span class="d">23 Oct</span>
+        <div class="q"><b>ASKED</b>How do three models compare on all 92, and how noisy is one run?</div>
+        <div class="a"><b>ANSWERED</b>Haiku and gpt-6-luna tie at 52&ndash;56; Luna costs half as much per solved problem; DeepSeek is about 10 behind. 10 problems flip between identical runs. $8.55.</div></div>
+      <!-- src: docs/reports/M3_report.md -->
+      <div class="ms"><span class="lz">M3</span><span class="d">23&ndash;24 Oct</span>
+        <div class="q"><b>ASKED</b>Do self-check, lint, turn caps or budget change the pass rate? Why does it fail?</div>
+        <div class="a"><b>ANSWERED</b>No detectable effect from any of six changes. Of 565 failures, 147 are interface mismatches with the hidden testbench. $8.25.</div></div>
+      <!-- src: docs/reports/M3b_report.md "In short" -->
+      <div class="ms"><span class="lz">M3b</span><span class="d">24&ndash;25 Oct</span>
+        <div class="q"><b>ASKED</b>At a fixed model, does a richer harness (Deep Agents) or a frozen lessons memory raise pass@1 on the <span data-d="m3b_n">86</span> problems an agent can reach?</div>
+        <div class="a"><b>ANSWERED</b>The memory: no detectable effect (<span data-d="e_CA">+1.6</span> <span data-d="ci_CA">[−3.1, +6.6]</span>). The harness: perhaps a few points, clearest on top of the memory (<span data-d="e_DC">+5.8</span> <span data-d="ci_DC">[+1.9, +10.1]</span>); none passes a Bonferroni correction, so B &minus; A went to a confirming run (next). $<span data-d="m3b_total">10.87</span>.</div></div>
+      <!-- src: docs/reports/m3b/confirm_preregistration.md, confirm_result.md -->
+      <div class="ms"><span class="lz">M3b confirm</span><span class="d">25 Oct</span>
+        <div class="q"><b>ASKED</b>Does the harness effect, B &minus; A, hold on <span data-d="cf_runs">6</span> new runs an arm, by one test fixed in advance?</div>
+        <div class="a"><b>ANSWERED</b>Yes: <span data-d="cf_e">+4.7</span> <span data-d="cf_ci">[+1.0, +8.5]</span>, so by the pre-registered rule it is confirmed, on one model and one benchmark. Sign test p = <span data-d="cf_p">0.093</span>. $<span data-d="cf_cost">7.59</span>.</div></div>
+      <!-- src: docs/reports/M3c_report.md "In short" -->
+      <div class="ms"><span class="lz">M3c</span><span class="d">25&ndash;26 Oct</span>
+        <div class="q"><b>ASKED</b>Do a mutation-score gate on the agent's own testbench and an interface diff by elaboration, as fixed graph steps, beat base A on the same <span data-d="m3b_n">86</span> problems?</div>
+        <div class="a"><b>ANSWERED</b>No. M &minus; A <span data-d="c_MA_e">+0.8</span> <span data-d="c_MA_ci">[−3.9, +5.8]</span>, I &minus; A <span data-d="c_IA_e">−1.6</span> <span data-d="c_IA_ci">[−6.2, +3.1]</span>. The gate changes the kind of failure, not the number. $<span data-d="c_scored">6.39</span>.</div></div>
+      <!-- src: docs/reports/claude_code_ladder.md -->
+      <div class="ms"><span class="lz c2">Ladder</span><span class="d">26 Oct &middot; exploratory</span>
+        <div class="q"><b>ASKED</b>How does Claude Code, with four Claude models, do on the same <span data-d="m3b_n">86</span> problems?</div>
+        <div class="a"><b>ANSWERED</b>One run each. Only Opus 5.5 is clearly above our agent (<span data-d="l_opus_e">+11.6</span> <span data-d="l_opus_ci">[+1.9, +21.3]</span>); harness and model both change. On a subscription plan, so no provider-reported cost.</div></div>
+      <!-- src: docs/reports/unsolved_analysis.md "In short"; tools/benchmark_limited_ids.txt -->
+      <div class="ms"><span class="lz c2">Unsolved</span><span class="d">26 Oct &middot; analysis</span>
+        <div class="q"><b>ASKED</b>Why do the <span data-d="u_n">12</span> problems that no Claude model solved fail: the benchmark, our environment, or the agents?</div>
+        <div class="a"><b>ANSWERED</b><span data-d="u_blim">7</span> are benchmark-limited, with strong evidence: the hidden test needs a detail the task never gives. None is an environment failure. No sweep and no spend: local reruns and counterfactual reruns only.</div></div>
+      <!-- src: docs/reports/M3d_report.md "In short" -->
+      <div class="ms"><span class="lz">M3d</span><span class="d">26 Oct</span>
+        <div class="q"><b>ASKED</b>Does a step that refuses to submit until a testbench has passed (V), or that plus cases written blind from the specification (S), beat base A on the <span data-d="m3b_n">86</span>?</div>
+        <div class="a"><b>ANSWERED</b>No. V &minus; A <span data-d="d_VA_e">−1.9</span> <span data-d="d_VA_ci">[−6.6, +2.3]</span>, S &minus; A <span data-d="d_SA_e">−4.7</span> <span data-d="d_SA_ci">[−11.2, +1.6]</span>, 97.5% intervals. The agent now tests, and its failures move to "own testbench passed". $<span data-d="d_scored">7.90</span>.</div></div>
+      <!-- src: docs/reports/M3e_report.md "In short" -->
+      <div class="ms"><span class="lz c2">M3e</span><span class="d">30 Oct &middot; exploratory, partial</span>
+        <div class="q"><b>ASKED</b>Is Claude Code's lead the harness or the model? Our unchanged LangGraph agent, run with Opus 5.5.</div>
+        <div class="a"><b>ANSWERED</b>The model: <span data-d="e3_model_e">+13.4</span> <span data-d="e3_model_ci">[+4.0, +22.4]</span> over gpt-6-luna; the harness <span data-d="e3_harness_e">−4.5</span> <span data-d="e3_harness_ci">[−13.4, +4.5]</span>. One run, on the <span data-d="e3_n">67</span> problems the cost guard let it attempt; the Sonnet arm was not run. $<span data-d="e3_spend">19.24</span>.</div></div>
+      <div class="ms plan"><span class="lz c3">M4 / M5</span><span class="d">planned</span>
+        <div class="q"><b>ASKS</b>M4: the write-up and logs packed for the LBC-bench leaderboard. M5: an open AMBA verification track scored by seeded-bug kill rate.</div>
+        <div class="a"><b>STATUS</b>Planned. No results.</div></div>
+    </div>
+    <h3>The measurements at a glance</h3>
+    <div class="meas" role="list">
+      <!-- src: docs/reports/M2_report.md "Results: all 92 problems" -->
+      <div role="listitem"><div class="k">pass@1, best model</div><div class="v num">52&ndash;56 / 92</div><div class="s">Haiku 5.5 on two runners; gpt-6-luna 52&ndash;53</div></div>
+      <!-- src: docs/reports/M2_report.md, $/solved column -->
+      <div role="listitem"><div class="k">cost per solved</div><div class="v num">$0.0105</div><div class="s">gpt-6-luna, x86-64; Haiku $0.0184&ndash;0.0214</div></div>
+      <!-- src: docs/reports/M2_report.md "Run-to-run noise"; site/data/story_data.json m2_flips -->
+      <div role="listitem"><div class="k">identical-run flips</div><div class="v x num">10</div><div class="s">problems change result between two runs of Haiku</div></div>
+      <!-- src: docs/reports/M3_report.md "Paired results" -->
+      <div role="listitem"><div class="k">ablations with an effect</div><div class="v x num">0 of 6</div><div class="s">every 95% interval includes 0</div></div>
+      <!-- src: docs/reports/m3b/confirm_result.md; docs/reports/m3b/confirm_paired_eval86.md (B - A on 6 new runs an arm) -->
+      <div role="listitem"><div class="k">harness effect, confirmed</div><div class="v num"><span data-d="cf_e">+4.7</span> pts</div><div class="s">Deep Agents &minus; LangGraph <span data-d="cf_ci">[+1.0, +8.5]</span>, pre-registered, <span data-d="cf_runs">6</span> new runs an arm; memory, M3c checks and M3d verify step: none detectable</div></div>
+      <!-- src: M1 about $0.75 (M3_report.md cost bookkeeping) + M2, M3, M3b, M3b confirming, M3c, M3d and M3e run CSVs, the M3b snapshot and the smoke runs; summed by site/data/derive.py -->
+      <div role="listitem"><div class="k">LLM spend, M1&ndash;M3e</div><div class="v num">&asymp; $<span data-d="spend_all">70.00</span></div><div class="s">provider-reported; the Claude Code ladder ran on a plan, not counted</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================== M2 -->
+<section class="sec" id="m2" data-page="results-m2-m3b" data-sig="results.m2" data-val="3 MODELS">
+  <div class="gutter"><div class="clk"></div><div class="sticky"><span class="sig">results.m2</span><span class="lz">3 MODELS</span><span class="stamp num" data-stamp></span></div></div>
+  <div class="body">
+    <div class="edge" data-edge></div>
+    <h2>M2: three models, 92 problems, two runners</h2>
+    <div class="ios"><span class="k">IN ONE SENTENCE</span>
+      <p>Haiku 5.5 and gpt-6-luna solve the same share of the 92 problems, Luna at half the cost per solved problem, DeepSeek V4.1 Flash solves about 10 fewer, and two identical runs of one model differ on about 10 problems, so a gap of a few problems means nothing.</p>
+    </div>
+    <p>Each model ran all 92 problems once on an x86-64 and once on an Arm64 <a class="gl" href="reference.html#g-runners">runner</a>, with the same image and settings, against the <a class="gl" href="reference.html#g-null">null agent</a>'s floor of zero.</p>
+    <div class="scope"><div class="hd"><span><b><a class="gl" href="reference.html#g-pass1">pass@1</a></b> with <a class="gl" href="reference.html#g-wilson">Wilson</a> 95% intervals · one run per runner</span><span>CH1 = x86-64 · CH2 = Arm64</span></div>
+      <div class="plot" id="c-m2"></div>
+      <div class="ft"><!-- src: docs/reports/M2_report.md "Results: all 92 problems"; recomputed from docs/reports/m2/{x86,arm64}/results_*.csv by site/data/derive.py -->Each mark is one sweep of all 92 problems. The null agent (M0) passes none. Settings: $0.10 per problem, 10 turns, self-check and lint on, 4 problems in parallel.</div>
+    </div>
+    <div class="scope"><div class="hd"><span><b>cost per solved problem</b> · provider-reported</span><span>USD</span></div>
+      <div class="plot" id="c-m2cost"></div>
+      <div class="ft"><!-- src: docs/reports/M2_report.md $/solved column -->Luna uses less than half of Haiku's tokens (2.6&ndash;2.8 M against 5.4&ndash;5.9 M per sweep). It is slower per problem: median 67&ndash;76 s against 44&ndash;47 s.</div>
+    </div>
+
+    <h3>The capture: every problem, every full run</h3>
+    <p>Below, each row is one problem and each column one full sweep of all 92, like the channels of a logic analyser. A filled cell is a pass; a bare baseline is a fail. The six M2 sweeps come first, then the 13 new M3 sweeps (M3's run A1 is M2's Luna Arm64 sweep, so it is not repeated). Rows are sorted by how often the problem passed.</p>
+    <div class="scope player" id="p-raster" tabindex="0" aria-label="Logic-analyser view of 92 problems across 19 sweeps, with a scan cursor. Space plays or pauses; arrow keys step.">
+      <div class="hd"><span><b>92 channels x 19 sweeps</b> · 1 = hidden tests passed</span><span>red hatch = differs from the same model&#39;s other runner (M2 columns)</span></div>
+      <div class="plot" data-plot></div>
+      <div class="cap" data-cap aria-live="polite"></div>
+      <div class="ctl" data-ctl></div>
+    </div>
+    <!-- src: docs/reports/M2_report.md "What the runs show"; site/data/story_data.json (m2_flips, m2_never, m2_always, never_all_20) -->
+    <ul>
+      <li><strong>Run-to-run noise is large.</strong> Between its x86-64 and Arm64 runs, Haiku changed result on 10 problems, Luna on 9 and DeepSeek on 12. The direction is not consistent, so this reads as the model's sampling, not the runner.</li>
+      <li><strong>Haiku against Luna is a tie.</strong> Counting each problem's passes over both runners, Haiku is ahead on 12 problems and Luna on 12. Both beat DeepSeek (24 against 6, and 21 against 6).</li>
+      <li>29 problems passed in all six M2 sweeps and 28 in none. 24 failed in every one of the 20 full runs of M2 and M3.</li>
+      <li>3 seeds on a 30-problem subset vary by up to 4 problems for one model (<a href="https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent/blob/main/docs/reports/m2/seeds/table.md">seeds table</a>).</li>
+    </ul>
+    <details class="why"><summary><span class="wk">WHY</span>Why Wilson intervals, and why repeat runs</summary><div>
+      <p>With 92 trials the normal approximation to a binomial interval is poor near 0% and 100% and can go outside [0, 1]; the Wilson score interval keeps its stated coverage at small n. But a Wilson interval only covers sampling over problems. It says nothing about the same problem coming out differently on a second run, which is why M2 ran every model twice and M3 measured the noise floor directly.</p>
+    </div></details>
+  </div>
+</section>
+
+<!-- ================================================================== M3 -->
+<section class="sec" id="m3" data-page="results-m2-m3b" data-sig="results.m3" data-val="6 ARMS">
+  <div class="gutter"><div class="clk"></div><div class="sticky"><span class="sig">results.m3</span><span class="lz">6 ARMS</span><span class="stamp num" data-stamp></span></div></div>
+  <div class="body">
+    <div class="edge" data-edge></div>
+    <h2>M3: six changes to the agent, none detectable</h2>
+    <div class="ios"><span class="k">IN ONE SENTENCE</span>
+      <p>Turning the self-check or lint off, capping turns at 5 or 20, or cutting the budget to $0.02 changed the pass rate by less than two identical runs differ, though turning lint off made each solved problem 38 to 59% dearer.</p>
+    </div>
+    <!-- src: docs/reports/M3_report.md "Arms and settings" -->
+    <p>Each arm is an <a class="gl" href="reference.html#g-ablation">ablation</a>: one setting changed, everything else held. Every arm uses gpt-6-luna (the cheapest per solved problem in M2), all 92 problems, Arm64 and 4 threads, and runs twice. Each arm is compared with the base (A) problem by problem: a problem's rate in an arm is its passes over the arm's two runs, so 0, &frac12; or 1. The effect is the mean of the differences, with a <a class="gl" href="reference.html#g-boot">paired bootstrap</a> interval and an exact <a class="gl" href="reference.html#g-sign">sign test</a>.</p>
+    <div class="scope player" id="p-forest" tabindex="0" aria-label="Forest plot of six ablation arms against the base, with the measured noise floor. Space plays or pauses; arrow keys step.">
+      <div class="hd"><span><b>paired effect on pass rate</b>, points [95%] · against base A</span><span>band = noise floor, A2 vs A1</span></div>
+      <div class="plot" data-plot></div>
+      <div class="cap" data-cap aria-live="polite"></div>
+      <div class="ctl" data-ctl></div>
+    </div>
+    <p class="small"><!-- src: docs/reports/m3/arms_paired.md; docs/reports/m3/calibration_same_runner.md; point effects and better/worse counts recomputed from docs/reports/m3/runs/*.csv by site/data/derive.py -->Intervals are from <code>tools/ablate.py</code> as committed in <code>docs/reports/m3/arms_paired.md</code>; the point effects and better / worse counts are recomputed from the CSVs by <code>site/data/derive.py</code> and agree.</p>
+    <p><strong>F (20 turns) is the only arm worth a second look</strong>, ahead in both runs (62.0% and 58.7% against 57.6% and 55.4%). But only 6 of its 184 problem-runs used more than 10 turns, and 1 of those passed. The extra turns account for at most 1 of its 7 extra passes; the rest is noise.<!-- src: M3_report.md "F is the only arm worth a second look" --></p>
+
+    <div class="scope"><div class="hd"><span><b>Pareto</b> · pooled pass rate against $ per problem</span><span>bars = 95% problem-bootstrap interval</span></div>
+      <div class="plot" id="c-pareto"></div>
+      <div class="ft"><!-- src: docs/reports/m3/pareto.csv; intervals from docs/reports/m3/arms_paired.md "Arms" -->The <a class="gl" href="reference.html#g-pareto">Pareto front</a> is B, A and F, and its three points sit inside each other's intervals. The clear result is on cost: C and D are 33&ndash;55% dearer per problem. C's cost is a lower bound (one call unreported), so it is hollow and kept off the front.</div>
+    </div>
+
+    <h3>What the agent did with its own testbench</h3>
+    <div class="scope"><div class="hd"><span><b>problems where the agent ran its own testbench</b>, of 92</span><span>per run</span></div>
+      <div class="plot" id="c-behav"></div>
+      <div class="ft"><!-- src: docs/reports/m3/behaviour.md (Ran own testbench column) -->With self-check on, the agent ran a testbench on only 31&ndash;32 problems. With lint off it ran one on 67, and the pass rate still did not move. Running its testbench more often does not help.</div>
+    </div>
+    <details class="why"><summary><span class="wk">WHY</span>Why a paired bootstrap plus a sign test, not an unpaired comparison</summary><div>
+      <p>Problems differ far more from each other than arms do: in M2, 29 problems passed every time and 28 never. An unpaired comparison of two pass rates puts all that between-problem spread into the error bar, and a 2-point effect disappears inside it. Pairing compares each problem with itself, so only within-problem change counts. The bootstrap resamples problems and keeps each problem's runs together, so it does not pretend the 184 problem-runs are independent. The exact sign test needs no distributional assumption at all: on the problems that changed, it asks whether "better" and "worse" are unbalanced.</p>
+    </div></details>
+    <details class="why"><summary><span class="wk">WHY</span>Why the noise floor is measured on the same runner (A2 against A1)</summary><div>
+      <!-- src: M3_report.md "The noise floor, measured"; m2_models... calibration_same_config.md -->
+      <p>An arm's effect means something only if it is bigger than the <a class="gl" href="reference.html#g-noise">noise floor</a>: the difference between two runs with nothing changed. Running the base twice on the same runner removes the runner as a cause. The result, &minus;2.2 points [&minus;8.7, +4.3] (3 better, 5 worse), is as wide as M2's Arm64 against x86 (&minus;1.1 [&minus;7.6, +5.4]), so the runner adds no noise of its own and 2 runs per arm resolve about &plusmn;5 points.</p>
+    </div></details>
+  </div>
+</section>
+
+<!-- ================================================================== M3B -->
+<section class="sec" id="m3b" data-page="results-m2-m3b" data-sig="results.m3b" data-val="4 ARMS">
+  <div class="gutter"><div class="clk"></div><div class="sticky"><span class="sig">results.m3b</span><span class="lz">4 ARMS</span><span class="stamp num" data-stamp></span></div></div>
+  <div class="body">
+    <div class="edge" data-edge></div>
+    <h2>M3b: a richer harness, or a memory of lessons?</h2>
+    <div class="ios"><span class="k">IN ONE SENTENCE</span>
+      <!-- src: docs/reports/M3b_report.md "In short"; numbers in data-d spans are written by site/data/derive.py -->
+      <p>At a fixed model, a frozen memory of <span data-d="les_n">40</span> lessons did not detectably change the pass rate; the Deep Agents harness added a few points, first as a hypothesis on <span data-d="m3b_runs_arm">3</span> runs an arm, then confirmed by a pre-registered test on <span data-d="cf_runs">6</span> new runs an arm (B &minus; A <span data-d="cf_e">+4.7</span> <span data-d="cf_ci">[+1.0, +8.5]</span>), for this one model on this one benchmark.</p>
+      <!-- src: docs/reports/M3b_report.md "In short" (3-run result, unchanged); docs/reports/m3b/confirm_result.md (the confirmation) -->
+    </div>
+    <!-- src: docs/reports/M3b_report.md "The question", "Arms and settings", "The two problem sets" -->
+    <p>M3b holds the model (gpt-6-luna), the Arm64 runner and every M2 default fixed, and changes two things in a 2&times;2 design: the harness that drives the model (M2's hand-built LangGraph graph, or <a class="gl" href="reference.html#g-deep">Deep Agents</a>), and whether the agent is given a frozen <a class="gl" href="reference.html#g-memory">lessons memory</a>. Each arm ran <span data-d="m3b_runs_arm">3</span> times on the <span data-d="m3b_n">86</span> problems of the evaluation set: the 92 minus 6 that no agent can reach, by a rule fixed before any scored run (<a href="problems.html">read every problem</a>, with its pass grid and why it is easy or hard). Arm A is a fresh run of M2's agent on the same image, so all four arms share an image and a period.</p>
+    <div class="scope"><div class="hd"><span><b>four arms</b> · pooled pass@1 over <span data-d="m3b_pr_arm">258</span> problem-runs · $ per solved problem</span><span>arrows = paired effect [95%]</span></div>
+      <div class="plot" id="c-m3bgrid"></div>
+      <div class="ft"><!-- src: docs/reports/m3b/runs/*.csv (pass, cost_usd), recomputed by site/data/derive.py; intervals from docs/reports/m3b/arms_paired_eval86.md and arms_paired_secondary_eval86.md -->Under each arm: its passes in each of its three runs, of <span data-d="m3b_n">86</span>. A solid arrow is a comparison whose interval excludes zero; a dashed one includes it. Pre-registered primary comparisons: B &minus; A (harness) and C &minus; A (memory); secondary: D &minus; B and D &minus; C.</div>
+    </div>
+
+    <h3>The paired effects, null findings first</h3>
+    <div class="scope player" id="p-m3b" tabindex="0" aria-label="Forest plot of the four M3b comparisons and one exploratory comparison, against the noise floor. Space plays or pauses; arrow keys step.">
+      <div class="hd"><span><b>paired effect on pass rate</b>, points [95%] · <span data-d="m3b_n">86</span> problems, <span data-d="m3b_runs_arm">3</span> runs an arm</span><span>band = noise floor on the <span data-d="m3b_n">86</span>, M3's A2 vs A1</span></div>
+      <div class="plot" data-plot></div>
+      <div class="cap" data-cap aria-live="polite"></div>
+      <div class="ctl" data-ctl></div>
+    </div>
+    <p class="small"><!-- src: docs/reports/m3b/arms_paired_eval86.md, arms_paired_secondary_eval86.md; noise floor: docs/reports/M3b_report.md "In short" (point effect and counts recomputed from docs/reports/m3/runs/A1,A2 on tools/m3b_eval_ids.txt) -->Intervals are <code>tools/ablate.py</code>'s paired problem bootstrap as committed in <code>docs/reports/m3b/</code>; the point effects, the better / worse / same counts and the exact sign tests are recomputed from the run CSVs by <code>site/data/derive.py</code> and agree.</p>
+    <!-- src: docs/reports/M3b_report.md "In short" -->
+    <ul>
+      <li><strong>The lessons memory did not help.</strong> C &minus; A is <span data-d="e_CA">+1.6</span> <span data-d="ci_CA">[−3.1, +6.6]</span>: <span data-d="bws_CA">10 / 8 / 68</span> problems better / worse / the same, sign test p = <span data-d="p_CA">0.82</span>. C's three runs solved <span data-d="runs_C">51, 51, 51</span> of <span data-d="m3b_n">86</span>. On Deep Agents, D &minus; B is <span data-d="e_DB">+3.1</span> <span data-d="ci_DB">[−0.4, +7.0]</span>, p = <span data-d="p_DB">0.15</span>: not detectable either.</li>
+      <li><strong>The harness may help a little.</strong> B &minus; A is <span data-d="e_BA">+4.3</span> <span data-d="ci_BA">[+0.0, +8.5]</span>, p = <span data-d="p_BA">0.21</span>: the interval's lower end rounds to zero and the sign test is far from significant. On top of the memory the harness is clearer: D &minus; C is <span data-d="e_DC">+5.8</span> <span data-d="ci_DC">[+1.9, +10.1]</span>, <span data-d="bws_DC">9 / 1 / 76</span>, p = <span data-d="p_DC">0.022</span>, the one comparison whose interval excludes zero.</li>
+      <li><strong>Why that was a hypothesis, not yet a finding.</strong> With four pre-registered comparisons, a Bonferroni threshold of <span data-d="bonf">0.0125</span> on the sign tests passes none of them, and the bootstrap intervals are not adjusted. D &minus; A (<span data-d="e_DA">+7.4</span> <span data-d="ci_DA">[+2.3, +12.8]</span>) was not pre-registered, so it is exploratory only. For scale: on these <span data-d="m3b_n">86</span> problems the noise floor is <span data-d="floor_eff">−2.3</span> <span data-d="floor_ci">[−9.3, +3.5]</span>, and M3's largest effect (20 turns) is <span data-d="f20_eff">+4.1</span> <span data-d="f20_ci">[−0.6, +9.9]</span>. So M3b named one hypothesis, the harness gain B &minus; A, and a separate run was fixed to test it.</li>
+    </ul>
+
+    <h3>The confirming run: B &minus; A on fresh data</h3>
+    <div class="ios"><span class="k">CONFIRMED &middot; 25 OCTOBER 2026</span>
+      <!-- src: docs/reports/m3b/confirm_result.md "Verdict"; docs/reports/m3b/confirm_paired_eval86.md -->
+      <p>On <span data-d="cf_runs">6</span> new runs an arm, B &minus; A is <span data-d="cf_e">+4.7</span> <span data-d="cf_ci">[+1.0, +8.5]</span> points. The interval excludes zero and the effect is positive, so by the rule fixed in advance the harness effect is <strong>confirmed</strong>, for gpt-6-luna on these <span data-d="m3b_n">86</span> problems.</p>
+    </div>
+    <!-- src: docs/reports/m3b/confirm_preregistration.md (committed before any run was dispatched) -->
+    <p>The test was written down and committed before any of its runs was dispatched (<a href="https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent/blob/main/docs/reports/m3b/confirm_preregistration.md">pre-registration</a>). It is a single <a class="gl" href="reference.html#g-prereg">pre-registered</a> comparison, B &minus; A, so there is no multiple-comparison correction. It uses <span data-d="cf_runs">6</span> new runs per arm (seeds <span data-d="cf_seeds">4 to 9</span>) with M3b's settings unchanged, and M3b's own runs are not pooled in, so the data that suggested the hypothesis does not also test it. The decision rule: if the paired 95% interval excludes zero and the effect is positive, the effect is <em>confirmed</em>; if it excludes zero and is negative, <em>reversed</em>; otherwise <em>not confirmed</em>, with the size it rules out.</p>
+    <div class="scope"><div class="hd"><span><b>B &minus; A, the harness effect</b>, points [95%] · <span data-d="m3b_n">86</span> problems</span><span>band = noise floor on the <span data-d="m3b_n">86</span></span></div>
+      <div class="plot" id="c-m3bconf"></div>
+      <div class="ft"><!-- src: docs/reports/m3b/arms_paired_eval86.md (seeds 1-3); docs/reports/m3b/confirm_paired_eval86.md (seeds 4-9); point effects, counts and sign tests recomputed from m3b/runs and m3b/confirm_runs by site/data/derive.py -->The first row is M3b's estimate, which suggested the hypothesis. The second is the confirming run, on data that did not. The pre-registered rule reads only the second row's interval.</div>
+    </div>
+    <div class="scope"><div class="hd"><span><b>confirming run</b> · <span data-d="cf_n">516</span> problem-runs per arm</span><span>A = LangGraph · B = Deep Agents</span></div>
+      <div class="plot" id="c-m3bmech"></div>
+      <div class="ft"><!-- src: pass, failure_label and stop_reason columns of docs/reports/m3b/confirm_runs/*.csv, counted by site/data/derive.py; match docs/reports/m3b/confirm_result.md "Secondary" -->Descriptive only, as pre-registered: no test on these counts. They check that the mechanism M3b described repeats.</div>
+    </div>
+    <!-- src: docs/reports/m3b/confirm_result.md -->
+    <ul>
+      <li><strong>How strong.</strong> <span data-d="cf_bws">16 / 7 / 63</span> problems better / worse / the same; the exact sign test gives p = <span data-d="cf_p">0.093</span>. The sign test was not part of the rule. It is shown so that the evidence reads as moderate, not overwhelming.</li>
+      <li><strong>The size repeats.</strong> Pooled pass@1 is A <span data-d="cf_rate_A">57.9</span>% (<span data-d="cf_k_A">299</span>/<span data-d="cf_n">516</span>) and B <span data-d="cf_rate_B">62.6</span>% (<span data-d="cf_k_B">323</span>/<span data-d="cf_n">516</span>), close to M3b's <span data-d="e_BA">+4.3</span>.</li>
+      <li><strong>So does the mechanism.</strong> Deep Agents leaves fewer failures untested (<code>tests_failed_no_selfcheck</code>: A <span data-d="cf_nst_A">121</span>, B <span data-d="cf_nst_B">79</span>) and stops on its round cap far more often (A <span data-d="cf_cap_A">28</span>, B <span data-d="cf_cap_B">101</span> problem-runs), at about the same cost per solved problem (&ge; $<span data-d="cf_us_A">0.0126</span> against &ge; $<span data-d="cf_us_B">0.0119</span>; one call in each arm had no reported cost).</li>
+      <li><strong>What it covers.</strong> One model (gpt-6-luna), one problem set (the <span data-d="m3b_n">86</span> free agentic problems) and one Deep Agents version. The memory arms C and D, and D &minus; C, were not re-run: the memory finding stands as M3b reported it.</li>
+    </ul>
+
+    <h3>Why Deep Agents differs: fewer untested failures, more round-cap stops</h3>
+    <div class="scope"><div class="hd"><span><b><span data-d="m3b_pr_arm">258</span> problem-runs per arm</b> · passed, then failures by label</span><span>labels from tools/taxonomy.py</span></div>
+      <div class="plot" id="c-m3bfail"></div>
+      <div class="legend" id="l-m3bfail" aria-hidden="true"></div>
+      <div class="ft"><!-- src: failure_label and stop_reason columns of docs/reports/m3b/runs/*.csv, counted by site/data/derive.py; match docs/reports/m3b/taxonomy_by_arm.md -->Counts are recomputed from the <code>failure_label</code> column of the committed CSVs and match <code>docs/reports/m3b/taxonomy_by_arm.md</code>.</div>
+    </div>
+    <!-- src: docs/reports/M3b_report.md "Failure taxonomy by arm", "Where the harness differs", "The Deep Agents harness" -->
+    <p>Deep Agents runs a free tool-call loop: the model calls compile, lint, synthesis and its own testbench as tools, as often as it likes, up to a cap of 22 model calls (the most any M2 problem made in 10 turns). It leaves far fewer failures untested (<code>tests_failed_no_selfcheck</code>: A <span data-d="nst_A">58</span>, B <span data-d="nst_B">39</span>, D <span data-d="nst_D">33</span>), but stops more often on its round cap (failures labelled <code>stopped_by_cap</code>: A <span data-d="cap_A">11</span>, B <span data-d="cap_B">29</span>, D <span data-d="cap_D">33</span>). A cap stop still submits the best edit kept so far, and some pass: B hit the cap <span data-d="capall_B">49</span> times and <span data-d="cappass_B">20</span> of those passed. With the lessons, the LangGraph agent has more failures whose own testbench passed (C <span data-d="stp_C">21</span> against A <span data-d="stp_A">15</span>); with both, the fewest (D <span data-d="stp_D">8</span>).</p>
+    <div class="scope"><div class="hd"><span><b>tokens and cost per arm</b>, relative to arm A</span><span><span data-d="m3b_pr_arm">258</span> problem-runs each</span></div>
+      <div class="plot" id="c-m3btok"></div>
+      <div class="ft"><!-- src: prompt_tokens, completion_tokens and cost_usd columns of docs/reports/m3b/runs/*.csv; docs/reports/M3b_report.md "Deep Agents resends the whole conversation each round" -->Deep Agents resends the whole conversation every round: <span data-d="tok_B">45.7</span> M tokens against A's <span data-d="tok_A">8.9</span> M (about <span data-d="tok_x">5</span>&times;; prompt tokens alone <span data-d="ptok_B">43.6</span> M against <span data-d="ptok_A">6.9</span> M), for about the same provider-reported cost. Its cost per million prompt tokens is $<span data-d="mp_B">0.044</span> against $<span data-d="mp_A">0.268</span>, which points to provider-side prompt caching. Cached tokens are not recorded per call, so that is inferred, not measured.</div>
+    </div>
+
+    <h3>What the memory learned</h3>
+    <!-- src: docs/reports/m3b/lessons/lessons_b783931cbf160595.json (lessons, provenance); docs/reports/m3b/retrieval_eval86.md; docs/reports/M3b_report.md "The lessons memory", "The lessons and how often each is retrieved" -->
+    <p>The builder read <span data-d="les_att">87</span> attempts by arm A on <span data-d="les_problems">29</span> heavy-split problems (none in the evaluation set; <span data-d="les_pass">19</span> of the attempts passed), asked the model for general lessons in batches, and froze <span data-d="les_n">40</span> of them into snapshot <code><span data-d="les_hash">b783931cbf160595</span></code> for $<span data-d="les_cost">0.0031</span>. At run time the agent gets the top 5 by <a class="gl" href="reference.html#g-bm25">BM25</a> over its task text, with no model in the retrieval. The lessons are generic process advice, several near-duplicates, and <span data-d="les_never">6</span> are never retrieved for any of the <span data-d="m3b_n">86</span> problems (<span data-d="les_never_ids">L07, L08, L17, L28, L30, L38</span>: about compile diagnostics and turn budgets, words the problem statements do not use). The four retrieved most often, quoted as built:</p>
+    <div class="lessons" id="m3b-lessons"></div>
+    <p>The interface lessons did not move the interface failures: <code>compile_fail_hidden</code> stays at <span data-d="cfh_range">12–13</span> and <code>signal_missing_hidden</code> at <span data-d="smh_range">2–3</span> on every arm. A null C &minus; A says that this memory does not help, not that no memory could.</p>
+
+    <h3>Cost</h3>
+    <!-- src: docs/reports/m3b/pareto.csv; docs/reports/m3b/arms_paired_eval86.md "Arms"; docs/reports/M3b_report.md "In short" -->
+    <p>All four arms cost about the same: $<span data-d="upp_lo">0.0067</span> to $<span data-d="upp_hi">0.0074</span> per problem-run, and $<span data-d="us_A">0.0124</span> (A), $<span data-d="us_B">0.0119</span> (B), $<span data-d="us_C">0.0113</span> (C) and $<span data-d="us_D">0.0106</span> (D) per solved problem, with no unreported call in any of the <span data-d="m3b_pr_all">1,032</span> problem-runs. The arms differ in pass rate, not in price. The scored sweeps cost $<span data-d="m3b_scored">7.27</span> in all, the learning runs at least $<span data-d="m3b_learn">3.41</span>.</p>
+
+    <details class="why"><summary><span class="wk">WHY</span>Why the evaluation set leaves out unreachable problems</summary><div>
+      <!-- src: docs/reports/M3b_report.md "The two problem sets", "Exclusion rule"; docs/reports/m3b/unreachable.md -->
+      <p>If the hidden testbench needs a name that appears nowhere in what the agent is given, no change to the agent can make that problem pass. Keeping it adds only noise and shrinks every effect towards zero. So the rule was committed before any scored run: a problem is unreachable when a name its hidden testbench reads is given nowhere to the agent <em>and</em> M3 labelled it an interface failure in at least half of its 14 runs. Both halves are needed: two problems read names the agent is not given but failed on them in only 1 of 14 runs, so they stay. Six problems are excluded, five of them for internal register or instance names and one whose context is empty.</p>
+    </div></details>
+    <details class="why"><summary><span class="wk">WHY</span>Why the memory is frozen, and learned only on other problems</summary><div>
+      <!-- src: docs/reports/M3b_report.md "The lessons memory", "The two problem sets", "Decisions" -->
+      <p>A memory that has seen the evaluation problems' outcomes or traces can carry their answers into the test. That is leakage, and it would make any gain meaningless. So the memory learns only from <span data-d="les_problems">29</span> heavy-split problems whose files to change all lie inside the agent's edit roots; the builder refuses, in code and under test, any work directory that holds one of the 92 agentic problems; the snapshot is built once in Actions, committed as built with no hand edits, mounted read-only and checked against its hash on load; and every result row names that hash. The memory does not grow during evaluation, so C &minus; A measures one fixed memory.</p>
+    </div></details>
+  </div>
+</section>
+
+<nav class="pnav" aria-label="Pages">
+<a class="pv" href="how.html"><small>&larr; PREVIOUS</small>How it works</a>
+<a class="up" href="./#contents"><small>CONTENTS</small>Front page</a>
+<a class="nx" href="results-m3c-m3e.html"><small>NEXT &rarr;</small>Results, M3c to M3e</a>
+</nav>
+
+<footer>
+  <div class="row"><span>$finish;</span><span>// end of simulation</span></div>
+  <div class="row">
+    <a href="https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent">Repository</a>
+    <a href="https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent/tree/main/docs/reports">Milestone reports</a>
+    <a href="problems.html">The problems, one by one</a>
+    <a href="https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent/blob/main/LICENSE">MIT licence</a>
+    <a href="https://github.com/NVlabs/cvdp_benchmark">CVDP benchmark (Apache-2.0 harness)</a>
+  </div>
+  <div class="row"><span>Every number on this page is computed from the repository's committed CSVs by <code>site/data/derive.py</code>, or quoted from a cited source.</span></div>
+  <div class="row"><span>Built by <a href="https://brendanlynskey.com">Brendan Lynskey</a></span></div>
+</footer>
+</main>
+
+<script>
+(function () {
+"use strict";
+const D = /*DATA:BEGIN*/{"m2":[{"label":"Haiku 5.5 (low)","runner":"x86-64","run":"39967302029","k":52,"n":92,"rate":56.5,"lo":46.3,"hi":66.2,"cost":1.1123,"per_solved":0.0214},{"label":"Haiku 5.5 (low)","runner":"Arm64","run":"39975578761","k":56,"n":92,"rate":60.9,"lo":50.7,"hi":70.2,"cost":1.03,"per_solved":0.0184},{"label":"gpt-6-luna (default)","runner":"x86-64","run":"39967317698","k":52,"n":92,"rate":56.5,"lo":46.3,"hi":66.2,"cost":0.5455,"per_solved":0.0105},{"label":"gpt-6-luna (default)","runner":"Arm64","run":"39981444074","k":53,"n":92,"rate":57.6,"lo":47.4,"hi":67.2,"cost":0.5776,"per_solved":0.0109},{"label":"DeepSeek V4.1 Flash (off)","runner":"x86-64","run":"39975562293","k":43,"n":92,"rate":46.7,"lo":36.9,"hi":56.9,"cost":1.0314,"per_solved":0.024},{"label":"DeepSeek V4.1 Flash (off)","runner":"Arm64","run":"39981458867","k":41,"n":92,"rate":44.6,"lo":34.8,"hi":54.7,"cost":0.9763,"per_solved":0.0238}],"m2_flips":{"Haiku 5.5 (low)":10,"gpt-6-luna (default)":9,"DeepSeek V4.1 Flash (off)":12},"m2_never":28,"m2_always":29,"never_all_20":24,"m3_runs":[{"tag":"A1","run":"39981444074","k":53,"n":92,"cost":0.5776,"unreported":0,"own_tb":31},{"tag":"A2","run":"40031838020","k":51,"n":92,"cost":0.5282,"unreported":0,"own_tb":32},{"tag":"B1","run":"40027264043","k":54,"n":92,"cost":0.4848,"unreported":0,"own_tb":0},{"tag":"B2","run":"40033844068","k":48,"n":92,"cost":0.5872,"unreported":0,"own_tb":0},{"tag":"C1","run":"40027278575","k":50,"n":92,"cost":0.7265,"unreported":1,"own_tb":67},{"tag":"C2","run":"40035587883","k":51,"n":92,"cost":0.7523,"unreported":0,"own_tb":67},{"tag":"D1","run":"40037217462","k":50,"n":92,"cost":0.8529,"unreported":0,"own_tb":0},{"tag":"D2","run":"40040753269","k":51,"n":92,"cost":0.8531,"unreported":0,"own_tb":0},{"tag":"E1","run":"40042570422","k":53,"n":92,"cost":0.5516,"unreported":0,"own_tb":39},{"tag":"E2","run":"40045515591","k":50,"n":92,"cost":0.5636,"unreported":0,"own_tb":34},{"tag":"F1","run":"40046195564","k":57,"n":92,"cost":0.5996,"unreported":0,"own_tb":39},{"tag":"F2","run":"40048975297","k":54,"n":92,"cost":0.5653,"unreported":0,"own_tb":39},{"tag":"G1","run":"40049462265","k":50,"n":92,"cost":0.5993,"unreported":0,"own_tb":41},{"tag":"G2","run":"40052189876","k":51,"n":92,"cost":0.5893,"unreported":0,"own_tb":39}],"m3_effects":{"C":{"finding":"no detectable effect","eff":-1.6,"lo":-6.5,"hi":3.3,"better":9,"worse":11,"same":72,"p":0.824},"D":{"finding":"no detectable effect","eff":-1.6,"lo":-6.0,"hi":2.7,"better":5,"worse":9,"same":78,"p":0.424},"G":{"finding":"no detectable effect","eff":-1.6,"lo":-7.1,"hi":3.8,"better":7,"worse":11,"same":74,"p":0.481},"B":{"finding":"no detectable effect","eff":-1.1,"lo":-6.0,"hi":4.3,"better":8,"worse":11,"same":73,"p":0.648},"E":{"finding":"no detectable effect","eff":-0.5,"lo":-4.9,"hi":4.3,"better":5,"worse":7,"same":80,"p":0.774},"F":{"finding":"no detectable effect","eff":3.8,"lo":-1.1,"hi":9.2,"better":9,"worse":5,"same":78,"p":0.424}},"m3_point_check":{"B":-1.1,"C":-1.6,"D":-1.6,"E":-0.5,"F":3.8,"G":-1.6},"m3_better_worse_check":{"B":[8,11,73],"C":[9,11,72],"D":[5,9,78],"E":[5,7,80],"F":[9,5,78],"G":[7,11,74]},"noise_floor":{"finding":"no detectable effect","eff":-2.2,"lo":-8.7,"hi":4.3,"better":3,"worse":5,"same":84,"p":0.727},"noise_point_check":-2.2,"pareto":[{"arm":"B","usd":0.005826,"rate":0.5543,"frontier":1,"lb":0},{"arm":"A","usd":0.00601,"rate":0.5652,"frontier":1,"lb":0},{"arm":"E","usd":0.006061,"rate":0.5598,"frontier":0,"lb":0},{"arm":"F","usd":0.006331,"rate":0.6033,"frontier":1,"lb":0},{"arm":"G","usd":0.00646,"rate":0.5489,"frontier":0,"lb":0},{"arm":"C","usd":0.008037,"rate":0.5489,"frontier":0,"lb":1},{"arm":"D","usd":0.009272,"rate":0.5489,"frontier":0,"lb":0}],"taxonomy":{"tests_failed_no_selfcheck":271,"compile_fail_hidden":74,"signal_missing_hidden":73,"tests_failed_selfcheck_passed":61,"stopped_by_cap":56,"sim_incomplete":13,"tests_failed_selfcheck_failed":12,"no_edit":5},"taxonomy_total":565,"taxonomy_by_cid":{"stopped_by_cap":{"cid003":14,"cid016":8,"cid004":23,"cid005":11},"tests_failed_selfcheck_failed":{"cid004":5,"cid016":4,"cid005":1,"cid003":2},"tests_failed_no_selfcheck":{"cid016":27,"cid004":100,"cid005":47,"cid003":97},"tests_failed_selfcheck_passed":{"cid016":24,"cid005":16,"cid003":13,"cid004":8},"compile_fail_hidden":{"cid003":45,"cid005":29},"signal_missing_hidden":{"cid003":30,"cid005":32,"cid004":11},"sim_incomplete":{"cid004":11,"cid005":1,"cid016":1},"no_edit":{"cid016":3,"cid004":2}},"problems_per_label":{"compile_fail_hidden":8,"signal_missing_hidden":9,"tests_failed_selfcheck_passed":26},"own_tb_ran_failed":73,"raster":{"ids":["64b66b_codec_0001","AES_encryption_decryption_0003","AES_encryption_decryption_0005","AES_encryption_decryption_0009","AES_encryption_decryption_0012","AES_encryption_decryption_0018","DES_0001","DES_0003","DES_0005","DES_0007","Min_Hamming_Distance_Finder_0001","PCIe_endpoint_0001","arithmetic_progression_generator_0001","async_fifo_compute_ram_application_0001","async_fifo_compute_ram_application_0006","async_filo_0001","axi4lite_to_pcie_config_0003","axis_broadcaster_0001","axis_to_uart_0001","axis_to_uart_0004","barrel_shifter_0001","barrel_shifter_0002","bcd_adder_0004","binary_search_tree_algorithms_0001","binary_search_tree_algorithms_0014","binary_to_gray_0003","byte_enable_ram_0002","cache_controller_0001","caesar_cipher_0001","cellular_automata_0002","cic_decimator_0001","cipher_0001","cont_adder_0001","csr_using_apb_interface_0001","custom_fifo_0004","digital_stopwatch_0001","direct_map_cache_0001","direct_map_cache_0003","dma_xfer_engine_0001","door_lock_0001","dual_port_memory_0001","dual_port_memory_0004","dynamic_equalizer_0001","dynamic_equalizer_0004","dynamic_equalizer_0008","elevator_control_0004","ethernet_mii_0004","ethernet_mii_0006","event_scheduler_0001","event_scheduler_0004","event_storing_0001","fixed_arbiter_0010","gcd_0007","hdbn_codec_0001","jpeg_runlength_enc_0001","lfsr_0001","lfsr_0005","low_power_channel_0001","monte_carlo_0006","multiplexer_0001","nbit_swizzling_0001","nmea_gps_0008","phase_rotation_0010","phase_rotation_0013","phase_rotation_0015","phase_rotation_0019","phase_rotation_0028","phase_rotation_0031","phase_rotation_0038","poly_decimator_0001","prbs_0001","programmable_fsm_dynamic_state_encoding_0001","queue_0001","rc5_0001","rgb_color_space_conversion_0001","rgb_color_space_conversion_0004","secure_apb_history_shift_register_0001","sigma_delta_audio_0001","signed_comparator_0001","sorter_0009","sorter_0016","sorter_0026","spi_complex_mult_0002","swizzler_0001","swizzler_0005","sync_serial_communication_0001","systolic_array_0001","thermostat_secure_0001","traffic_light_controller_0001","ttc_lite_0001","universal_shift_reg_0001","universal_shift_reg_0003"],"cid":["cid005","cid016","cid016","cid004","cid004","cid005","cid003","cid004","cid005","cid005","cid005","cid003","cid016","cid003","cid005","cid003","cid004","cid016","cid003","cid003","cid016","cid004","cid004","cid004","cid005","cid003","cid003","cid003","cid016","cid003","cid003","cid003","cid003","cid003","cid016","cid005","cid003","cid004","cid003","cid003","cid016","cid004","cid003","cid004","cid005","cid004","cid003","cid003","cid003","cid004","cid005","cid004","cid005","cid005","cid005","cid016","cid016","cid005","cid016","cid003","cid003","cid004","cid005","cid004","cid004","cid004","cid005","cid004","cid003","cid005","cid005","cid004","cid003","cid003","cid003","cid004","cid004","cid003","cid003","cid004","cid005","cid005","cid003","cid003","cid005","cid003","cid005","cid004","cid004","cid003","cid003","cid004"],"cols":["Haiku x86-64","Haiku Arm64","gpt-6-luna x86-64","gpt-6-luna Arm64","DeepSeek x86-64","DeepSeek Arm64","M3 A2","M3 B1","M3 B2","M3 C1","M3 C2","M3 D1","M3 D2","M3 E1","M3 E2","M3 F1","M3 F2","M3 G1","M3 G2"],"bits":["1111011111111111111","0111001101111111101","1111011110111101111","0111001111111111111","0111001101110101101","1111001111111111111","0000000000100000000","1110000000110001111","1111101111111111111","0001000001000010000","1111101111111111111","1111111111111111111","0000000000000000000","0011101111111111111","1111011111111111111","1111111111111111111","1111111011101011001","1100000000100000000","1111111111111111111","1111111111111111111","1111111111111111111","1111111111111111111","1111111111111111111","0000000000000000000","0000000000000000000","1111111111111111111","1111111111111111111","0100000000000000000","1111111011111111111","1111111111111111111","1111101111111111111","1111111111111111111","1111111111111111111","0000000000000000000","0100111101110000100","0000000000000000000","1111110110111011111","1111111111111111111","1111111111111111111","0001010000000000110","1101101111011111111","1111111111111111111","0000000000000000000","1110100111011111111","0000000000000000000","0000000000000000000","0111001101011111110","1000000000000000000","1111111111111111111","0010111111010111010","1111111111111111111","1111111100101111111","1111110011111101111","0000000000000000000","0000000100001000000","1111111111111111111","0000000000000001000","1100111111101111111","1100110000000000001","1111111111111111111","0111111111111111111","0000000000000000000","0000000000000000000","0001100000000101101","0000000010000000000","1111001101110111110","0000000000000000000","0000000000000000000","0000000000000000000","0000000000000000000","1111001110011101111","1111011111111111111","0000000000000000000","0000000000000000000","1110000100100101100","1101111100111001001","0000000000000000000","0000000000000000000","1111111111111111111","1011001111011111010","1111001111001111100","1011001110101111001","0000000000000000000","1100110101000110110","1111111111111111111","0000000000000000000","1111111111111111111","0000000000000000000","0000000000000000000","0000000000000000000","1111111111111111111","1111111111111111111"]},"hero":{"pass":"0","cost_usd":"0.00242347","llm_calls":"3","tool_calls":"3","turns":"1","wall_time_s":"52.61","harness_agent_s":"55.21","stop_reason":"submit","failure_label":"signal_missing_hidden","own_compile_last":"pass","selfcheck_runs":"0","prompt_tokens":"3163","completion_tokens":"4094","cid":"cid003","difficulty":"medium"},"cost_m2":8.5539,"cost_m3":8.2537,"external":{"_note":"Published CVDP results, each checked against its primary source on 2026-10-24. derive.py adds Wilson 95% intervals to the same_92 rows. Nothing here is from memory.","lbc_source":"https://lbc-bench.si2.org","lbc_data":"https://github.com/si2org/lbc-bench.github.io/blob/b8354131ba89f915f5f940a3300a06777ebe1e98/data/leaderboards.json","same_92":[{"who":"Claude Code + Claude Sonnet 4.6 (medium effort)","mode":"agentic, multi-turn","k":48,"n":92,"release":"1.1.0","runs":1,"date":"2026-05-13","checked":false,"quote":"48/92 agentic_code_generation_no_commercial","source":"LBC-bench, code-generation-limited-context, row 5f3b37eb (notes field)","rate":52.2,"lo":42.1,"hi":62.1},{"who":"GPT-5.6 Sol, single turn","mode":"agentic split run non-agentically (--force-copilot)","k":52,"n":92,"release":"1.1.0","runs":1,"date":"2026-07-26","checked":false,"quote":"agentic_code_generation_no_commercial evaluated non-agentically via --force-copilot per Si2 guidance, 92 problems, 52 passed (56.52%)","source":"LBC-bench, code-generation-limited-context, row 5697ab4a (notes field)","rate":56.5,"lo":46.3,"hi":66.2},{"who":"Claude Fable 5, single turn","mode":"agentic split run non-agentically (--force-copilot)","k":53,"n":92,"release":"1.1.0","runs":1,"date":"2026-07-26","checked":false,"quote":"agentic_code_generation_no_commercial evaluated non-agentically via --force-copilot per Si2 guidance, 92 problems, 53 passed (57.61%)","source":"LBC-bench, code-generation-limited-context, row 14cf89d9 (notes field)","rate":57.6,"lo":47.4,"hi":67.2}],"context":[{"who":"Claude Code + Claude Opus 4.8 (xhigh), heavy split","value":"53/75 = 70.67%","source":"LBC-bench, code-generation-heavy-context, row b999bda5","url":"https://lbc-bench.si2.org","why_not":"The 75-problem heavy split. This project has not run the agent on it yet."},{"who":"Paper, Table 3: Claude 3.7 Sonnet, agentic problems in single-turn form","value":"29.0% overall; cid03 49.0, cid04 42.0, cid05 24.0, cid16 53.0","source":"Pinckney et al., arXiv:2506.14074 v1 (17 June 2025), Table 3","url":"https://arxiv.org/abs/2506.14074","why_not":"No agent loop (the paper converted agentic problems to single-turn prompts); pass@1 from n=5 samples; all 166 agentic problems of the first release, including cid12-14, which need Cadence Xcelium; the paper's agentic set had 100 problems in these four categories, against 92 in release 1.1.0's open-tool split; 2025 models."},{"who":"Paper, Table 3: GPT 4.1 / Claude 3.5 Haiku / Llama 3.1 405B, same setting","value":"21.0% / 20.0% / 21.0% overall","source":"Pinckney et al., arXiv:2506.14074 v1, Table 3","url":"https://arxiv.org/abs/2506.14074","why_not":"As above."},{"who":"ACE-RTL agent + Nemotron 3 Ultra (NVIDIA technical blog, 26 July 2026)","value":"97.1% average over nine CVDP categories; cid016 65.7% standalone, 100.0% with ACE-RTL","source":"NVIDIA technical blog; method in arXiv:2602.10218","url":"https://developer.nvidia.com/blog/nvidia-nemotron-3-ultra-leads-open-models-on-accuracy-and-efficiency-in-agentic-rtl-coding/","why_not":"The nine categories include cid012-014 (commercial simulator); the figure is an average of category rates; the post does not state the split, the problem count or the number of runs; a different agent with an RTL-specialised model."}]},"m3b":{"arms":{"A":{"harness":"LangGraph","memory":"none","runs":[{"tag":"A1","run":"40126423704","k":48,"n":86},{"tag":"A2","run":"40130180594","k":51,"n":86},{"tag":"A3","run":"40133554684","k":50,"n":86}],"k":149,"n":258,"rate":57.8,"cost":1.8484,"usd_problem":0.0072,"usd_solved":0.0124,"prompt_tokens":6894167,"tokens":8878176,"usd_per_mprompt":0.268,"cap_stops":18,"cap_stops_passed":7,"unreported":0,"labels":{"stopped_by_cap":11,"tests_failed_selfcheck_passed":15,"tests_failed_no_selfcheck":58,"compile_fail_hidden":12,"signal_missing_hidden":3,"sim_incomplete":4,"tests_failed_selfcheck_failed":4,"no_edit":2},"fails":109},"B":{"harness":"Deep Agents","memory":"none","runs":[{"tag":"B1","run":"40126434731","k":54,"n":86},{"tag":"B2","run":"40130193595","k":51,"n":86},{"tag":"B3","run":"40133940001","k":55,"n":86}],"k":160,"n":258,"rate":62.0,"cost":1.9081,"usd_problem":0.0074,"usd_solved":0.0119,"prompt_tokens":43573697,"tokens":45667940,"usd_per_mprompt":0.044,"cap_stops":49,"cap_stops_passed":20,"unreported":0,"labels":{"stopped_by_cap":29,"tests_failed_selfcheck_passed":13,"tests_failed_no_selfcheck":39,"compile_fail_hidden":13,"signal_missing_hidden":2,"killed":1,"sim_incomplete":1},"fails":98},"C":{"harness":"LangGraph","memory":"lessons","runs":[{"tag":"C1","run":"40139315526","k":51,"n":86},{"tag":"C2","run":"40142158409","k":51,"n":86},{"tag":"C3","run":"40144901339","k":51,"n":86}],"k":153,"n":258,"rate":59.3,"cost":1.7268,"usd_problem":0.0067,"usd_solved":0.0113,"prompt_tokens":6267727,"tokens":8159082,"usd_per_mprompt":0.276,"cap_stops":8,"cap_stops_passed":4,"unreported":0,"labels":{"tests_failed_selfcheck_failed":4,"stopped_by_cap":6,"tests_failed_selfcheck_passed":21,"tests_failed_no_selfcheck":55,"compile_fail_hidden":12,"signal_missing_hidden":2,"sim_incomplete":4,"no_edit":1},"fails":105},"D":{"harness":"Deep Agents","memory":"lessons","runs":[{"tag":"D1","run":"40139331557","k":52,"n":86},{"tag":"D2","run":"40142529849","k":59,"n":86},{"tag":"D3","run":"40145267040","k":57,"n":86}],"k":168,"n":258,"rate":65.1,"cost":1.7841,"usd_problem":0.0069,"usd_solved":0.0106,"prompt_tokens":41193904,"tokens":43215570,"usd_per_mprompt":0.043,"cap_stops":44,"cap_stops_passed":11,"unreported":0,"labels":{"stopped_by_cap":33,"tests_failed_no_selfcheck":33,"sim_incomplete":2,"compile_fail_hidden":12,"tests_failed_selfcheck_passed":8,"signal_missing_hidden":2},"fails":90}},"effects":{"C-A":{"finding":"no detectable effect","eff":1.6,"lo":-3.1,"hi":6.6,"better":10,"worse":8,"same":68,"p":0.815,"role":"primary"},"B-A":{"finding":"better than base","eff":4.3,"lo":0.0,"hi":8.5,"better":15,"worse":8,"same":63,"p":0.21,"role":"primary"},"D-A":{"finding":"better than base","eff":7.4,"lo":2.3,"hi":12.8,"better":14,"worse":4,"same":68,"p":0.0309,"role":"exploratory"},"D-B":{"finding":"no detectable effect","eff":3.1,"lo":-0.4,"hi":7.0,"better":9,"worse":3,"same":74,"p":0.146,"role":"secondary"},"D-C":{"finding":"better than base","eff":5.8,"lo":1.9,"hi":10.1,"better":9,"worse":1,"same":76,"p":0.0215,"role":"secondary"}},"bonferroni":0.0125,"bonf_pass":[],"floor":{"eff":-2.3,"lo":-9.3,"hi":3.5,"better":3,"worse":5,"same":78},"f20":{"eff":4.1,"lo":-0.6,"hi":9.9},"lessons":{"hash":"b783931cbf160595","n":40,"attempts":87,"passed":19,"problems":29,"cost":0.00307092,"never":["L07","L08","L17","L28","L30","L38"],"top":[{"id":"L03","count":50,"text":"Use the interface documentation and existing instantiations to verify every required port, parameter, width, and connection before implementing or changing a module."},{"id":"L02","count":40,"text":"Build tests from the specification\u2019s corner cases, not just typical operation; check control-signal priority, reset behavior, stalls, and boundary conditions."},{"id":"L37","count":36,"text":"Turn the specification and any failure description into a precise cycle-by-cycle expectation; do not rely on a plausible diagnosis without checking the surrounding control logic."},{"id":"L06","count":33,"text":"For asynchronous or buffered designs, test empty/full transitions, simultaneous activity, pointer wraparound, and data integrity across clock domains."}]},"learning":[{"run":"40120087602","k":6,"n":29,"cost":1.0713,"unreported":2},{"run":"40120092696","k":7,"n":29,"cost":1.1807,"unreported":1},{"run":"40123128619","k":6,"n":29,"cost":1.1629,"unreported":0}],"cost_scored":7.2674,"cost_learning":3.4149,"cost_smoke":0.1855,"cost_total":10.8709,"n_eval":86,"prose":{"spend_all":"70.00","m3b_n":"86","m3b_runs_arm":"3","m3b_pr_arm":"258","m3b_pr_all":"1,032","m3b_scored":"7.27","m3b_learn":"3.41","m3b_total":"10.87","bonf":"0.0125","floor_eff":"\u22122.3","floor_ci":"[\u22129.3, +3.5]","f20_eff":"+4.1","f20_ci":"[\u22120.6, +9.9]","les_n":"40","les_att":"87","les_pass":"19","les_never":"6","les_never_ids":"L07, L08, L17, L28, L30, L38","les_cost":"0.0031","les_problems":"29","les_hash":"b783931cbf160595","tok_A":"8.9","tok_B":"45.7","ptok_A":"6.9","ptok_B":"43.6","tok_x":"5","ptok_x":"6","mp_A":"0.268","mp_B":"0.044","upp_lo":"0.0067","upp_hi":"0.0074","e_CA":"+1.6","ci_CA":"[\u22123.1, +6.6]","p_CA":"0.82","bws_CA":"10 / 8 / 68","e_BA":"+4.3","ci_BA":"[+0.0, +8.5]","p_BA":"0.21","bws_BA":"15 / 8 / 63","e_DA":"+7.4","ci_DA":"[+2.3, +12.8]","p_DA":"0.031","bws_DA":"14 / 4 / 68","e_DB":"+3.1","ci_DB":"[\u22120.4, +7.0]","p_DB":"0.15","bws_DB":"9 / 3 / 74","e_DC":"+5.8","ci_DC":"[+1.9, +10.1]","p_DC":"0.022","bws_DC":"9 / 1 / 76","rate_A":"57.8","k_A":"149","us_A":"0.0124","cap_A":"11","nst_A":"58","stp_A":"15","capall_A":"18","cappass_A":"7","runs_A":"48, 51, 50","rate_B":"62.0","k_B":"160","us_B":"0.0119","cap_B":"29","nst_B":"39","stp_B":"13","capall_B":"49","cappass_B":"20","runs_B":"54, 51, 55","rate_C":"59.3","k_C":"153","us_C":"0.0113","cap_C":"6","nst_C":"55","stp_C":"21","capall_C":"8","cappass_C":"4","runs_C":"51, 51, 51","rate_D":"65.1","k_D":"168","us_D":"0.0106","cap_D":"33","nst_D":"33","stp_D":"8","capall_D":"44","cappass_D":"11","runs_D":"52, 59, 57","cfh_range":"12\u201313","smh_range":"2\u20133","top_L03":"50","top_L02":"40","top_L37":"36","top_L06":"33","cf_e":"+4.7","cf_ci":"[+1.0, +8.5]","cf_p":"0.093","cf_bws":"16 / 7 / 63","cf_runs":"6","cf_n":"516","cf_seeds":"4 to 9","cf_cost":"7.59","cf_verdict":"CONFIRMED","cf_unrep":"2","cf_rate_A":"57.9","cf_k_A":"299","cf_us_A":"0.0126","cf_nst_A":"121","cf_cap_A":"28","cf_wall_A":"51","cf_rate_B":"62.6","cf_k_B":"323","cf_us_B":"0.0119","cf_nst_B":"79","cf_cap_B":"101","cf_wall_B":"72","c_MA_e":"+0.8","c_MA_ci":"[\u22123.9, +5.8]","c_MA_p":"0.68","c_MA_bws":"13 / 10 / 63","c_IA_e":"\u22121.6","c_IA_ci":"[\u22126.2, +3.1]","c_IA_p":"0.68","c_IA_bws":"10 / 13 / 63","c_runs_arm":"3","c_pr_arm":"258","c_rate_A":"61.6","c_k_A":"159","c_us_A":"0.0099","c_wall_A":"51","c_fails_A":"99","c_nst_A":"56","c_stp_A":"14","c_cap_A":"4","c_iface_A":"16","c_rate_M":"62.4","c_k_M":"161","c_us_M":"0.0190","c_wall_M":"135","c_fails_M":"97","c_nst_M":"0","c_stp_M":"50","c_cap_M":"19","c_iface_M":"15","c_rate_I":"60.1","c_k_I":"155","c_us_I":"0.0113","c_wall_I":"59","c_fails_I":"103","c_nst_I":"45","c_stp_I":"18","c_cap_I":"12","c_iface_I":"16","c_solved_x":"1.9","c_scored":"6.39","c_unrep":"4","g_runs":"390","g_pr":"242","g_skip":"61","g_skip_pct":"16","g_skip_probs":"38","g_notb":"141","g_kill":"56","g_killed":"1,051","g_compiled":"1,872","i_checks":"672","i_mm":"99","i_pr":"38","i_pr_pass":"21","i_blocks":"3","l_haiku_e":"+4.7","l_haiku_ci":"[\u22122.3, +11.2]","l_haiku_p":"0.11","l_haiku_bws":"17 / 8 / 61","l_rate_haiku":"66.3","l_k_haiku":"57","l_wall_haiku":"83","l_sonnet_e":"+8.1","l_sonnet_ci":"[\u22120.4, +17.4]","l_sonnet_p":"0.029","l_sonnet_bws":"22 / 9 / 55","l_rate_sonnet":"69.8","l_k_sonnet":"60","l_wall_sonnet":"24","l_opus_e":"+11.6","l_opus_ci":"[+1.9, +21.3]","l_opus_p":"0.009","l_opus_bws":"25 / 9 / 52","l_rate_opus":"73.3","l_k_opus":"63","l_wall_opus":"50","l_fable_e":"+5.8","l_fable_ci":"[\u22121.2, +12.8]","l_fable_p":"0.11","l_fable_bws":"17 / 8 / 61","l_rate_fable":"67.4","l_k_fable":"58","l_wall_fable":"265","l_wcap_fable":"17","l_wcapf_fable":"10","l_union":"74","l_all":"45","u_n":"12","u_neverA":"10","u_blim":"7","u_n79":"79","u_border":"2","u_env":"0","u_agent":"3","u_p2":"7","u_p2_unt":"14","u_p2_valid":"20","u_tl_def":"10 and 20","d_p2_A":"1","d_p2_V":"1","d_p2_S":"1","d_p2_n":"21","u_k79_A":"158","u_n79_A":"237","u_r79_A":"66.7","u_k79_haiku":"57","u_n79_haiku":"79","u_r79_haiku":"72.2","u_k79_sonnet":"60","u_n79_sonnet":"79","u_r79_sonnet":"75.9","u_k79_opus":"63","u_n79_opus":"79","u_r79_opus":"79.7","u_k79_fable":"58","u_n79_fable":"79","u_r79_fable":"73.4","d_VA_e":"\u22121.9","d_VA_ci":"[\u22126.6, +2.3]","d_VA_p":"0.80","d_VA_bws":"7 / 9 / 70","d_VA_e79":"\u22122.1","d_VA_ci79":"[\u22127.2, +2.5]","d_SA_e":"\u22124.7","d_SA_ci":"[\u221211.2, +1.6]","d_SA_p":"0.28","d_SA_bws":"12 / 19 / 55","d_SA_e79":"\u22125.1","d_SA_ci79":"[\u221212.7, +1.7]","d_runs_arm":"3","d_pr_arm":"258","d_rate_A":"60.9","d_k_A":"157","d_us_A":"0.0112","d_wall_A":"74","d_fails_A":"101","d_nst_A":"55","d_stp_A":"16","d_cap_A":"7","d_lle_A":"2","d_nosc_A":"55","d_1t_A":"47","d_tmed_A":"2","d_r79_A":"66.2","d_rate_V":"58.9","d_k_V":"152","d_us_V":"0.0181","d_wall_V":"135","d_fails_V":"106","d_nst_V":"0","d_stp_V":"48","d_cap_V":"27","d_lle_V":"14","d_nosc_V":"1","d_1t_V":"10","d_tmed_V":"3","d_r79_V":"64.1","d_rate_S":"56.2","d_k_S":"145","d_us_S":"0.0234","d_wall_S":"247","d_fails_S":"113","d_nst_S":"2","d_stp_S":"44","d_cap_S":"43","d_lle_S":"9","d_nosc_S":"7","d_1t_S":"7","d_tmed_S":"4","d_r79_S":"61.2","d_sx_V":"1.6","d_ref_V":"155","d_sx_S":"2.1","d_ref_S":"178","d_sp_pass_k":"82","d_sp_pass_n":"135","d_sp_fail_k":"36","d_sp_fail_n":"63","d_sp_pass_pct":"61","d_sp_fail_pct":"57","d_sp_gen":"239","d_guard":"8","d_guard_adj":"+1.9","d_scored":"7.90","d_unrep":"37","e3_model_e":"+13.4","e3_model_ci":"[+4.0, +22.4]","e3_model_p":"0.0009","e3_model_bws":"19 / 3 / 45","e3_harness_e":"\u22124.5","e3_harness_ci":"[\u221213.4, +4.5]","e3_harness_p":"0.51","e3_harness_bws":"3 / 6 / 58","e3_total_e":"+9.0","e3_total_ci":"[\u22121.0, +18.9]","e3_total_p":"0.053","e3_total_bws":"16 / 6 / 45","e3_model_e63":"+14.3","e3_model_ci63":"[+4.2, +23.8]","e3_harness_e63":"\u22124.8","e3_harness_ci63":"[\u221214.3, +4.8]","e3_rate_luna":"64.2","e3_k_luna":"129","e3_n_luna":"201","e3_rate_opus":"77.6","e3_k_opus":"52","e3_n_opus":"67","e3_rate_cc":"73.1","e3_k_cc":"49","e3_n_cc":"67","e3_n":"67","e3_n63":"63","e3_refused":"19","e3_nosc_opus":"0","e3_nosc_luna":"49","e3_cost":"17.11","e3_upp":"0.255","e3_ups":"0.329","e3_us_luna":"0.0117","e3_sx":"28","e3_smoke":"2.13","e3_spend":"19.24","e3_wall_opus":"44","e3_wall_luna":"84","proc_n":"11","proc_null":"11","proc_det":"0"}},"m3b_confirm":{"arms":{"A":{"runs":[{"tag":"A4","run":"40186976139","k":51,"n":86},{"tag":"A5","run":"40190136853","k":51,"n":86},{"tag":"A6","run":"40193770813","k":49,"n":86},{"tag":"A7","run":"40196834947","k":53,"n":86},{"tag":"A8","run":"40199964377","k":51,"n":86},{"tag":"A9","run":"40203576676","k":44,"n":86}],"k":299,"n":516,"rate":57.9,"cost":3.7574,"usd_problem":0.0073,"usd_solved":0.0126,"unreported":1,"labels":{"stopped_by_cap":20,"tests_failed_selfcheck_passed":33,"tests_failed_no_selfcheck":121,"compile_fail_hidden":20,"tests_failed_selfcheck_failed":8,"sim_incomplete":6,"no_edit":1,"signal_missing_hidden":8},"fails":217,"tokens":18181434,"turn_cap":28,"wall_cap":4,"wall_cap_failed":2,"wall_med":51},"B":{"runs":[{"tag":"B4","run":"40186985324","k":55,"n":86},{"tag":"B5","run":"40190146928","k":54,"n":86},{"tag":"B6","run":"40194162464","k":58,"n":86},{"tag":"B7","run":"40198007520","k":50,"n":86},{"tag":"B8","run":"40201168029","k":56,"n":86},{"tag":"B9","run":"40204771205","k":50,"n":86}],"k":323,"n":516,"rate":62.6,"cost":3.8341,"usd_problem":0.0074,"usd_solved":0.0119,"unreported":1,"labels":{"stopped_by_cap":64,"tests_failed_no_selfcheck":79,"tests_failed_selfcheck_passed":20,"compile_fail_hidden":20,"sim_incomplete":4,"signal_missing_hidden":5,"llm_error":1},"fails":193,"tokens":89914785,"turn_cap":101,"wall_cap":1,"wall_cap_failed":0,"wall_med":72}},"effect":{"finding":"better than base","eff":4.7,"lo":1.0,"hi":8.5,"better":16,"worse":7,"same":63,"p":0.0931},"verdict":"confirmed","seeds":[4,5,6,7,8,9],"cost":7.5915},"m3c":{"arms":{"A":{"runs":[{"tag":"A1","run":"40257040625","k":56,"n":86},{"tag":"A2","run":"40263328806","k":51,"n":86},{"tag":"A3","run":"40270547450","k":52,"n":86}],"k":159,"n":258,"rate":61.6,"cost":1.5805,"usd_problem":0.0061,"usd_solved":0.0099,"unreported":1,"labels":{"stopped_by_cap":4,"tests_failed_selfcheck_passed":14,"tests_failed_no_selfcheck":56,"compile_fail_hidden":11,"tests_failed_selfcheck_failed":3,"signal_missing_hidden":5,"sim_incomplete":5,"llm_error":1},"fails":99,"tokens":7674963,"turn_cap":7,"wall_cap":5,"wall_cap_failed":2,"wall_med":51},"M":{"runs":[{"tag":"M1","run":"40257053178","k":51,"n":86},{"tag":"M2","run":"40265000386","k":55,"n":86},{"tag":"M3","run":"40271417794","k":55,"n":86}],"k":161,"n":258,"rate":62.4,"cost":3.0588,"usd_problem":0.0119,"usd_solved":0.019,"unreported":3,"labels":{"stopped_by_cap":19,"tests_failed_selfcheck_passed":50,"sim_incomplete":1,"tests_failed_selfcheck_failed":10,"compile_fail_hidden":11,"signal_missing_hidden":4,"llm_error":2},"fails":97,"tokens":14783930,"turn_cap":34,"wall_cap":6,"wall_cap_failed":1,"wall_med":135},"I":{"runs":[{"tag":"I1","run":"40260792400","k":51,"n":86},{"tag":"I2","run":"40267056311","k":56,"n":86},{"tag":"I3","run":"40274995282","k":48,"n":86}],"k":155,"n":258,"rate":60.1,"cost":1.7528,"usd_problem":0.0068,"usd_solved":0.0113,"unreported":0,"labels":{"tests_failed_selfcheck_passed":18,"stopped_by_cap":12,"tests_failed_no_selfcheck":45,"sim_incomplete":5,"compile_fail_hidden":13,"tests_failed_selfcheck_failed":7,"signal_missing_hidden":3},"fails":103,"tokens":8891798,"turn_cap":12,"wall_cap":4,"wall_cap_failed":3,"wall_med":59}},"effects":{"I-A":{"finding":"no detectable effect","eff":-1.6,"lo":-6.2,"hi":3.1,"better":10,"worse":13,"same":63,"p":0.678},"M-A":{"finding":"no detectable effect","eff":0.8,"lo":-3.9,"hi":5.8,"better":13,"worse":10,"same":63,"p":0.678}},"gate":{"runs":390,"outcomes":{"no_tb":141,"fail":85,"pass":103,"skipped":61},"problem_runs":242,"generated":2904,"compiled":1872,"killed":1051,"unfinished":0,"skipped_problems":38,"kill_rate":56.1},"iface":{"checks":672,"mismatch_checks":99,"mismatch_pr":38,"mismatch_pr_passed":21,"blocks":3},"cost_scored":6.3921,"cost_smoke":0.1853,"solved_x":1.9},"ladder":{"arms":{"haiku":{"runs":[{"tag":"1","run":"claude-haiku-5-5","k":57,"n":86}],"k":57,"n":86,"rate":66.3,"cost":0.0,"usd_problem":0.0,"usd_solved":0.0,"unreported":0,"labels":{"compile_fail_own":6,"tests_failed_no_selfcheck":21,"signal_missing_hidden":2},"fails":29,"tokens":39199840,"turn_cap":0,"wall_cap":0,"wall_cap_failed":0,"wall_med":83,"name":"Haiku 5.5","providers":["claude_plan"],"effect":{"finding":"no detectable effect","eff":4.7,"lo":-2.3,"hi":11.2,"better":17,"worse":8,"same":61,"p":0.108}},"sonnet":{"runs":[{"tag":"1","run":"claude-sonnet-5-5","k":60,"n":86}],"k":60,"n":86,"rate":69.8,"cost":0.0,"usd_problem":0.0,"usd_solved":0.0,"unreported":0,"labels":{"compile_fail_own":4,"tests_failed_no_selfcheck":19,"signal_missing_hidden":2,"stopped_by_cap":1},"fails":26,"tokens":9302520,"turn_cap":0,"wall_cap":1,"wall_cap_failed":1,"wall_med":24,"name":"Sonnet 5.5","providers":["claude_plan"],"effect":{"finding":"no detectable effect","eff":8.1,"lo":-0.4,"hi":17.4,"better":22,"worse":9,"same":55,"p":0.0294}},"opus":{"runs":[{"tag":"1","run":"claude-opus-5-5","k":63,"n":86}],"k":63,"n":86,"rate":73.3,"cost":0.0,"usd_problem":0.0,"usd_solved":0.0,"unreported":0,"labels":{"tests_failed_no_selfcheck":18,"sim_incomplete":2,"compile_fail_own":3},"fails":23,"tokens":14128926,"turn_cap":0,"wall_cap":0,"wall_cap_failed":0,"wall_med":50,"name":"Opus 5.5","providers":["claude_plan"],"effect":{"finding":"better than base","eff":11.6,"lo":1.9,"hi":21.3,"better":25,"worse":9,"same":52,"p":0.00904}},"fable":{"runs":[{"tag":"1","run":"claude-fable-5-1","k":58,"n":86}],"k":58,"n":86,"rate":67.4,"cost":0.0,"usd_problem":0.0,"usd_solved":0.0,"unreported":0,"labels":{"tests_failed_no_selfcheck":12,"compile_fail_own":3,"sim_incomplete":1,"stopped_by_cap":10,"signal_missing_hidden":2},"fails":28,"tokens":38242506,"turn_cap":0,"wall_cap":17,"wall_cap_failed":10,"wall_med":265,"name":"Fable 5.1","providers":["claude_plan"],"effect":{"finding":"no detectable effect","eff":5.8,"lo":-1.2,"hi":12.8,"better":17,"worse":8,"same":61,"p":0.108}}},"order":["haiku","sonnet","opus","fable"],"union":74,"all":45},"unsolved":{"n":12,"never_A":10,"blim":7,"n79":79,"blim_in_uns":true,"r79":{"A":66.7,"haiku":72.2,"sonnet":75.9,"opus":79.7,"fable":73.4},"k79":{"A":[158,237],"haiku":[57,79],"sonnet":[60,79],"opus":[63,79],"fable":[58,79]},"border":2,"env":0,"agent":3,"p2_untested":14,"p2_valid":20,"tl_defaults":[10,20],"p2":7},"m3d":{"arms":{"A":{"runs":[{"tag":"A1","run":"40353853802","k":49,"n":86},{"tag":"A2","run":"40368004835","k":52,"n":86},{"tag":"A3","run":"40376808643","k":56,"n":86}],"k":157,"n":258,"rate":60.9,"cost":1.7592,"usd_problem":0.0068,"usd_solved":0.0112,"unreported":4,"labels":{"llm_error":2,"tests_failed_selfcheck_passed":16,"sim_incomplete":5,"tests_failed_no_selfcheck":55,"compile_fail_hidden":10,"stopped_by_cap":7,"signal_missing_hidden":4,"tests_failed_selfcheck_failed":2},"fails":101,"tokens":8621964,"turn_cap":8,"wall_cap":3,"wall_cap_failed":2,"wall_med":74},"V":{"runs":[{"tag":"V1","run":"40353876684","k":51,"n":86},{"tag":"V2","run":"40368026867","k":53,"n":86},{"tag":"V3","run":"40381334658","k":48,"n":86}],"k":152,"n":258,"rate":58.9,"cost":2.7506,"usd_problem":0.0107,"usd_solved":0.0181,"unreported":15,"labels":{"llm_error":14,"tests_failed_selfcheck_passed":48,"stopped_by_cap":27,"compile_fail_hidden":9,"tests_failed_selfcheck_failed":3,"signal_missing_hidden":3,"sim_incomplete":2},"fails":106,"tokens":13226965,"turn_cap":18,"wall_cap":24,"wall_cap_failed":13,"wall_med":135},"S":{"runs":[{"tag":"S1","run":"40353898485","k":48,"n":86},{"tag":"S2","run":"40370912138","k":49,"n":86},{"tag":"S3","run":"40389203542","k":48,"n":86}],"k":145,"n":258,"rate":56.2,"cost":3.3892,"usd_problem":0.0131,"usd_solved":0.0234,"unreported":18,"labels":{"tests_failed_selfcheck_failed":4,"tests_failed_selfcheck_passed":44,"llm_error":9,"compile_fail_hidden":10,"stopped_by_cap":43,"tests_failed_no_selfcheck":2,"sim_incomplete":1},"fails":113,"tokens":15249575,"turn_cap":17,"wall_cap":38,"wall_cap_failed":23,"wall_med":247}},"effects":{"S-A":{"finding":"no detectable effect","eff":-4.7,"lo":-11.2,"hi":1.6,"better":12,"worse":19,"same":55,"p":0.281},"V-A":{"finding":"no detectable effect","eff":-1.9,"lo":-6.6,"hi":2.3,"better":7,"worse":9,"same":70,"p":0.804}},"effects79":{"S-A":{"finding":"no detectable effect","eff":-5.1,"lo":-12.7,"hi":1.7,"better":12,"worse":19,"same":48,"p":0.281},"V-A":{"finding":"no detectable effect","eff":-2.1,"lo":-7.2,"hi":2.5,"better":7,"worse":9,"same":63,"p":0.804}},"extra":{"A":{"no_sc":143,"one_turn":122,"turns_med":2.0,"llm_error_stop":4,"guard":0,"rate79":66.2,"n79":237},"V":{"no_sc":3,"one_turn":26,"turns_med":3.0,"llm_error_stop":15,"guard":0,"rate79":64.1,"n79":237,"verify_runs":383,"refusals":182,"refused_rows":155},"S":{"no_sc":17,"one_turn":17,"turns_med":4.0,"llm_error_stop":18,"guard":8,"rate79":61.2,"n79":237,"verify_runs":423,"refusals":246,"refused_rows":178}},"spec":{"pass":[82,53],"na":[27,33],"fail":[36,27]},"spec_generated":239,"guard_adj":1.9,"cost_scored":7.899,"cost_smoke":0.26,"solved_x":{"V":1.6,"S":2.1}},"m3e":{"arms":{"luna":{"runs":[{"tag":"A1","run":"40353853802","k":42,"n":67},{"tag":"A2","run":"40368004835","k":42,"n":67},{"tag":"A3","run":"40376808643","k":45,"n":67}],"k":129,"n":201,"rate":64.2,"cost":1.5114,"usd_problem":0.0075,"usd_solved":0.0117,"unreported":4,"labels":{"llm_error":2,"tests_failed_selfcheck_passed":13,"sim_incomplete":5,"tests_failed_no_selfcheck":36,"compile_fail_hidden":7,"stopped_by_cap":6,"tests_failed_selfcheck_failed":2,"signal_missing_hidden":1},"fails":72,"tokens":7488325,"turn_cap":7,"wall_cap":3,"wall_cap_failed":2,"wall_med":84},"opus":{"runs":[{"tag":"LG","run":"41040802008","k":52,"n":67}],"k":52,"n":67,"rate":77.6,"cost":17.1147,"usd_problem":0.2554,"usd_solved":0.3291,"unreported":0,"labels":{"tests_failed_selfcheck_passed":11,"compile_fail_hidden":3,"tests_failed_selfcheck_failed":1},"fails":15,"tokens":2728813,"turn_cap":0,"wall_cap":0,"wall_cap_failed":0,"wall_med":44},"cc":{"runs":[{"tag":"1","run":"claude-opus-5-5","k":49,"n":67}],"k":49,"n":67,"rate":73.1,"cost":0.0,"usd_problem":0.0,"usd_solved":0.0,"unreported":0,"labels":{"tests_failed_no_selfcheck":14,"sim_incomplete":2,"compile_fail_own":2},"fails":18,"tokens":11247513,"turn_cap":0,"wall_cap":0,"wall_cap_failed":0,"wall_med":49}},"effects":{"model":{"finding":"better than base","eff":13.4,"lo":4.0,"hi":22.4,"better":19,"worse":3,"same":45,"p":0.000855,"n":67},"harness":{"finding":"no detectable effect","eff":-4.5,"lo":-13.4,"hi":4.5,"better":3,"worse":6,"same":58,"p":0.508,"n":67},"total":{"finding":"no detectable effect","eff":9.0,"lo":-1.0,"hi":18.9,"better":16,"worse":6,"same":45,"p":0.0525,"n":67}},"effects63":{"model":{"finding":"better than base","eff":14.3,"lo":4.2,"hi":23.8,"better":19,"worse":3,"same":41,"p":0.000855,"n":63},"harness":{"finding":"no detectable effect","eff":-4.8,"lo":-14.3,"hi":4.8,"better":3,"worse":6,"same":54,"p":0.508,"n":63}},"n":67,"n63":63,"refused":19,"nosc":{"opus":0,"luna":49},"cost_scored":17.1147,"cost_smoke":2.1286,"solved_x":28}}/*DATA:END*/;
+const NS = "http://www.w3.org/2000/svg";
+const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function s(tag, attrs, parent, text) {
+  const e = document.createElementNS(NS, tag);
+  if (attrs) for (const k in attrs) if (attrs[k] !== undefined && attrs[k] !== null) e.setAttribute(k, attrs[k]);
+  if (text !== undefined) e.textContent = text;
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function h(tag, attrs, parent, html) {
+  const e = document.createElement(tag);
+  if (attrs) for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (html !== undefined) e.innerHTML = html;
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function svgIn(host, w, ht, label) {
+  host.innerHTML = "";
+  const v = s("svg", { width: w, height: ht, viewBox: `0 0 ${w} ${ht}`, role: "img", "aria-label": label || "" }, host);
+  return v;
+}
+function widthOf(host) { return Math.max(300, Math.floor(host.clientWidth - 20)); }
+const pct = (x, d = 1) => (x).toFixed(d) + "%";
+const usd = (x, d = 4) => "$" + x.toFixed(d);
+function lozPath(x0, x1, y, hh) { const c = Math.min(5, (x1 - x0) / 2); return `M${x0},${y} L${x0 + c},${y - hh} L${x1 - c},${y - hh} L${x1},${y} L${x1 - c},${y + hh} L${x0 + c},${y + hh} Z`; }
+
+/* ---------------------------------------------------------- Player: play, pause, step, scrub, speed, reset */
+const ICON = {
+  reset: '<svg viewBox="0 0 14 14"><path d="M2 2v10M12 2 5 7l7 5z" fill="currentColor" stroke="currentColor" stroke-width="1.4"/></svg>',
+  back: '<svg viewBox="0 0 14 14"><path d="M11 2 4 7l7 5z" fill="currentColor"/><path d="M3 2v10" stroke="currentColor" stroke-width="1.6"/></svg>',
+  play: '<svg viewBox="0 0 14 14"><path d="M3 1.5 12 7 3 12.5z" fill="currentColor"/></svg>',
+  pause: '<svg viewBox="0 0 14 14"><path d="M3 2h3v10H3zM8 2h3v10H8z" fill="currentColor"/></svg>',
+  fwd: '<svg viewBox="0 0 14 14"><path d="M3 2l7 5-7 5z" fill="currentColor"/><path d="M11 2v10" stroke="currentColor" stroke-width="1.6"/></svg>'
+};
+const players = [];
+function Player(id, cfg) {
+  const root = document.getElementById(id);
+  if (!root) return null;  // this sub-page does not carry the player
+  const plot = root.querySelector("[data-plot]");
+  const cap = root.querySelector("[data-cap]");
+  const ctl = root.querySelector("[data-ctl]");
+  const n = cfg.n;
+  let i = n - 1, playing = false, speed = 1, timer = null, played = false;
+  ctl.innerHTML = "";
+  const b = (k, lab) => { const x = h("button", { type: "button", "aria-label": lab, title: lab }, ctl, ICON[k]); return x; };
+  const bReset = b("reset", "Reset to the first step"), bBack = b("back", "Step back"), bPlay = b("play", "Play"), bFwd = b("fwd", "Step forward");
+  const range = h("input", { type: "range", min: "0", max: String(n - 1), step: "1", value: String(i), "aria-label": "Scrub through the steps", id: id + "-scrub" }, ctl);
+  const sel = h("select", { "aria-label": "Playback speed", id: id + "-speed" }, ctl);
+  [0.25, 0.5, 1, 2, 4].forEach(v => { const o = h("option", { value: String(v) }, sel, v + "x"); if (v === 1) o.selected = true; });
+  const ix = h("span", { class: "ix num" }, ctl);
+  function show() {
+    cfg.draw(plot, i);
+    cap.innerHTML = cfg.caption(i);
+    range.value = String(i);
+    ix.textContent = (i + 1) + " / " + n;
+  }
+  function stop() { playing = false; clearTimeout(timer); bPlay.innerHTML = ICON.play; bPlay.setAttribute("aria-label", "Play"); }
+  function tick() {
+    if (!playing) return;
+    if (i >= n - 1) { stop(); return; }
+    i++; show();
+    timer = setTimeout(tick, (cfg.ms || 900) / speed * (cfg.hold && cfg.hold(i) || 1));
+  }
+  function play() { if (i >= n - 1) { i = 0; show(); } playing = true; played = true; bPlay.innerHTML = ICON.pause; bPlay.setAttribute("aria-label", "Pause"); clearTimeout(timer); timer = setTimeout(tick, (cfg.ms || 900) / speed); }
+  bPlay.onclick = () => playing ? stop() : play();
+  bBack.onclick = () => { stop(); i = Math.max(0, i - 1); show(); };
+  bFwd.onclick = () => { stop(); i = Math.min(n - 1, i + 1); show(); };
+  bReset.onclick = () => { stop(); i = 0; show(); };
+  range.oninput = () => { stop(); i = +range.value; show(); };
+  sel.onchange = () => { speed = +sel.value; };
+  root.addEventListener("keydown", e => {
+    if (e.target.tagName === "SELECT" || e.target.tagName === "INPUT") return;
+    if (e.key === " " || e.key === "Spacebar") { e.preventDefault(); playing ? stop() : play(); }
+    else if (e.key === "ArrowRight") { e.preventDefault(); stop(); i = Math.min(n - 1, i + 1); show(); }
+    else if (e.key === "ArrowLeft") { e.preventDefault(); stop(); i = Math.max(0, i - 1); show(); }
+    else if (e.key === "Home") { e.preventDefault(); stop(); i = 0; show(); }
+  });
+  if ("IntersectionObserver" in window) {
+    new IntersectionObserver(es => es.forEach(en => {
+      if (en.isIntersecting && en.intersectionRatio > 0.4) { if (!played && !reduce) { i = 0; show(); play(); } }
+      else if (!en.isIntersecting && playing) stop();
+    }), { threshold: [0, 0.4, 0.6] }).observe(root);
+  }
+  const api = { redraw: show, root };
+  players.push(api);
+  show();
+  return api;
+}
+
+/* ---------------------------------------------------------- 1. hero waveform: csr_using_apb_interface_0001, run A1 */
+// src: docs/reports/m3/runs/A1_39981444074.csv (row) and docs/reports/m3/taxonomy_m3.md (trace and log lines)
+const H = D.hero;
+const HERO = [
+  { node: "READ_TASK", cap: "<b>read_task</b>: reads <code>/code/prompt.json</code>, lists the files and detects the tools. No LLM call yet." },
+  { node: "PLAN", llm: 1, cap: "<b>plan</b>: LLM call 1 of " + H.llm_calls + " returns a JSON plan: files to change, approach, how it will check." },
+  { node: "EDIT", llm: 2, file: 1, cap: "<b>edit</b>: LLM call 2 writes <code>rtl/csr_apb_interface.sv</code>; the decision lists checks compile, lint, synth." },
+  { node: "CHECK", cc: "0", cap: "<b>check</b>: <code>iverilog -g2012</code> compile, exit=0." },
+  { node: "CHECK", lint: "0", cap: "<b>check</b>: <code>verilator --lint-only -Wall</code>, exit=0." },
+  { node: "CHECK", syn: "0", cap: "<b>check</b>: <code>yosys -q -p read_verilog -sv ...; hierarchy -auto-top</code>, exit=0. Tool call " + H.tool_calls + " of " + H.tool_calls + "." },
+  { node: "REFLECT", llm: 3, dec: "SUBMIT", cap: "<b>reflect</b>: LLM call 3 decides <code>submit</code> after " + H.turns + " turn. No testbench of its own was run (selfcheck_runs = " + H.selfcheck_runs + ")." },
+  { node: "FINALIZE", cap: "<b>finalize</b>: summary stop=submit. Agent time " + (+H.wall_time_s).toFixed(2) + " s, cost $" + (+H.cost_usd).toFixed(5) + ", provider-reported." },
+  { node: "", tb: "X", cap: "<b>hidden testbench</b>: <code>AttributeError: csr_apb_interface contains no child object named pclk. Did you mean: 'clk'?</code>" },
+  { node: "", tb: "0", cap: "<b>result</b>: 2 failed, 3 warnings in 1.13 s. pass = " + H.pass + ". Label: <code>" + H.failure_label + "</code>." }
+];
+function heroDraw(host, k) {
+  const W = widthOf(host), narrow = W < 560;
+  const nameW = narrow ? 92 : 150, rowH = narrow ? 26 : 30, top = 22;
+  const rows = ["event", "agent.node", "llm.call", "rtl/csr_apb_if.sv", "iverilog.exit", "verilator.exit", "yosys.exit", "reflect.decision", "hidden_tb.pass"];
+  const Hh = top + rows.length * rowH + 22;
+  const v = svgIn(host, W, Hh, "Waveform of the agent's trace on csr_using_apb_interface_0001");
+  const x0 = nameW, x1 = W - 6, n = HERO.length, dx = (x1 - x0) / n;
+  const X = j => x0 + j * dx;
+  for (let j = 0; j <= n; j++) s("line", { x1: X(j), x2: X(j), y1: top - 6, y2: Hh - 18, class: "grid" }, v);
+  for (let j = 0; j < n; j++) s("text", { x: X(j) + 3, y: top - 9, "font-size": 9.5, class: "t-3" }, v, "e" + j);
+  s("text", { x: x0, y: Hh - 4, "font-size": 9.5, class: "t-3" }, v, "trace event order \u2192");
+  rows.forEach((r, ri) => s("text", { x: 0, y: top + ri * rowH + rowH / 2 + 4, "font-size": narrow ? 9.5 : 11, class: ri === 8 ? "t-x" : "t-ink" }, v, r));
+  const yMid = ri => top + ri * rowH + rowH / 2, amp = rowH * 0.3;
+  const gDone = s("g", {}, v), gFut = s("g", { class: "dim" }, v);
+  const G = j => j <= k ? gDone : gFut;
+  // event strobe (clock-like)
+  for (let j = 0; j < n; j++) {
+    const y = yMid(0), a = X(j), m = a + dx / 2, b2 = X(j + 1);
+    s("path", { d: `M${a},${y + amp} L${a},${y - amp} L${m},${y - amp} L${m},${y + amp} L${b2},${y + amp}`, class: "trace" }, G(j));
+  }
+  // bus: agent.node
+  let j0 = 0;
+  for (let j = 1; j <= n; j++) {
+    if (j === n || HERO[j].node !== HERO[j0].node) {
+      const g = G(j0), y = yMid(1);
+      if (HERO[j0].node) {
+        s("path", { d: lozPath(X(j0) + 1, X(j) - 1, y, amp), class: "s1" }, g);
+        const lab = HERO[j0].node, wide = X(j) - X(j0);
+        if (wide > lab.length * 6.2 + 8) s("text", { x: (X(j0) + X(j)) / 2, y: y + 3.5, "font-size": 9.5, "text-anchor": "middle", class: "t-c1" }, g, lab);
+        else s("text", { x: (X(j0) + X(j)) / 2, y: y + 3.5, "font-size": 9.5, "text-anchor": "middle", class: "t-c1" }, g, lab.slice(0, Math.max(1, Math.floor((wide - 6) / 6.2))));
+      } else s("path", { d: `M${X(j0)},${y} L${X(j)},${y}`, class: "trace3", "stroke-dasharray": "3 3" }, g);
+      j0 = j;
+    }
+  }
+  // pulses
+  const pulse = (ri, j, cls, lab) => { const y = yMid(ri), a = X(j) + dx * 0.2, b2 = X(j) + dx * 0.8; s("path", { d: `M${X(j)},${y + amp} L${a},${y + amp} L${a},${y - amp} L${b2},${y - amp} L${b2},${y + amp} L${X(j + 1)},${y + amp}`, class: cls }, G(j)); if (lab) s("text", { x: (a + b2) / 2, y: y - amp - 3, "font-size": 9, "text-anchor": "middle", class: "t-3" }, G(j), lab); };
+  const low = (ri, j, cls) => { const y = yMid(ri); s("path", { d: `M${X(j)},${y + amp} L${X(j + 1)},${y + amp}`, class: cls || "trace" }, G(j)); };
+  for (let j = 0; j < n; j++) { if (HERO[j].llm) pulse(2, j, "trace2", "#" + HERO[j].llm); else low(2, j, "trace2"); }
+  for (let j = 0; j < n; j++) { if (HERO[j].file) pulse(3, j, "trace", "wr"); else low(3, j); }
+  const busVal = (ri, key) => {
+    let first = HERO.findIndex(e => e[key] !== undefined);
+    for (let j = 0; j < n; j++) {
+      const y = yMid(ri);
+      if (j < first) s("path", { d: `M${X(j)},${y} L${X(j + 1)},${y}`, class: "trace3", "stroke-dasharray": "2 3" }, G(j));
+      else if (j === first) {
+        s("path", { d: lozPath(X(j) + 1, X(n) - 1, y, amp), class: "s1" }, G(j));
+        s("text", { x: X(j) + 10, y: y + 3.5, "font-size": 9.5, class: "t-c1" }, G(j), key === "dec" ? HERO[j][key] : "exit = " + HERO[j][key]);
+      }
+    }
+  };
+  busVal(4, "cc"); busVal(5, "lint"); busVal(6, "syn"); busVal(7, "dec");
+  // hidden_tb.pass: Z until e8, X at e8, 0 at e9
+  for (let j = 0; j < n; j++) {
+    const y = yMid(8), e = HERO[j];
+    if (!e.tb) { s("path", { d: `M${X(j)},${y} L${X(j + 1)},${y}`, class: "trace3", "stroke-dasharray": "2 3" }, G(j)); if (j === 0) s("text", { x: X(0) + 4, y: y - 5, "font-size": 9, class: "t-3" }, G(j), "Z: not run while the agent works"); }
+    else if (e.tb === "X") { s("rect", { x: X(j) + 1, y: y - amp, width: dx - 2, height: 2 * amp, class: "sx" }, G(j)); s("text", { x: X(j) + dx / 2, y: y + 3.5, "font-size": 10, "text-anchor": "middle", class: "t-x", "font-weight": 700 }, G(j), "X"); }
+    else { s("path", { d: `M${X(j)},${y + amp} L${X(j + 1)},${y + amp}`, class: "tracex" }, G(j)); s("text", { x: X(j) + dx / 2, y: y - 3, "font-size": 9.5, "text-anchor": "middle", class: "t-x" }, G(j), "FAIL"); }
+  }
+  // cursor
+  const cx = X(k) + dx / 2;
+  s("line", { x1: cx, x2: cx, y1: top - 4, y2: Hh - 18, class: "trace3", "stroke-width": 1.2 }, v);
+  s("rect", { x: cx - 12, y: Hh - 18, width: 24, height: 13, class: "f3" }, v);
+  s("text", { x: cx, y: Hh - 8.5, "font-size": 9, "text-anchor": "middle", class: "fpanel", fill: "var(--panel)" }, v, "e" + k);
+}
+Player("p-hero", { n: HERO.length, ms: 950, draw: heroDraw, caption: k => "e" + k + " &middot; " + HERO[k].cap });
+
+/* ---------------------------------------------------------- 2. graph replay: DES_0003, run A1 */
+// src: docs/reports/m3/runs/A1_39981444074.csv row cvdp_agentic_DES_0003; turn 9 lines from docs/reports/m3/taxonomy_m3.md
+const LOOP = [{ at: "read_task", turn: 0, cap: "<b>read_task</b>: reads the task. Problem DES_0003 (cid004, RTL modification)." },
+  { at: "plan", turn: 0, cap: "<b>plan</b>: one LLM call; the plan is not a turn." }];
+for (let t = 1; t <= 8; t++) {
+  LOOP.push({ at: "edit", turn: t, cap: `turn ${t}: <b>edit</b> (events not in the excerpt).` });
+  LOOP.push({ at: "check", turn: t, cap: `turn ${t}: <b>check</b>: compile always, plus any checks the edit asked for.` });
+  LOOP.push({ at: "reflect", turn: t, back: true, cap: `turn ${t}: <b>reflect</b> decides <code>edit_again</code> (another turn followed).` });
+}
+LOOP.push({ at: "edit", turn: 9, cap: 'turn 9: <b>edit</b> <code>{"changed": [], "errors": 0, "checks": ["compile", "lint"], "testbench": []}</code>' });
+LOOP.push({ at: "check", turn: 9, cap: "turn 9: <b>check</b>: <code>compile exit=0</code>, <code>lint exit=0</code>. Its testbench had failed on its last run (selfcheck_last = fail)." });
+LOOP.push({ at: "reflect", turn: 9, cap: 'turn 9: <b>reflect</b> decides <code>submit</code>.' });
+LOOP.push({ at: "finalize", turn: 9, cap: "<b>finalize</b>: stop=submit, files ['rtl/des_dec.sv']. 9 turns, 19 LLM calls, 27 tool calls, 7 own-testbench runs, $0.0371, 203.84 s." });
+LOOP.push({ at: "hidden", turn: 9, cap: '<b>hidden tests</b>: <code>[ERROR] DUT o_data does not match model o_data: 0x42bc326ee3673c3f != 0xeea4b765cb341b88</code>. Fail.' });
+function loopDraw(host, k) {
+  const W = widthOf(host), narrow = W < 560;
+  const Hh = narrow ? 300 : 250;
+  const v = svgIn(host, W, Hh, "Agent graph with the current node highlighted");
+  const st = LOOP[k];
+  let P;
+  if (!narrow) {
+    const y = 90, gap = (W - 40) / 6;
+    P = { read_task: [20 + gap * 0.5, y], plan: [20 + gap * 1.5, y], edit: [20 + gap * 2.5, y], check: [20 + gap * 3.5, y], reflect: [20 + gap * 4.5, y], finalize: [20 + gap * 5.5, y], hidden: [20 + gap * 5.5, y + 105] };
+  } else {
+    const c1 = W * 0.27, c2 = W * 0.73;
+    P = { read_task: [c1, 40], plan: [c1, 110], edit: [c1, 180], check: [c2, 180], reflect: [c2, 110], finalize: [c2, 40], hidden: [c1, 255] };
+  }
+  const bw = narrow ? Math.min(118, W * 0.4) : Math.min(104, (W - 40) / 6 - 12), bh = 34;
+  const edges = [["read_task", "plan"], ["plan", "edit"], ["edit", "check"], ["check", "reflect"], ["reflect", "finalize"], ["finalize", "hidden"]];
+  const mid = (a) => P[a];
+  edges.forEach(([a, b]) => {
+    const [ax, ay] = mid(a), [bx, by] = mid(b);
+    const active = (st.at === b && LOOP[k - 1] && LOOP[k - 1].at === a);
+    s("line", { x1: ax, y1: ay, x2: bx, y2: by, class: active ? "trace3" : "grid2", "stroke-width": active ? 2.4 : 1.4 }, v);
+  });
+  // loop-back edge reflect -> edit
+  const [rx, ry] = P.reflect, [ex, ey] = P.edit;
+  const backActive = st.at === "edit" && LOOP[k - 1] && LOOP[k - 1].at === "reflect";
+  const dB = narrow ? `M${rx - bw / 2},${ry + 8} C${(rx + ex) / 2},${ry + 20} ${(rx + ex) / 2},${ey - 20} ${ex + bw / 2},${ey - 8}` : `M${rx},${ry + bh / 2} C${rx},${ry + 70} ${ex},${ey + 70} ${ex},${ey + bh / 2}`;
+  s("path", { d: dB, class: backActive ? "trace3" : "grid2", "stroke-width": backActive ? 2.4 : 1.4, "stroke-dasharray": "5 4" }, v);
+  const lbx = narrow ? (rx + ex) / 2 : (rx + ex) / 2, lby = narrow ? (ry + ey) / 2 + 4 : ry + 64;
+  s("text", { x: lbx, y: lby, "font-size": 10, "text-anchor": "middle", class: backActive ? "t-c3" : "t-3" }, v, "edit_again");
+  Object.keys(P).forEach(nm => {
+    const [x, y] = P[nm], on = st.at === nm;
+    const isH = nm === "hidden";
+    const failNow = isH && on;
+    s("rect", { x: x - bw / 2, y: y - bh / 2, width: bw, height: bh, rx: 2, class: "fpanel" }, v);
+    s("rect", { x: x - bw / 2, y: y - bh / 2, width: bw, height: bh, rx: 2, class: failNow ? "sx" : on ? "s3" : "s1", "stroke-width": on ? 2 : 1, opacity: on || isH ? 1 : 0.85 }, v);
+    s("text", { x, y: y + 4, "font-size": narrow ? 10.5 : 11, "text-anchor": "middle", class: failNow ? "t-x" : on ? "t-c3" : "t-c1", "font-weight": on ? 700 : 500 }, v, isH ? "hidden tests" : nm);
+  });
+  // turn counter register
+  const tx = narrow ? W - 8 : 20 + Math.min(260, W * 0.35) + 110, ty = narrow ? 255 : 210;
+  s("text", { x: tx, y: ty - 16, "font-size": 10, "text-anchor": "end", class: "t-3" }, v, "turn[3:0]");
+  const tv = st.turn;
+  s("path", { d: lozPath(tx - 60, tx, ty, 10), class: st.turn === 9 && st.at === "hidden" ? "sx" : "s2" }, v);
+  s("text", { x: tx - 30, y: ty + 4, "font-size": 11, "text-anchor": "middle", class: "t-c2", "font-weight": 700 }, v, "4'd" + tv);
+  if (!narrow) {
+    // turns strip
+    const sx0 = 20, sw = Math.min(260, W * 0.35), y0 = 210;
+    s("text", { x: sx0, y: y0 - 16, "font-size": 10, class: "t-3" }, v, "turns used, of the 10-turn cap");
+    for (let t = 1; t <= 10; t++) {
+      const x = sx0 + (t - 1) * sw / 10;
+      s("rect", { x: x + 1, y: y0 - 8, width: sw / 10 - 2, height: 14, class: t <= tv ? (t === 9 ? "s3" : "s1") : "fgrid", opacity: t <= tv ? 1 : 0.35 }, v);
+    }
+  }
+}
+Player("p-loop", { n: LOOP.length, ms: 520, hold: j => (j >= LOOP.length - 6 ? 2.2 : 1), draw: loopDraw, caption: k => LOOP[k].cap });
+
+/* ---------------------------------------------------------- pipeline schematic (static) */
+function pipeDraw() {
+  const host = document.getElementById("c-pipe"); const W = widthOf(host), narrow = W < 620;
+  const blocks = [
+    ["dispatch", "workflow_dispatch", "model, ids, runner, budget"],
+    ["runner", "ubuntu-24.04 | -arm", "x86-64 or Arm64, native"],
+    ["images", "GHCR images", "cvdp-sim:8e894cf + cvdp-rtl-agent:<sha>"],
+    ["harness", "CVDP harness", "4 problems in parallel"],
+    ["agent", "agent container", "/code, 480 s, $0.10, ledger"],
+    ["hidden", "hidden cocotb tests", "run after the agent exits"],
+    ["collect", "collect.py + table.py", "results.csv, Wilson table"],
+    ["scan", "key scan", "upload only if clean"],
+    ["art", "artifact", "logs, traces, summaries"]
+  ];
+  if (!narrow) {
+    const cols = 3, bw = (W - 40) / cols - 30, bh = 54, gx = (W - 40) / cols, gy = 86;
+    const Hh = 3 * gy + 10;
+    const v = svgIn(host, W, Hh, "Block diagram of the sweep pipeline");
+    blocks.forEach((b, i) => {
+      const r = Math.floor(i / cols), c = r % 2 === 0 ? i % cols : cols - 1 - (i % cols);
+      const x = 20 + c * gx, y = 12 + r * gy;
+      b.push(x, y);
+      s("rect", { x, y, width: bw, height: bh, class: b[0] === "hidden" ? "s3" : b[0] === "agent" ? "s2" : "s1", rx: 2 }, v);
+      s("text", { x: x + 10, y: y + 21, "font-size": 12, class: "t-ink", "font-weight": 600 }, v, b[1]);
+      s("text", { x: x + 10, y: y + 39, "font-size": 9.6, class: "t-3" }, v, b[2]);
+    });
+    for (let i = 0; i < blocks.length - 1; i++) {
+      const a = blocks[i], b = blocks[i + 1];
+      const sameRow = Math.floor(i / cols) === Math.floor((i + 1) / cols);
+      let d;
+      if (sameRow) { const lr = a[3] < b[3]; d = lr ? `M${a[3] + bw},${a[4] + bh / 2} L${b[3]},${b[4] + bh / 2}` : `M${a[3]},${a[4] + bh / 2} L${b[3] + bw},${b[4] + bh / 2}`; }
+      else d = `M${a[3] + bw / 2},${a[4] + bh} L${b[3] + bw / 2},${b[4]}`;
+      s("path", { d, class: "trace", "marker-end": "" }, v);
+      const m = d.match(/L([\d.]+),([\d.]+)$/); if (m) s("circle", { cx: m[1], cy: m[2], r: 3, class: "f1" }, v);
+    }
+  } else {
+    const bh = 46, gy = 58, Hh = blocks.length * gy;
+    const v = svgIn(host, W, Hh, "Block diagram of the sweep pipeline");
+    blocks.forEach((b, i) => {
+      const y = 4 + i * gy;
+      s("rect", { x: 2, y, width: W - 4, height: bh, class: b[0] === "hidden" ? "s3" : b[0] === "agent" ? "s2" : "s1", rx: 2 }, v);
+      s("text", { x: 12, y: y + 19, "font-size": 12, class: "t-ink", "font-weight": 600 }, v, b[1]);
+      s("text", { x: 12, y: y + 35, "font-size": 9.6, class: "t-3" }, v, b[2]);
+      if (i < blocks.length - 1) { s("line", { x1: W / 2, x2: W / 2, y1: y + bh, y2: y + gy, class: "trace" }, v); s("circle", { cx: W / 2, cy: y + gy, r: 3, class: "f1" }, v); }
+    });
+  }
+}
+
+/* ---------------------------------------------------------- M2 dot plot and cost */
+function m2Draw() {
+  const host = document.getElementById("c-m2"); const W = widthOf(host), narrow = W < 560;
+  const left = narrow ? 112 : 250, right = 14, top = 24, rowH = 26;
+  const models = ["Haiku 5.5 (low)", "gpt-6-luna (default)", "DeepSeek V4.1 Flash (off)"];
+  const Hh = top + (models.length * 2 + 1) * rowH + 40;
+  const v = svgIn(host, W, Hh, "Pass rates with Wilson intervals for six sweeps and the null agent");
+  const x = p => left + (W - left - right) * p / 80;
+  for (let t = 0; t <= 80; t += 10) { s("line", { x1: x(t), x2: x(t), y1: top - 6, y2: Hh - 30, class: t % 20 ? "grid" : "grid2" }, v); if (t % 20 === 0 || !narrow) s("text", { x: x(t), y: Hh - 16, "font-size": 10, "text-anchor": "middle", class: "t-3" }, v, t + "%"); }
+  let r = 0;
+  models.forEach(m => {
+    D.m2.filter(z => z.label === m).forEach(z => {
+      const y = top + r * rowH + rowH / 2, c = z.runner === "Arm64" ? "trace2" : "trace", f = z.runner === "Arm64" ? "f2" : "f1";
+      s("text", { x: 0, y: y + 4, "font-size": narrow ? 9.5 : 11, class: "t-ink" }, v, narrow ? m.split(" ")[0] + " " + (z.runner === "Arm64" ? "Arm64" : "x86") : m + " · " + z.runner);
+      s("path", { d: `M${x(z.lo)},${y - 5} V${y + 5} M${x(z.lo)},${y} H${x(z.hi)} M${x(z.hi)},${y - 5} V${y + 5}`, class: c }, v);
+      const g = s("g", { class: "hit" }, v);
+      s("rect", { x: x(z.rate) - 5, y: y - 5, width: 10, height: 10, class: f }, g);
+      s("title", {}, g, `${m}, ${z.runner}, run ${z.run}: ${z.k}/${z.n} = ${pct(z.rate)} [${z.lo}, ${z.hi}]`);
+      s("text", { x: x(z.hi) + 6, y: y + 4, "font-size": 10, class: "t-ink" }, v, `${z.k}/92`);
+      r++;
+    });
+  });
+  const y = top + r * rowH + rowH / 2;
+  s("text", { x: 0, y: y + 4, "font-size": narrow ? 9.5 : 11, class: "t-ink" }, v, "null agent (M0)");
+  s("rect", { x: x(0) - 5, y: y - 5, width: 10, height: 10, class: "fx" }, v);
+  s("text", { x: x(0) + 9, y: y + 4, "font-size": 10, class: "t-x" }, v, "0/92 on both runners");
+  s("text", { x: W - right, y: top - 10, "font-size": 10, "text-anchor": "end", class: "t-3" }, v, "pass@1, hidden tests");
+}
+function m2CostDraw() {
+  const host = document.getElementById("c-m2cost"); const W = widthOf(host), narrow = W < 560;
+  const left = narrow ? 112 : 250, right = 60, top = 10, rowH = 22;
+  const Hh = top + D.m2.length * rowH + 30;
+  const v = svgIn(host, W, Hh, "Cost per solved problem for six sweeps");
+  const max = 0.025, x = c => left + (W - left - right) * c / max;
+  for (let t = 0; t <= 0.025001; t += 0.005) { s("line", { x1: x(t), x2: x(t), y1: top, y2: Hh - 22, class: "grid" }, v); s("text", { x: x(t), y: Hh - 8, "font-size": 10, "text-anchor": "middle", class: "t-3" }, v, "$" + t.toFixed(3)); }
+  D.m2.forEach((z, i) => {
+    const y = top + i * rowH + 4;
+    s("text", { x: 0, y: y + 11, "font-size": narrow ? 9.5 : 11, class: "t-ink" }, v, (narrow ? z.label.split(" ")[0] : z.label) + " · " + (z.runner === "Arm64" ? "Arm64" : "x86"));
+    s("rect", { x: x(0), y, width: x(z.per_solved) - x(0), height: 13, class: z.runner === "Arm64" ? "s2" : "s1" }, v);
+    s("text", { x: x(z.per_solved) + 5, y: y + 11, "font-size": 10.5, class: "t-ink" }, v, usd(z.per_solved));
+  });
+}
+
+/* ---------------------------------------------------------- raster: 92 problems x 19 sweeps */
+const R = D.raster;
+const order = R.ids.map((id, i) => ({ id, i, n: R.bits[i].split("").filter(c => c === "1").length })).sort((a, b) => b.n - a.n || a.id.localeCompare(b.id));
+const RCOLS = R.cols.length;
+function colPass(c) { return R.bits.reduce((a, b) => a + (b[c] === "1" ? 1 : 0), 0); }
+function flipsAt(c) { if (c > 5) return []; const o = c % 2 ? c - 1 : c + 1; return R.ids.map((id, i) => R.bits[i][c] !== R.bits[i][o] ? i : -1).filter(i => i >= 0); }
+function rasterDraw(host, k) {
+  const W = widthOf(host), narrow = W < 560;
+  const left = narrow ? 8 : 24, top = narrow ? 96 : 104, rowH = narrow ? 4 : 5, right = 8;
+  const Hh = top + order.length * rowH + 24;
+  const v = svgIn(host, W, Hh, "Pass or fail for 92 problems across 19 sweeps");
+  const cw = (W - left - right) / RCOLS;
+  for (let c = 0; c < RCOLS; c++) {
+    const xx = left + c * cw;
+    s("line", { x1: xx, x2: xx, y1: top - 4, y2: Hh - 20, class: c === 6 ? "grid2" : "grid" }, v);
+    const t = s("text", { x: xx + cw / 2 + 3, y: top - 8, "font-size": narrow ? 8 : 9.5, class: c === k ? "t-c3" : "t-3", transform: `rotate(-60 ${xx + cw / 2 + 3} ${top - 8})` }, v, R.cols[c].replace("gpt-6-luna", "Luna"));
+  }
+  s("text", { x: left, y: Hh - 6, "font-size": 9.5, class: "t-3" }, v, "M2 (6 sweeps)");
+  s("text", { x: left + 6 * cw + 4, y: Hh - 6, "font-size": 9.5, class: "t-3" }, v, "M3, gpt-6-luna (13 new sweeps)");
+  const fl = new Set(flipsAt(k));
+  order.forEach((o, r) => {
+    const y = top + r * rowH, bits = R.bits[o.i];
+    let d = "", dFut = "", lo = "";
+    for (let c = 0; c < RCOLS; c++) {
+      const xx = left + c * cw + 0.5, hi = bits[c] === "1";
+      if (hi) { const seg = `M${xx},${y + 0.5}h${cw - 1.5}v${rowH - 1.3}h${-(cw - 1.5)}z`; if (c <= k) d += seg; else dFut += seg; }
+      else lo += `M${xx},${y + rowH - 0.8}h${cw - 1.5}`;
+    }
+    s("path", { d: lo, class: "grid2", "stroke-width": 0.8 }, v);
+    s("path", { d, class: "f1" }, v);
+    if (dFut) s("path", { d: dFut, class: "f1 dim" }, v);
+    if (fl.has(o.i)) s("rect", { x: left + k * cw, y: y, width: cw - 1, height: rowH - 0.5, class: "sx", "stroke-width": 0.6 }, v);
+  });
+  const cx = left + k * cw + cw / 2;
+  s("line", { x1: cx, x2: cx, y1: top - 4, y2: Hh - 20, class: "trace3", "stroke-width": 1, opacity: 0.6 }, v);
+}
+function rasterCap(k) {
+  const p = colPass(k), f = flipsAt(k);
+  const run = k < 6 ? D.m2[k].run : D.m3_runs.find(r => "M3 " + r.tag === R.cols[k]).run;
+  let t = `<b>${R.cols[k]}</b> (run ${run}): ${p}/92 pass.`;
+  if (k < 6) t += ` ${f.length} problems differ from the same model's run on the other runner (red).`;
+  if (k === RCOLS - 1) t += ` Across all 20 full runs, ${D.never_all_20} problems never passed (the flat rows at the bottom).`;
+  return t;
+}
+
+/* ---------------------------------------------------------- forest plot */
+const ARMN = { B: "B self-check off", C: "C lint off", D: "D both off", E: "E 5 turns", F: "F 20 turns", G: "G budget $0.02" };
+const FOREST = ["floor", "C", "D", "G", "B", "E", "F"];
+function forestDraw(host, k) {
+  const W = widthOf(host), narrow = W < 560;
+  const left = narrow ? 104 : 168, right = narrow ? 70 : 120, top = 22, rowH = 30;
+  const Hh = top + FOREST.length * rowH + 34;
+  const v = svgIn(host, W, Hh, "Paired effects with 95% intervals for six arms and the noise floor");
+  const lo = -10, hi = 10, x = p => left + (W - left - right) * (p - lo) / (hi - lo);
+  const fl = D.noise_floor;
+  s("rect", { x: x(fl.lo), y: top - 6, width: x(fl.hi) - x(fl.lo), height: FOREST.length * rowH + 4, fill: "url(#hatch3)", opacity: 0.55 }, v);
+  for (let t = lo; t <= hi; t += 2) { s("line", { x1: x(t), x2: x(t), y1: top - 6, y2: Hh - 28, class: t === 0 ? "grid2" : "grid", "stroke-width": t === 0 ? 1.5 : 1 }, v); if (!narrow || t % 4 === 0) s("text", { x: x(t), y: Hh - 14, "font-size": 10, "text-anchor": "middle", class: "t-3" }, v, (t > 0 ? "+" : "") + t); }
+  s("text", { x: x(hi), y: Hh - 2, "font-size": 9.5, "text-anchor": "end", class: "t-3" }, v, "points of pass rate");
+  FOREST.forEach((a, r) => {
+    const e = a === "floor" ? fl : D.m3_effects[a];
+    const y = top + r * rowH + rowH / 2, on = r === k, past = r <= k;
+    const g = s("g", { class: past ? "" : "dim" }, v);
+    s("text", { x: 0, y: y + 4, "font-size": narrow ? 10 : 11.5, class: a === "floor" ? "t-c3" : on ? "t-c3" : "t-ink", "font-weight": on ? 700 : 500 }, g, a === "floor" ? (narrow ? "A2 vs A1" : "noise floor A2 vs A1") : (narrow ? ARMN[a].split(" ")[0] + " " + ARMN[a].split(" ").slice(1).join(" ").slice(0, 11) : ARMN[a]));
+    const cl = a === "floor" ? "trace3" : on ? "trace3" : "trace";
+    s("path", { d: `M${x(e.lo)},${y - 6} V${y + 6} M${x(e.lo)},${y} H${x(e.hi)} M${x(e.hi)},${y - 6} V${y + 6}`, class: cl, "stroke-width": on ? 2.4 : 1.8 }, g);
+    s("rect", { x: x(e.eff) - 5, y: y - 5, width: 10, height: 10, class: a === "floor" || on ? "f3" : "f1" }, g);
+    const f1 = q => (q > 0 ? "+" : "") + q.toFixed(1);
+    const lab = f1(e.eff) + (narrow ? "" : `  [${f1(e.lo)}, ${f1(e.hi)}]`);
+    s("text", { x: W - right + 8, y: y + 4, "font-size": 10.5, class: on ? "t-c3" : "t-ink" }, g, lab);
+  });
+}
+function forestCap(k) {
+  const a = FOREST[k];
+  if (a === "floor") { const f = D.noise_floor; return `<b>Noise floor</b>: the base run twice, same runner. ${f.eff.toFixed(1)} points [${f.lo.toFixed(1)}, +${f.hi.toFixed(1)}], ${f.better} better, ${f.worse} worse, ${f.same} the same. Nothing changed but the run.`; }
+  const e = D.m3_effects[a];
+  const f1 = q => (q > 0 ? "+" : "") + q.toFixed(1);
+  return `<b>${ARMN[a]}</b>: ${f1(e.eff)} [${f1(e.lo)}, ${f1(e.hi)}] points; ${e.better} problems better, ${e.worse} worse, ${e.same} the same; sign test p = ${e.p}. ${e.finding}.`;
+}
+
+/* ---------------------------------------------------------- M3b: 2x2 arms with effect arrows */
+// src: docs/reports/m3b/runs/*.csv via site/data/derive.py (D.m3b); intervals from docs/reports/m3b/arms_paired*_eval86.md
+const M = D.m3b;
+const f1s = q => (q > 0 ? "+" : q < 0 ? "−" : "+") + Math.abs(q).toFixed(1);
+const ciS = e => `[${f1s(e.lo)}, ${f1s(e.hi)}]`;
+function m3bGridDraw() {
+  const host = document.getElementById("c-m3bgrid"); const W = widthOf(host), narrow = W < 560;
+  const gx = narrow ? 84 : 170, gy = 58, top = 22, cw = Math.min(260, (W - gx) / 2), ch = narrow ? 116 : 116;
+  const x0 = (W - (2 * cw + gx)) / 2, Hh = top + 2 * ch + gy + 6;
+  const v = svgIn(host, W, Hh, "Two by two grid of the four M3b arms with the paired effects between them");
+  const pos = { A: [0, 0], B: [1, 0], C: [0, 1], D: [1, 1] };
+  const X = c => x0 + c * (cw + gx), Y = r => top + r * (ch + gy);
+  s("text", { x: X(0) + cw / 2, y: top - 8, "font-size": 10.5, "text-anchor": "middle", class: "t-3" }, v, "harness: LangGraph");
+  s("text", { x: X(1) + cw / 2, y: top - 8, "font-size": 10.5, "text-anchor": "middle", class: "t-3" }, v, "harness: Deep Agents");
+  Object.entries(pos).forEach(([a, [c, r]]) => {
+    const z = M.arms[a], x = X(c), y = Y(r), best = a === "D";
+    s("rect", { x, y, width: cw, height: ch, rx: 2, class: "fpanel" }, v);
+    s("rect", { x, y, width: cw, height: ch, rx: 2, class: z.memory === "none" ? "s1" : "s2", "stroke-width": 1 }, v);
+    s("text", { x: x + 10, y: y + 22, "font-size": 17, class: "t-ink", "font-weight": 700 }, v, a);
+    s("text", { x: x + 30, y: y + 21, "font-size": narrow ? 9.5 : 10.5, class: "t-3" }, v, z.memory === "none" ? "no memory" : "lessons memory");
+    s("text", { x: x + 10, y: y + 50, "font-size": narrow ? 17 : 20, class: z.memory === "none" ? "t-c1" : "t-c2", "font-weight": 700 }, v, z.rate.toFixed(1) + "%");
+    s("text", { x: x + 10, y: y + 67, "font-size": narrow ? 9.5 : 10.5, class: "t-ink" }, v, `${z.k}/${z.n}` + (narrow ? "" : " problem-runs"));
+    // one mini waveform per run: a lozenge holding the run's passes of 86
+    const rw = (cw - 20) / 3;
+    z.runs.forEach((rr, i) => {
+      const lx = x + 10 + i * rw;
+      s("path", { d: lozPath(lx, lx + rw - 4, y + ch - 30, 8), class: z.memory === "none" ? "s1" : "s2" }, v);
+      s("text", { x: lx + (rw - 4) / 2, y: y + ch - 26.5, "font-size": 9.5, "text-anchor": "middle", class: "t-ink" }, v, String(rr.k));
+    });
+    s("text", { x: x + 10, y: y + ch - 8, "font-size": narrow ? 9 : 10, class: "t-3" }, v, usd(z.usd_solved) + " / solved");
+  });
+  const arrow = (key, x1, y1, x2, y2, lx, ly, anchor, off2) => {
+    const e = M.effects[key], sure = e.lo > 0 || e.hi < 0;
+    s("path", { d: `M${x1},${y1} L${x2},${y2}`, class: sure ? "trace3" : "grid2", "stroke-width": sure ? 2 : 1.6, "stroke-dasharray": sure ? null : "5 4" }, v);
+    const dx = Math.sign(x2 - x1), dy = Math.sign(y2 - y1);
+    s("path", { d: `M${x2},${y2} l${-6 * dx - 4 * dy},${-6 * dy - 4 * dx} M${x2},${y2} l${-6 * dx + 4 * dy},${-6 * dy + 4 * dx}`, class: sure ? "trace3" : "grid2", "stroke-width": sure ? 2 : 1.6 }, v);
+    const nm = key.replace("-", " − ");
+    s("text", { x: lx, y: ly, "font-size": narrow ? 9.5 : 10.5, "text-anchor": anchor, class: sure ? "t-c3" : "t-ink", "font-weight": 600 }, v, nm + " " + f1s(e.eff));
+    s("text", { x: lx, y: ly + (off2 || 13), "font-size": narrow ? 9 : 10, "text-anchor": anchor, class: "t-3" }, v, ciS(e));
+  };
+  const midY0 = Y(0) + ch / 2 - 10, midY1 = Y(1) + ch / 2 - 10;
+  arrow("B-A", X(0) + cw + 4, midY0 + 18, X(1) - 4, midY0 + 18, X(0) + cw + gx / 2, midY0 + 11, "middle", 22);
+  arrow("D-C", X(0) + cw + 4, midY1 + 18, X(1) - 4, midY1 + 18, X(0) + cw + gx / 2, midY1 + 11, "middle", 22);
+  arrow("C-A", X(0) + 22, Y(0) + ch + 4, X(0) + 22, Y(1) - 4, X(0) + 32, Y(0) + ch + gy / 2 - 3, "start");
+  arrow("D-B", X(1) + 22, Y(0) + ch + 4, X(1) + 22, Y(1) - 4, X(1) + 32, Y(0) + ch + gy / 2 - 3, "start");
+}
+
+/* ---------------------------------------------------------- M3b forest: null findings first */
+const M3BF = ["floor", "C-A", "D-B", "B-A", "D-C", "D-A"];
+const M3BN = { "C-A": "C − A memory", "D-B": "D − B memory", "B-A": "B − A harness", "D-C": "D − C harness", "D-A": "D − A both" };
+function m3bForestDraw(host, k) {
+  const W = widthOf(host), narrow = W < 560;
+  const left = narrow ? 104 : 176, right = narrow ? 50 : 128, top = 22, rowH = 32;
+  const Hh = top + M3BF.length * rowH + 34;
+  const v = svgIn(host, W, Hh, "Paired effects with 95% intervals for the M3b comparisons and the noise floor");
+  const lo = -10, hi = 14, x = p => left + (W - left - right) * (p - lo) / (hi - lo);
+  const fl = M.floor;
+  s("rect", { x: x(fl.lo), y: top - 6, width: x(fl.hi) - x(fl.lo), height: M3BF.length * rowH + 4, fill: "url(#hatch3)", opacity: 0.55 }, v);
+  for (let t = lo; t <= hi; t += 2) { s("line", { x1: x(t), x2: x(t), y1: top - 6, y2: Hh - 28, class: t === 0 ? "grid2" : "grid", "stroke-width": t === 0 ? 1.5 : 1 }, v); if (!narrow || t % 4 === 0) s("text", { x: x(t), y: Hh - 14, "font-size": 10, "text-anchor": "middle", class: "t-3" }, v, (t > 0 ? "+" : "") + t); }
+  s("text", { x: x(hi), y: Hh - 2, "font-size": 9.5, "text-anchor": "end", class: "t-3" }, v, "points of pass rate");
+  M3BF.forEach((a, r) => {
+    const e = a === "floor" ? fl : M.effects[a], expl = a !== "floor" && e.role === "exploratory";
+    const y = top + r * rowH + rowH / 2, on = r === k, past = r <= k;
+    const g = s("g", { class: past ? "" : "dim" }, v);
+    if (expl) s("line", { x1: 0, x2: W, y1: y - rowH / 2, y2: y - rowH / 2, class: "grid2", "stroke-dasharray": "2 3" }, g);
+    const nm = a === "floor" ? (narrow ? "noise floor" : "noise floor A2 vs A1") : (narrow ? a.replace("-", " − ") + (expl ? " expl." : "") : M3BN[a] + (expl ? " (expl.)" : ""));
+    s("text", { x: 0, y: y + 4, "font-size": narrow ? 10 : 11.5, class: a === "floor" || on ? "t-c3" : "t-ink", "font-weight": on ? 700 : 500 }, g, nm);
+    if (!narrow && a !== "floor") s("text", { x: 0, y: y + 15, "font-size": 9, class: "t-3" }, g, e.role);
+    const cl = a === "floor" || on ? "trace3" : "trace";
+    s("path", { d: `M${x(e.lo)},${y - 6} V${y + 6} M${x(e.lo)},${y} H${x(e.hi)} M${x(e.hi)},${y - 6} V${y + 6}`, class: cl, "stroke-width": on ? 2.4 : 1.8, "stroke-dasharray": expl ? "4 3" : null }, g);
+    if (expl) s("rect", { x: x(e.eff) - 5, y: y - 5, width: 10, height: 10, class: "fpanel", stroke: on ? "var(--ch3)" : "var(--ch1)", "stroke-width": 2 }, g);
+    else s("rect", { x: x(e.eff) - 5, y: y - 5, width: 10, height: 10, class: a === "floor" || on ? "f3" : "f1" }, g);
+    const lab = f1s(e.eff) + (narrow ? "" : "  " + ciS(e));
+    s("text", { x: W - right + 8, y: y + 4, "font-size": 10.5, class: on ? "t-c3" : "t-ink" }, g, lab);
+  });
+}
+function m3bForestCap(k) {
+  const a = M3BF[k];
+  if (a === "floor") { const f = M.floor; return `<b>Noise floor on the ${M.n_eval}</b>: M3's base run twice on the same runner, nothing changed. ${f1s(f.eff)} points ${ciS(f)}, ${f.better} better, ${f.worse} worse, ${f.same} the same. Any effect inside this band cannot be told from a rerun.`; }
+  const e = M.effects[a];
+  const read = { "C-A": "No detectable effect: the lessons memory did not help the LangGraph agent.",
+    "D-B": "Not detectable: the memory did not help Deep Agents either.",
+    "B-A": "Weak: the interval's lower end rounds to zero and the sign test is far from significant.",
+    "D-C": "The one comparison whose interval excludes zero, but its p is above the Bonferroni threshold of " + M.bonferroni + ".",
+    "D-A": "Not pre-registered, so exploratory only." }[a];
+  return `<b>${M3BN[a]}</b> (${e.role}): ${f1s(e.eff)} ${ciS(e)} points; ${e.better} problems better, ${e.worse} worse, ${e.same} the same; sign test p = ${e.p}. ${read}`;
+}
+
+/* ---------------------------------------------------------- M3b: outcome of every problem-run, stacked */
+const M3BL = [
+  ["pass", "passed", "f1"],
+  ["tests_failed_no_selfcheck", "untested: no own testbench", "s1"],
+  ["tests_failed_selfcheck_passed", "own testbench passed", "s2"],
+  ["stopped_by_cap", "stopped by a cap", "s3"],
+  ["iface", "interface mismatch", "sx"],
+  ["other", "other", "fgrid"]
+];
+function m3bSeg(z, key) {
+  if (key === "pass") return z.k;
+  if (key === "iface") return (z.labels.compile_fail_hidden || 0) + (z.labels.signal_missing_hidden || 0);
+  if (key === "other") return z.fails - ["tests_failed_no_selfcheck", "tests_failed_selfcheck_passed", "stopped_by_cap", "compile_fail_hidden", "signal_missing_hidden"].reduce((t, l) => t + (z.labels[l] || 0), 0);
+  return z.labels[key] || 0;
+}
+function stackDraw(hostId, legendId, arms, label) {
+  const host = document.getElementById(hostId); const W = widthOf(host), narrow = W < 560;
+  const left = narrow ? 64 : 190, right = 6, top = 8, rowH = 34, bh = 22;
+  const Hh = top + arms.length * rowH + 22;
+  const v = svgIn(host, W, Hh, label);
+  const n = arms[0].z.n, x = c => left + (W - left - right) * c / n;
+  for (let t = 0; t <= n; t += 50) { s("line", { x1: x(t), x2: x(t), y1: top, y2: Hh - 18, class: "grid" }, v); s("text", { x: x(t), y: Hh - 5, "font-size": 9.5, "text-anchor": "middle", class: "t-3" }, v, t); }
+  arms.forEach(({ a, name, short: sh, z }, r) => {
+    const y = top + r * rowH + 4;
+    s("text", { x: 0, y: y + 15, "font-size": narrow ? 10 : 11, class: "t-ink", "font-weight": 600 }, v, narrow ? sh : name);
+    let c0 = 0;
+    M3BL.forEach(([key, , cls]) => {
+      const c = m3bSeg(z, key); if (!c) return;
+      const g = s("g", { class: "hit" }, v);
+      s("rect", { x: x(c0) + 0.5, y, width: Math.max(1, x(c0 + c) - x(c0) - 1), height: bh, class: cls, "stroke-width": 1 }, g);
+      s("title", {}, g, `${a}: ${key === "pass" ? "passed" : key} ${c} of ${z.n}`);
+      if (x(c0 + c) - x(c0) > 22) s("text", { x: (x(c0) + x(c0 + c)) / 2, y: y + 15, "font-size": 9.5, "text-anchor": "middle", class: key === "pass" ? "fpanel" : key === "iface" ? "t-x" : "t-ink", fill: key === "pass" ? "var(--panel)" : null, "font-weight": 600 }, g, c);
+      c0 += c;
+    });
+  });
+  const L = document.getElementById(legendId); L.innerHTML = "";
+  M3BL.forEach(([, lab, cls]) => { const sp = h("span", {}, L); const sv = s("svg", { width: 12, height: 12, viewBox: "0 0 12 12" }, sp); s("rect", { x: 1, y: 1, width: 10, height: 10, class: cls, "stroke-width": 1 }, sv); sp.appendChild(document.createTextNode(lab)); });
+}
+function m3bFailDraw() {
+  stackDraw("c-m3bfail", "l-m3bfail", "ABCD".split("").map(a => { const z = M.arms[a];
+    return { a, z, name: `${a} · ${z.harness}${z.memory === "none" ? "" : " + lessons"}`, short: a + (z.harness === "Deep Agents" ? " DA" : " LG") + (z.memory === "none" ? "" : "+m") }; }),
+    "Outcome of every problem-run per arm: passes, then failures by label");
+}
+
+/* ---------------------------------------------------------- static forest rows: confirming run, M3c, ladder */
+// rows: { name, short, sub, e, kind: "floor" | "pre" | "expl" }
+function effRows(hostId, rws, o) {
+  const host = document.getElementById(hostId); const W = widthOf(host), narrow = W < 560;
+  const left = narrow ? 112 : 206, right = narrow ? 46 : 128, top = 22, rowH = 34;
+  const Hh = top + rws.length * rowH + 34;
+  const v = svgIn(host, W, Hh, o.label);
+  const lo = o.lo, hi = o.hi, x = p => left + (W - left - right) * (p - lo) / (hi - lo);
+  const fl = M.floor;
+  if (!o.noFloor) s("rect", { x: x(fl.lo), y: top - 6, width: x(fl.hi) - x(fl.lo), height: rws.length * rowH + 4, fill: "url(#hatch3)", opacity: 0.55 }, v);
+  for (let t = lo; t <= hi; t += 2) { s("line", { x1: x(t), x2: x(t), y1: top - 6, y2: Hh - 28, class: t === 0 ? "grid2" : "grid", "stroke-width": t === 0 ? 1.5 : 1 }, v); if (narrow ? t % (hi - lo > 24 ? 8 : 4) === 0 : (t % 4 === 0 || hi - lo <= 24)) s("text", { x: x(t), y: Hh - 14, "font-size": 10, "text-anchor": "middle", class: "t-3" }, v, (t > 0 ? "+" : "") + t); }
+  s("text", { x: x(hi), y: Hh - 2, "font-size": 9.5, "text-anchor": "end", class: "t-3" }, v, "points of pass rate");
+  rws.forEach((z, r) => {
+    const e = z.e, y = top + r * rowH + rowH / 2, isF = z.kind === "floor", ex = z.kind === "expl", sure = !isF && (e.lo > 0 || e.hi < 0);
+    const g = s("g", {}, v);
+    s("text", { x: 0, y: y + (narrow || !z.sub ? 4 : 1), "font-size": narrow ? 10 : 11.5, class: isF ? "t-c3" : "t-ink", "font-weight": sure ? 700 : 500 }, g, narrow ? z.short : z.name);
+    if (!narrow && z.sub) s("text", { x: 0, y: y + 13, "font-size": 9, class: "t-3" }, g, z.sub);
+    const cl = isF ? "trace3" : sure ? "trace" : "trace2";
+    s("path", { d: `M${x(e.lo)},${y - 6} V${y + 6} M${x(e.lo)},${y} H${x(e.hi)} M${x(e.hi)},${y - 6} V${y + 6}`, class: cl, "stroke-width": sure ? 2.6 : 1.6, "stroke-dasharray": ex ? "4 3" : null }, g);
+    if (ex) s("rect", { x: x(e.eff) - 5, y: y - 5, width: 10, height: 10, class: "fpanel", stroke: sure ? "var(--ch1)" : "var(--ch2)", "stroke-width": 2 }, g);
+    else s("rect", { x: x(e.eff) - 5, y: y - 5, width: 10, height: 10, class: isF ? "f3" : sure ? "f1" : "f2" }, g);
+    s("text", { x: W - right + 8, y: y + 4, "font-size": 10.5, class: "t-ink", "font-weight": sure ? 600 : 400 }, g, f1s(e.eff) + (narrow ? "" : "  " + ciS(e)));
+    if (z.mark) s("text", { x: x(e.lo), y: y + 15, "font-size": 9, class: "t-x" }, g, z.mark);
+  });
+}
+const CF = D.m3b_confirm, C3 = D.m3c, LAD = D.ladder;
+const FLOOR_ROW = { name: "noise floor A2 vs A1", short: "noise floor", sub: "M3's base run twice", e: M.floor, kind: "floor" };
+function m3bConfDraw() {
+  effRows("c-m3bconf", [FLOOR_ROW,
+    { name: "M3b, 3 runs an arm", short: "M3b 3 runs", sub: "seeds 1 to 3, suggested it", e: M.effects["B-A"], kind: "pre" },
+    { name: "confirming, " + CF.arms.A.runs.length + " new runs", short: "confirm " + CF.arms.A.runs.length + " runs", sub: `seeds ${CF.seeds[0]} to ${CF.seeds[CF.seeds.length - 1]}, pre-registered`, e: CF.effect, kind: "pre" }
+  ], { lo: -10, hi: 14, label: "B minus A with 95% intervals in M3b and in the confirming run, against the noise floor" });
+}
+function m3bMechDraw() {
+  const host = document.getElementById("c-m3bmech"); const W = widthOf(host), narrow = W < 560;
+  const A = CF.arms.A, B = CF.arms.B;
+  const groups = [["passed", A.k, B.k, "f1"], ["untested failures", A.labels.tests_failed_no_selfcheck, B.labels.tests_failed_no_selfcheck, "s1"], ["round-cap stops", A.turn_cap, B.turn_cap, "s3"]];
+  const left = narrow ? 84 : 170, right = narrow ? 40 : 60, top = 8, gH = 46, bh = 15;
+  const Hh = top + groups.length * gH + 22, n = A.n, x = c => left + (W - left - right) * c / n;
+  const v = svgIn(host, W, Hh, "Confirming run, arms A and B: passes, failures with no own testbench, and round-cap stops");
+  for (let t = 0; t <= n; t += 100) { s("line", { x1: x(t), x2: x(t), y1: top, y2: Hh - 18, class: "grid" }, v); s("text", { x: x(t), y: Hh - 5, "font-size": 9.5, "text-anchor": "middle", class: "t-3" }, v, t); }
+  groups.forEach(([lab, a, b, cls], r) => {
+    const y = top + r * gH + 4;
+    s("text", { x: 0, y: y + 18, "font-size": narrow ? 10 : 11, class: "t-ink", "font-weight": 600 }, v, narrow ? { "untested failures": "untested", "round-cap stops": "cap stops" }[lab] || lab : lab);
+    [["A", a], ["B", b]].forEach(([arm, c], j) => {
+      const yy = y + j * (bh + 3);
+      s("text", { x: left - 6, y: yy + 11, "font-size": 9.5, "text-anchor": "end", class: "t-3" }, v, arm);
+      s("rect", { x: x(0), y: yy, width: Math.max(1, x(c) - x(0)), height: bh, class: cls, "stroke-width": 1 }, v);
+      s("text", { x: x(c) + 5, y: yy + 11, "font-size": 9.5, class: "t-ink", "font-weight": 600 }, v, String(c));
+    });
+  });
+}
+function m3cForestDraw() {
+  effRows("c-m3cforest", [FLOOR_ROW,
+    { name: "I − A interface check", short: "I − A interface", sub: "pyslang elaboration", e: C3.effects["I-A"], kind: "pre" },
+    { name: "M − A mutation gate", short: "M − A gate", sub: "Yosys mutate, kill rate ≥ 0.5", e: C3.effects["M-A"], kind: "pre" }
+  ], { lo: -10, hi: 10, label: "Paired effects with 95% intervals for the two M3c checks against base A, and the noise floor" });
+}
+function m3cFailDraw() {
+  const nm = { A: "A · LangGraph, no check", M: "M · mutation gate", I: "I · interface check" };
+  stackDraw("c-m3cfail", "l-m3cfail", "AMI".split("").map(a => ({ a, z: C3.arms[a], name: nm[a], short: a + (a === "A" ? " base" : a === "M" ? " gate" : " iface") })),
+    "Outcome of every problem-run per M3c arm: passes, then failures by label");
+}
+function ladderDraw() {
+  effRows("c-ladder", [FLOOR_ROW].concat(LAD.order.slice().sort((p, q) => LAD.arms[p].effect.eff - LAD.arms[q].effect.eff).map(k => {
+    const z = LAD.arms[k];
+    return { name: `${z.name} · ${z.rate.toFixed(1)}%`, short: `${z.name.split(" ")[0]} ${z.rate.toFixed(1)}%`, sub: `Claude Code, 1 run, median ${z.wall_med} s`, e: z.effect, kind: "expl",
+      mark: z.wall_cap > 5 ? `${z.wall_cap} wall-cap stops` : null };
+  })), { lo: -10, hi: 24, label: "Paired effects with 95% intervals for four Claude Code arms against LangGraph with gpt-6-luna" });
+}
+
+/* ---------------------------------------------------------- unsolved analysis and M3d */
+const UN = D.unsolved, D3 = D.m3d;
+function uns79Draw() {
+  const host = document.getElementById("c-uns79"); const W = widthOf(host), narrow = W < 560;
+  const rws = [{ name: "LangGraph + gpt-6-luna (M3c A)", short: "LG + luna", r86: C3.arms.A.rate, r79: UN.r79.A }]
+    .concat(LAD.order.slice().sort((p, q) => LAD.arms[p].rate - LAD.arms[q].rate).map(k => ({ name: "Claude Code · " + LAD.arms[k].name, short: LAD.arms[k].name.split(" ")[0], r86: LAD.arms[k].rate, r79: UN.r79[k] })));
+  const left = narrow ? 76 : 210, right = narrow ? 12 : 24, top = 26, rowH = 26;
+  const Hh = top + rws.length * rowH + 26, lo = 55, hi = 85;
+  const v = svgIn(host, W, Hh, "Pass@1 on all 86 problems and on the 79 without the 7 benchmark-limited ones, for M3c arm A and four Claude Code models");
+  const x = r => left + (W - left - right) * (r - lo) / (hi - lo);
+  for (let t = lo; t <= hi; t += 5) { s("line", { x1: x(t), x2: x(t), y1: top - 6, y2: Hh - 20, class: "grid" }, v); if (!narrow || t % 10 === 0) s("text", { x: x(t), y: Hh - 6, "font-size": 10, "text-anchor": "middle", class: "t-3" }, v, t + "%"); }
+  s("rect", { x: left, y: 4, width: 9, height: 9, class: "f1" }, v); s("text", { x: left + 13, y: 12, "font-size": 9.5, class: "t-ink" }, v, "all " + D.m3b.n_eval + " (the score)");
+  const lx = left + (narrow ? 104 : 140);
+  s("rect", { x: lx, y: 4, width: 9, height: 9, class: "fpanel", stroke: "var(--ch2)", "stroke-width": 1.6 }, v); s("text", { x: lx + 13, y: 12, "font-size": 9.5, class: "t-ink" }, v, "the " + UN.n79 + " left");
+  rws.forEach((z, r) => {
+    const y = top + r * rowH + rowH / 2;
+    s("text", { x: 0, y: y + 4, "font-size": narrow ? 10 : 11, class: "t-ink", "font-weight": 500 }, v, narrow ? z.short : z.name);
+    s("line", { x1: x(z.r86), x2: x(z.r79), y1: y, y2: y, class: "trace2", "stroke-width": 1.4 }, v);
+    s("rect", { x: x(z.r86) - 5, y: y - 5, width: 10, height: 10, class: "f1" }, v);
+    s("rect", { x: x(z.r79) - 5, y: y - 5, width: 10, height: 10, class: "fpanel", stroke: "var(--ch2)", "stroke-width": 1.6 }, v);
+    if (!narrow) s("text", { x: x(z.r79) + 9, y: y + 4, "font-size": 9.5, class: "t-3" }, v, z.r86.toFixed(1) + " → " + z.r79.toFixed(1));
+  });
+}
+function m3dForestDraw() {
+  effRows("c-m3dforest", [FLOOR_ROW,
+    { name: "S − A spec cases", short: "S − A spec", sub: "V + blind specification cases", e: D3.effects["S-A"], kind: "pre" },
+    { name: "V − A verify", short: "V − A verify", sub: "no submit until a testbench passed", e: D3.effects["V-A"], kind: "pre" }
+  ], { lo: -12, hi: 8, label: "Paired effects with 97.5% intervals for the two M3d arms against base A, and the noise floor" });
+}
+const E3 = D.m3e;
+function m3eDraw() {
+  effRows("c-m3e", [
+    { name: "total: CC+Opus − LG+luna", short: "total", sub: "harness and model change, as in the ladder", e: E3.effects.total, kind: "expl" },
+    { name: "model: LG+Opus − LG+luna", short: "model", sub: "same graph, Opus 5.5 for gpt-6-luna", e: E3.effects.model, kind: "expl" },
+    { name: "harness: CC+Opus − LG+Opus", short: "harness", sub: "same model, Claude Code for our graph", e: E3.effects.harness, kind: "expl" }
+  ], { lo: -14, hi: 24, noFloor: true, label: "M3e decomposition: total, model and harness effects with 95% intervals on 67 problems" });
+}
+function m3dFailDraw() {
+  const nm = { A: "A · LangGraph, as M3c", V: "V · verify before submit", S: "S · verify + spec cases" };
+  stackDraw("c-m3dfail", "l-m3dfail", "AVS".split("").map(a => ({ a, z: D3.arms[a], name: nm[a], short: a + (a === "A" ? " base" : a === "V" ? " verify" : " spec") })),
+    "Outcome of every problem-run per M3d arm: passes, then failures by label");
+}
+
+/* ---------------------------------------------------------- M3b: tokens against cost, relative to A */
+function m3bTokDraw() {
+  const host = document.getElementById("c-m3btok"); const W = widthOf(host), narrow = W < 560;
+  const left = narrow ? 64 : 190, right = narrow ? 66 : 120, top = 8, rowH = 40, bh = 12;
+  const Hh = top + 4 * rowH + 22;
+  const v = svgIn(host, W, Hh, "Tokens and cost per arm relative to arm A");
+  const A = M.arms.A, max = 6, x = r => left + (W - left - right) * r / max;
+  for (let t = 0; t <= max; t++) { s("line", { x1: x(t), x2: x(t), y1: top, y2: Hh - 18, class: t === 1 ? "grid2" : "grid", "stroke-width": t === 1 ? 1.5 : 1 }, v); s("text", { x: x(t), y: Hh - 5, "font-size": 9.5, "text-anchor": "middle", class: "t-3" }, v, t + "×"); }
+  "ABCD".split("").forEach((a, r) => {
+    const z = M.arms[a], y = top + r * rowH + 4;
+    s("text", { x: 0, y: y + 15, "font-size": narrow ? 10 : 11, class: "t-ink", "font-weight": 600 }, v, narrow ? a + (z.harness === "Deep Agents" ? " DA" : " LG") + (z.memory === "none" ? "" : "+m") : `${a} · ${z.harness}${z.memory === "none" ? "" : " + lessons"}`);
+    const rt = z.tokens / A.tokens, rc = z.cost / A.cost;
+    s("rect", { x: x(0), y, width: x(rt) - x(0), height: bh, class: "s1" }, v);
+    s("text", { x: x(rt) + 5, y: y + 10, "font-size": 9.5, class: "t-ink" }, v, (z.tokens / 1e6).toFixed(1) + "M tok" + (narrow ? "" : "  " + rt.toFixed(1) + "×"));
+    s("rect", { x: x(0), y: y + bh + 3, width: x(rc) - x(0), height: bh, class: "s2" }, v);
+    s("text", { x: x(rc) + 5, y: y + bh + 13, "font-size": 9.5, class: "t-ink" }, v, usd(z.cost, 2) + (narrow ? "" : "  " + rc.toFixed(2) + "×"));
+  });
+}
+function m3bLessons() {
+  const L = document.getElementById("m3b-lessons"); L.innerHTML = "";
+  M.lessons.top.forEach(t => {
+    const q = h("figure", { class: "lesson" }, L);
+    h("div", { class: "lh" }, q, `<span class="lz c2">${t.id}</span><span>retrieved for ${t.count} of ${M.n_eval} problems</span>`);
+    const b = h("blockquote", {}, q); b.textContent = "“" + t.text + "”";
+  });
+}
+
+/* ---------------------------------------------------------- Pareto */
+// intervals: docs/reports/m3/arms_paired.md "Arms" (pooled pass@1, 95% problem bootstrap)
+const PCI = { A: [46.7, 66.3], B: [45.7, 64.7], C: [46.2, 63.6], D: [45.7, 63.6], E: [46.2, 65.8], F: [50.5, 69.6], G: [45.7, 63.6] };
+function paretoDraw() {
+  const host = document.getElementById("c-pareto"); const W = widthOf(host), narrow = W < 560;
+  const left = 44, right = 20, top = 14, bottom = 38, Hh = narrow ? 300 : 340;
+  const v = svgIn(host, W, Hh, "Pass rate against cost per problem for seven arms");
+  const x0 = 0.0055, x1 = 0.0098, y0 = 44, y1 = 72;
+  const X = c => left + (W - left - right) * (c - x0) / (x1 - x0), Y = p => top + (Hh - top - bottom) * (1 - (p - y0) / (y1 - y0));
+  for (let t = 45; t <= 70; t += 5) { s("line", { x1: left, x2: W - right, y1: Y(t), y2: Y(t), class: "grid" }, v); s("text", { x: left - 6, y: Y(t) + 3.5, "font-size": 10, "text-anchor": "end", class: "t-3" }, v, t + "%"); }
+  for (let c = 0.006; c <= 0.0095; c += 0.001) { s("line", { x1: X(c), x2: X(c), y1: top, y2: Hh - bottom, class: "grid" }, v); s("text", { x: X(c), y: Hh - bottom + 15, "font-size": 10, "text-anchor": "middle", class: "t-3" }, v, "$" + c.toFixed(3)); }
+  s("text", { x: W - right, y: Hh - 6, "font-size": 9.5, "text-anchor": "end", class: "t-3" }, v, "$ per problem, provider-reported");
+  const pts = D.pareto.map(p => ({ ...p, r: p.rate * 100 }));
+  const fr = pts.filter(p => p.frontier).sort((a, b) => a.usd - b.usd);
+  let d = "";
+  fr.forEach((p, i) => { d += (i ? ` H${X(p.usd)} V${Y(p.r)}` : `M${X(p.usd)},${Y(p.r)}`); });
+  s("path", { d, class: "trace3", "stroke-width": 1.6, "stroke-dasharray": "6 3" }, v);
+  pts.forEach(p => {
+    const [a, b] = PCI[p.arm];
+    s("path", { d: `M${X(p.usd)},${Y(a)} V${Y(b)}`, class: "grid2", "stroke-width": 2 }, v);
+    const g = s("g", { class: "hit" }, v);
+    if (p.lb) s("circle", { cx: X(p.usd), cy: Y(p.r), r: 5.5, class: "fpanel", stroke: "var(--ch2)", "stroke-width": 2 }, g);
+    else s("circle", { cx: X(p.usd), cy: Y(p.r), r: 5.5, class: p.frontier ? "f3" : "f1" }, g);
+    s("title", {}, g, `${p.arm}: ${p.lb ? "≥" : ""}$${p.usd.toFixed(4)} per problem, ${p.r.toFixed(1)}% pass [${a}, ${b}]`);
+    const dx = p.arm === "E" ? 8 : p.arm === "A" ? -10 : 8, anchor = p.arm === "A" ? "end" : "start", dy = p.arm === "E" ? 14 : p.arm === "G" ? 14 : -7;
+    s("text", { x: X(p.usd) + dx, y: Y(p.r) + dy, "font-size": 11, "text-anchor": anchor, class: p.frontier ? "t-c3" : "t-ink", "font-weight": 600 }, v, (p.lb ? "≥" : "") + p.arm);
+  });
+}
+
+/* ---------------------------------------------------------- behaviour bars */
+function behavDraw() {
+  const host = document.getElementById("c-behav"); const W = widthOf(host), narrow = W < 560;
+  const left = 30, right = 8, top = 16, bottom = 30, Hh = 190;
+  const v = svgIn(host, W, Hh, "Problems where the agent ran its own testbench, per run");
+  const runs = D.m3_runs, bw = (W - left - right) / runs.length;
+  const Y = n => top + (Hh - top - bottom) * (1 - n / 92);
+  [0, 23, 46, 69, 92].forEach(t => { s("line", { x1: left, x2: W - right, y1: Y(t), y2: Y(t), class: "grid" }, v); s("text", { x: left - 4, y: Y(t) + 3.5, "font-size": 9.5, "text-anchor": "end", class: "t-3" }, v, t); });
+  runs.forEach((r, i) => {
+    const x = left + i * bw + 2, w = bw - 4;
+    const off = r.tag[0] === "B" || r.tag[0] === "D";
+    if (off) s("path", { d: `M${x},${Y(0)} H${x + w}`, class: "tracex" }, v);
+    else s("rect", { x, y: Y(r.own_tb), width: w, height: Y(0) - Y(r.own_tb), class: r.tag[0] === "C" ? "s2" : "s1" }, v);
+    s("text", { x: x + w / 2, y: off ? Y(0) - 6 : Y(r.own_tb) - 4, "font-size": narrow ? 8.5 : 10, "text-anchor": "middle", class: off ? "t-x" : "t-ink" }, v, off ? "off" : r.own_tb);
+    s("text", { x: x + w / 2, y: Hh - 12, "font-size": narrow ? 8.5 : 10, "text-anchor": "middle", class: "t-3" }, v, r.tag);
+  });
+}
+
+/* ---------------------------------------------------------- taxonomy waffle */
+const TAX = [
+  ["tests_failed_no_selfcheck", "hidden tests failed; the agent never ran a testbench of its own", "s1"],
+  ["compile_fail_hidden", "hidden build failed on code that compiled for the agent", "sx"],
+  ["signal_missing_hidden", "hidden testbench reads a name the design does not have", "sxs"],
+  ["tests_failed_selfcheck_passed", "the agent's own testbench passed; hidden tests failed", "s2"],
+  ["stopped_by_cap", "stopped by a turn, budget or wall-time cap", "s3"],
+  ["sim_incomplete", "the hidden simulation did not finish", "fgrid"],
+  ["tests_failed_selfcheck_failed", "submitted after its own testbench failed", "o2"],
+  ["no_edit", "no edit made", "o0"]
+];
+function waffleDraw(host, k) {
+  const W = widthOf(host), narrow = W < 560;
+  const cols = narrow ? 25 : 40, cell = Math.floor((W - 4) / cols), g = cell > 9 ? 2 : 1;
+  const total = D.taxonomy_total, rows = Math.ceil(total / cols);
+  const Hh = rows * cell + 8;
+  const v = svgIn(host, W, Hh, "565 failures, one cell each, grouped by label");
+  let idx = 0;
+  TAX.forEach(([lab, , cls], li) => {
+    const n = D.taxonomy[lab] || 0;
+    const on = li === k, past = li <= k;
+    const grp = s("g", { class: past ? "" : "dim" }, v);
+    for (let j = 0; j < n; j++, idx++) {
+      const r = Math.floor(idx / cols), c = idx % cols;
+      s("rect", { x: 2 + c * cell + 0.5, y: 2 + r * cell + 0.5, width: cell - g - 1, height: cell - g - 1, class: cls, "stroke-width": on ? 1.6 : 0.8 }, grp);
+    }
+  });
+}
+function waffleLegend() {
+  const root = document.getElementById("p-waffle"), L = h("div", { class: "legend", "aria-hidden": "true" });
+  root.insertBefore(L, root.querySelector("[data-cap]"));
+  TAX.forEach(([lab, , cls]) => { const sp = h("span", {}, L); const v = s("svg", { width: 12, height: 12, viewBox: "0 0 12 12" }, sp); s("rect", { x: 1, y: 1, width: 10, height: 10, class: cls, "stroke-width": 1 }, v); sp.appendChild(document.createTextNode(lab + " " + D.taxonomy[lab])); });
+}
+function waffleCap(k) {
+  const [lab, desc] = TAX[k], n = D.taxonomy[lab], c = D.taxonomy_by_cid[lab] || {};
+  const pp = D.problems_per_label[lab];
+  const cid = ["cid003", "cid004", "cid005", "cid016"].map(x => `${x} ${c[x] || 0}`).join(", ");
+  return `<b>${lab}</b>: ${n} of ${D.taxonomy_total} (${(100 * n / D.taxonomy_total).toFixed(0)}%), ${desc}${pp ? `; on ${pp} problems` : ""}. By category: ${cid}.`;
+}
+
+/* ---------------------------------------------------------- probe miss schematic */
+function probeDraw() {
+  const host = document.getElementById("c-probe"); const W = widthOf(host), narrow = W < 560;
+  const Hh = 170; const v = svgIn(host, W, Hh, "The hidden testbench probes pclk; the design has clk");
+  const bx = narrow ? W * 0.52 : W * 0.55, bw = narrow ? W * 0.44 : 220, by = 22, bh = 126;
+  s("rect", { x: bx, y: by, width: bw, height: bh, class: "s1", rx: 2 }, v);
+  s("text", { x: bx + 10, y: by + 18, "font-size": 11, class: "t-c1", "font-weight": 600 }, v, "csr_apb_interface");
+  s("text", { x: bx + 10, y: by + 33, "font-size": 9.5, class: "t-3" }, v, "the agent's design");
+  s("line", { x1: bx - 18, x2: bx, y1: by + 62, y2: by + 62, class: "trace" }, v);
+  s("text", { x: bx + 8, y: by + 66, "font-size": 11, class: "t-ink" }, v, "clk");
+  s("text", { x: bx + 8, y: by + 92, "font-size": 10, class: "t-3" }, v, "(other ports not shown)");
+  const tx = 4, tw = narrow ? W * 0.36 : 200;
+  s("rect", { x: tx, y: by, width: tw, height: bh, class: "s3", rx: 2 }, v);
+  s("text", { x: tx + 10, y: by + 18, "font-size": 11, class: "t-c3", "font-weight": 600 }, v, "hidden testbench");
+  s("text", { x: tx + 10, y: by + 33, "font-size": 9.5, class: "t-3" }, v, "cocotb, never shown");
+  s("text", { x: tx + 10, y: by + 66, "font-size": 11, class: "t-ink" }, v, "dut.pclk");
+  const ax = tx + tw, mx = (ax + bx - 18) / 2;
+  s("path", { d: `M${ax},${by + 62} H${bx - 22}`, class: "tracex", "stroke-dasharray": "4 3" }, v);
+  s("rect", { x: mx - 13, y: by + 50, width: 26, height: 24, class: "sx" }, v);
+  s("text", { x: mx, y: by + 66, "font-size": 12, "text-anchor": "middle", class: "t-x", "font-weight": 700 }, v, "X");
+  s("text", { x: (ax + bx) / 2, y: by + bh + 18, "font-size": 10, "text-anchor": "middle", class: "t-x" }, v, "no child object named pclk");
+}
+
+/* ---------------------------------------------------------- 61 of 73 */
+function tb73Draw() {
+  const host = document.getElementById("c-tb73"); const W = widthOf(host);
+  const n = D.own_tb_ran_failed, pass = D.taxonomy.tests_failed_selfcheck_passed;
+  const cols = W < 560 ? 19 : 37, cw = Math.floor((W - 4) / cols), ph = 34;
+  const rows = Math.ceil(n / cols), Hh = rows * (ph + 10) + 4;
+  const v = svgIn(host, W, Hh, `${pass} of ${n} failed submissions had a passing own testbench`);
+  for (let i = 0; i < n; i++) {
+    const r = Math.floor(i / cols), c = i % cols, x = 2 + c * cw, y = 2 + r * (ph + 10);
+    const ownPass = i < pass;
+    s("rect", { x, y, width: cw - 2, height: ph / 2 - 2, class: ownPass ? "s1" : "s2" }, v);
+    s("rect", { x, y: y + ph / 2, width: cw - 2, height: ph / 2 - 2, class: "sx", "stroke-width": 0.7 }, v);
+  }
+}
+
+/* ---------------------------------------------------------- comparison chart */
+function cmpDraw() {
+  const host = document.getElementById("c-cmp"); const W = widthOf(host), narrow = W < 560;
+  const left = narrow ? 118 : 250, right = 50, top = 22, rowH = 26;
+  const ours = D.m2.map(z => ({ who: (narrow ? z.label.split(" ")[0] : z.label) + " · " + (z.runner === "Arm64" ? "Arm64" : "x86"), k: z.k, lo: z.lo, hi: z.hi, rate: z.rate, ours: true }));
+  const ext = D.external.same_92.map(z => ({ who: narrow ? z.who.replace("Claude Code + Claude Sonnet 4.6 (medium effort)", "Claude Code+Son. 4.6").replace(", single turn", " 1-turn") : z.who, k: z.k, lo: z.lo, hi: z.hi, rate: z.rate }));
+  const rowsA = [...ext, null, ...ours];
+  const Hh = top + rowsA.length * rowH + 30;
+  const v = svgIn(host, W, Hh, "Published results on the same 92 problems next to this project's six sweeps");
+  const x = p => left + (W - left - right) * (p - 20) / 60;
+  for (let t = 20; t <= 80; t += 10) { s("line", { x1: x(t), x2: x(t), y1: top - 8, y2: Hh - 26, class: "grid" }, v); s("text", { x: x(t), y: Hh - 12, "font-size": 10, "text-anchor": "middle", class: "t-3" }, v, t + "%"); }
+  s("text", { x: 0, y: top - 8, "font-size": 9.5, class: "t-c2" }, v, "LBC-BENCH, n=1 each");
+  rowsA.forEach((z, r) => {
+    const y = top + r * rowH + rowH / 2;
+    if (!z) { s("text", { x: 0, y: y + 6, "font-size": 9.5, class: "t-c1" }, v, "THIS PROJECT, one run each"); return; }
+    const cl = z.ours ? "trace" : "trace2", f = z.ours ? "f1" : "f2";
+    s("text", { x: 0, y: y + 4, "font-size": narrow ? 9.3 : 11, class: "t-ink" }, v, z.who);
+    s("path", { d: `M${x(z.lo)},${y - 5} V${y + 5} M${x(z.lo)},${y} H${x(z.hi)} M${x(z.hi)},${y - 5} V${y + 5}`, class: cl }, v);
+    s("rect", { x: x(z.rate) - 5, y: y - 5, width: 10, height: 10, class: f }, v);
+    s("text", { x: x(z.hi) + 5, y: y + 4, "font-size": 10, class: "t-ink" }, v, z.k + "/92");
+  });
+}
+function cmpLists() {
+  const L = document.getElementById("cmp-list");
+  D.external.same_92.forEach(z => {
+    h("div", {}, L, `<div class="v num">${z.k}/${z.n} = ${z.rate}% <span class="small">[Wilson ${z.lo}, ${z.hi}]</span></div><div><strong>${z.who}</strong> &middot; ${z.mode} &middot; release ${z.release} &middot; ${z.runs} run &middot; ${z.date} &middot; ${z.checked ? "verified" : "not independently verified"}</div><div class="w">Quoted: &ldquo;${z.quote}&rdquo;. ${z.source}.</div>`);
+  });
+  const C = document.getElementById("ctx-list");
+  D.external.context.forEach(z => {
+    h("div", {}, C, `<div class="v">${z.value}</div><div><strong>${z.who}</strong> &middot; <a href="${z.url}">${z.source}</a></div><div class="w">Why it does not compare: ${z.why_not}</div>`);
+  });
+}
+
+/* ---------------------------------------------------------- FAQ and glossary content */
+const FAQ = [
+  ["Isn't 92 problems too few?", "For small effects, yes. One run on 92 problems has a Wilson interval about 20 points wide, and the paired design with 2 runs per arm resolves about &plusmn;5 points. That is why every M3 arm reads \"no detectable effect\" and never \"no effect\", and why M3b uses 3 runs per arm.", "M3_report.md, The noise floor, measured"],
+  ["Why would adding turns not help?", "The agent does not use them. It submits after one turn on about half the problems, and in arm F (20 turns) only 6 of 184 problem-runs went past 10 turns, of which 1 passed. The failures sit in interface mismatches and weak self-checks, which more turns do not fix.", "M3_report.md, F is the only arm worth a second look; behaviour.md"],
+  ["Is the hidden testbench unfair?", "Mostly no: a hidden sign-off test is the point of the benchmark. But for 6 of the 9 problems that fail on a missing name, the name is in nothing the agent is given, so no agent can be expected to match it. Those are reported separately, and M3b leaves unreachable problems out of its evaluation set by a rule fixed in advance.", "M3_report.md, What the failures say"],
+  ["How do you know the taxonomy is right?", "Its rules are deterministic and run on the committed CSVs. Against hand labels: 15 of 15 on the rule-development set (12 of 15 before the new rule) and 15 of 15 on a hold-out set drawn after the rule was fixed. The hold-out has no missing-name case, and one person wrote both, so it is a consistency check, not an independent one.", "M3_report.md, Rules against hand labels"],
+  ["What would you do differently?", "Run 3 times per arm from the start, since 2 runs resolve only about &plusmn;5 points; give each repeat a distinct seed label from the start (M3's second runs predate <code>seed_offset</code>); capture the hidden compiler's own message; and measure the agent's testbench directly instead of inferring its quality from outcomes.", "M3_report.md, Known gaps and M3b design"],
+  ["How does this compare to the paper's numbers?", "It does not, directly. The paper ran agentic problems as single-turn prompts on the first release, including commercial-tool categories, with 2025 models and n=5. The comparable numbers are three LBC-bench rows on the same 92 problems: 48, 52 and 53 of 92, against 41 to 56 here.", "This page, How this compares; arXiv:2506.14074 Table 3"],
+  ["What did the agent actually cost?", `gpt-6-luna: $0.0105&ndash;0.0109 per solved problem; Haiku 5.5: $0.0184&ndash;0.0214; DeepSeek: $0.0238&ndash;0.0240. Whole milestones: M1 about $0.75, M2 $8.5539, M3 $8.2537, M3b $${M.cost_total.toFixed(2)} (scored sweeps $${M.cost_scored.toFixed(2)}, learning runs at least $${M.cost_learning.toFixed(2)}), M3b's confirming run $${CF.cost.toFixed(2)}, M3c $${(C3.cost_scored + C3.cost_smoke).toFixed(2)} (scored sweeps and smoke runs), all provider-reported, with one unreported call each in M2 and M3, ${M.learning.reduce((a, x) => a + x.unreported, 0)} in M3b's learning runs, ${CF.arms.A.unreported + CF.arms.B.unreported} in the confirming run and ${C3.arms.A.unreported + C3.arms.M.unreported + C3.arms.I.unreported} in M3c. M3d cost $${(D3.cost_scored + D3.cost_smoke).toFixed(2)} and M3e $${(E3.cost_scored + E3.cost_smoke).toFixed(2)}, both with their smoke runs. The Claude Code ladder ran on a subscription plan and has no provider-reported cost.`, "M2_report.md; M3_report.md, Cost bookkeeping; M3b_report.md, In short; m3b/confirm_result.md; M3c_report.md, Pareto; M3d_report.md; M3e_report.md"],
+  ["Is Haiku better than Luna?", "No. They tie on pass rate: counting each problem over both runners, Haiku is ahead on 12 problems and Luna on 12; the paired effect is +1.6 [&minus;4.9, +8.2]. Luna costs half as much per solved problem.", "M2_report.md; m3/m2_models_paired.md"],
+  ["Does self-checking help?", "Not detectably. Self-check off: &minus;1.1 [&minus;6.0, +4.3]. With lint off the agent ran its testbench on 67 problems instead of 31&ndash;32, and the pass rate did not move. And where its testbench ran on a failed submission, it had passed 61 times out of 73.", "M3_report.md, In short"],
+  ["Then why keep lint on?", "Cost. With lint off the agent takes more turns, and a solved problem costs &ge; $0.0146 (C) and $0.0169 (D) against $0.0106 for the base: 38 to 59% more for the same pass rate.", "M3_report.md, In short"],
+  ["Could the runner explain the differences?", "No. The base run twice on the same Arm64 runner differs by &minus;2.2 [&minus;8.7, +4.3]; Arm64 against x86 differs by &minus;1.1 [&minus;7.6, +5.4]. Same width: the runner adds no noise of its own.", "m3/calibration_same_runner.md; M3_report.md"],
+  ["Could the agent see or game the hidden tests?", "The harness runs the hidden tests after the agent exits. The file tool writes only under <code>rtl/</code>, <code>verif/</code> and <code>docs/</code> and refuses other paths in code. The missing-name failures are themselves evidence that the hidden testbench's names were not visible to it.", "README.md, The agent; M3_report.md"],
+  ["Why does the null agent matter?", "It passes 0 of 92 on both runners, and the M0 log check showed every one of its failures is a genuine hidden-test or build failure, not a harness fault. So every pass any agent gets is its own work.", "README.md M0 table; M1_report.md, The M0 gap"],
+  ["Why gpt-6-luna for the ablations?", "It tied Haiku on pass rate in M2 at half the cost per solved problem, so the 13 M3 sweeps cost $8.25 rather than about twice that.", "M2_report.md; M3_report.md"],
+  ["How is the API key protected?", "It reaches the agent only through <code>CVDP_AGENT_ENV</code>. Tools run with every credential-like variable removed, as an unprivileged user that cannot read the agent's environment through <code>/proc</code>. The work directory is uploaded only if a scan finds nothing key-shaped.", "README.md; M1_report.md, Review round 1"],
+  ["Which problems does nothing solve, and why?", "24 problems failed in all 20 full runs. For 10 of them most failures are one of the two interface labels. The rest fail the hidden tests on behaviour, often with the agent never having run a testbench.", "M3_report.md, The 28 problems no M2 run solved"],
+  ["What does F's +3.8 points mean?", "Probably nothing yet: its interval [&minus;1.1, +9.2] includes 0, the sign test gives p = 0.424, and the extra turns explain at most 1 of its 7 extra passes. M3b keeps 10 turns.", "m3/arms_paired.md; M3_report.md"],
+  ["Did the lessons memory help?", `No detectable effect. On the LangGraph agent, C &minus; A is ${f1s(M.effects["C-A"].eff)} ${ciS(M.effects["C-A"])} points (${M.effects["C-A"].better} problems better, ${M.effects["C-A"].worse} worse, sign test p = ${M.effects["C-A"].p}); on Deep Agents, D &minus; B is ${f1s(M.effects["D-B"].eff)} ${ciS(M.effects["D-B"])}. The memory was ${M.lessons.n} generic lessons from ${M.lessons.attempts} attempts on other problems, and ${M.lessons.never.length} were never retrieved. That says this memory does not help, not that no memory could.`, "M3b_report.md, In short; m3b/arms_paired_eval86.md"],
+  ["Is Deep Agents better?", `On this model and benchmark, yes, by a few points. In M3b, B &minus; A was ${f1s(M.effects["B-A"].eff)} ${ciS(M.effects["B-A"])} (p = ${M.effects["B-A"].p}) and D &minus; C ${f1s(M.effects["D-C"].eff)} ${ciS(M.effects["D-C"])}; with four comparisons no sign test passed a Bonferroni threshold of ${M.bonferroni}, so it was a hypothesis. A pre-registered confirming run on ${CF.arms.A.runs.length} new runs an arm then gave B &minus; A ${f1s(CF.effect.eff)} ${ciS(CF.effect)} (sign test p = ${CF.effect.p.toFixed(3)}): the interval excludes zero, so by the rule fixed in advance it is ${CF.verdict}. That is one model (gpt-6-luna) on one benchmark. It leaves fewer problems untested but stops more often on its round cap, and it costs about the same per problem despite about ${(M.arms.B.tokens / M.arms.A.tokens).toFixed(0)} times the tokens.`, "M3b_report.md, In short; m3b/confirm_result.md; m3b/arms_paired_secondary_eval86.md; m3b/taxonomy_by_arm.md"],
+  ["Did the mutation gate help?", `Not the pass rate. M &minus; A is ${f1s(C3.effects["M-A"].eff)} ${ciS(C3.effects["M-A"])} points (${C3.effects["M-A"].better} better, ${C3.effects["M-A"].worse} worse, p = ${C3.effects["M-A"].p}). It removed the untested failures (${C3.arms.A.labels.tests_failed_no_selfcheck} on A, ${C3.arms.M.labels.tests_failed_no_selfcheck || 0} on M), but those became failures where the agent's own testbench passed (${C3.arms.A.labels.tests_failed_selfcheck_passed} to ${C3.arms.M.labels.tests_failed_selfcheck_passed}) and cap stops (${C3.arms.A.labels.stopped_by_cap} to ${C3.arms.M.labels.stopped_by_cap}). The forced testbenches killed ${C3.gate.kill_rate.toFixed(0)}% of compiled mutants, ${C3.gate.outcomes.skipped} of ${C3.gate.runs} gate runs were skipped and failed open, and a solved problem cost about ${C3.solved_x.toFixed(1)} times arm A's. Requiring a testbench is not requiring a correct one.`, "M3c_report.md, In short, Gate and interface-check statistics; m3c/taxonomy_by_arm.md"],
+  ["How does Claude Code compare?", `One run per model on the same 86 problems, paired against our LangGraph agent with gpt-6-luna: ${LAD.order.map(k => LAD.arms[k].name + " " + f1s(LAD.arms[k].effect.eff) + " " + ciS(LAD.arms[k].effect)).join("; ")}. Only Opus's interval excludes zero. Fable stopped on the 480 s wall cap on ${LAD.arms.fable.wall_cap} problems, so its score is a lower bound. Both the harness and the model change, the runs were not pre-registered, and on a subscription plan there is no provider-reported cost to compare.`, "claude_code_ladder.md; claude_code/ladder_paired_eval86.md"],
+  ["Does making the agent test its work help?", `Not the pass rate, on this model. In M3d a step refused every submit until a testbench had passed on the current design (V), and a second arm added cases written blind from the specification (S). V &minus; A is ${f1s(D3.effects["V-A"].eff)} ${ciS(D3.effects["V-A"])} and S &minus; A ${f1s(D3.effects["S-A"].eff)} ${ciS(D3.effects["S-A"])} points, at 97.5% by a pre-registered rule: both null. Problem-runs with no self-check fell from ${(100 * D3.extra.A.no_sc / D3.arms.A.n).toFixed(0)}% to ${(100 * D3.extra.V.no_sc / D3.arms.V.n).toFixed(0)}%, but failures with the agent's own testbench passing rose from ${D3.arms.A.labels.tests_failed_selfcheck_passed} to ${D3.arms.V.labels.tests_failed_selfcheck_passed}, cap stops rose, and a solved problem cost ${D3.solved_x.V.toFixed(1)} times as much. The spec cases barely predicted the hidden result (${(100 * D3.spec.pass[0] / (D3.spec.pass[0] + D3.spec.pass[1])).toFixed(0)}% hidden pass when they all passed, ${(100 * D3.spec.fail[0] / (D3.spec.fail[0] + D3.spec.fail[1])).toFixed(0)}% when some failed). A testbench the model writes agrees with the model's own misreading.`, "M3d_report.md, In short; m3d/arms_paired_eval86.md; m3d/secondary_tables.md"],
+  ["Are some benchmark problems unfair?", `Some are. Of the ${UN.n} problems no Claude model solved, ${UN.blim} need a detail the task never gives, shown by rerunning a failing attempt with only that detail changed: a top-level file name that appears nowhere in the task, default parameter values the prompt never gives, a noise table, an unstated file extension. ${UN.border} more are borderline, ${UN.agent} are the agents' own mistakes, and none is an environment fault. Without the ${UN.blim}, arm A scores ${UN.r79.A.toFixed(1)}% on ${UN.n79} problems (${C3.arms.A.rate.toFixed(1)}% on ${D.m3b.n_eval}) and Opus ${UN.r79.opus.toFixed(1)}% (${LAD.arms.opus.rate.toFixed(1)}%). The full-${D.m3b.n_eval} score stays the reported one.`, "unsolved_analysis.md; tools/benchmark_limited_ids.txt"],
+  ["Is this a verification agent?", "No. It is an RTL agent that checks its own work before submitting. The verification-writing categories of CVDP need a commercial simulator, so they are not in the free split; the planned M5 track adds open verification work, scored by seeded-bug kill rate.", "README.md, What it is tested on"],
+  ["Is the gap to Claude Code the harness or the model?", `The model, for Opus 5.5. In M3e our unchanged LangGraph agent with Opus scored ${E3.arms.opus.rate.toFixed(1)}% on the ${E3.n} problems it attempted, ${f1s(E3.effects.model.eff)} ${ciS(E3.effects.model)} points over gpt-6-luna; Claude Code with the same model was ${f1s(E3.effects.harness.eff)} ${ciS(E3.effects.harness)} against it. One run, exploratory, and the cost guard refused ${E3.refused} of the 86 problems.`, "M3e_report.md, In short"]
+];
+const GLOSS = [
+  ["g-cocotb", "cocotb", "A Python framework for writing testbenches that drive and check a simulated HDL design. CVDP's hidden tests are mostly cocotb tests."],
+  ["g-hidden", "hidden testbench", "The benchmark's own test for a problem, which the solver never sees. The harness runs it after the agent exits; pass or fail is the score."],
+  ["g-pass1", "pass@1", "The share of problems solved with one attempt each. Here: one sweep, one attempt per problem. The paper estimates it from n=5 samples."],
+  ["g-wilson", "Wilson interval", "A confidence interval for a proportion that keeps its coverage at small n and near 0% or 100%. Used for single-sweep pass rates."],
+  ["g-boot", "paired bootstrap", "Resampling the problems with replacement many times and recomputing the mean per-problem difference between two arms; the spread gives the interval. Each problem's runs stay together."],
+  ["g-sign", "sign test", "An exact test on the problems that changed: are \"better\" and \"worse\" more unbalanced than a fair coin would make them? Two-sided, ties dropped."],
+  ["g-ablation", "ablation", "Turning one part of the system off or changing one setting, holding the rest fixed, to see what that part contributes."],
+  ["g-pareto", "Pareto front", "The arms not beaten on both axes at once (here: higher pass rate and lower cost). An arm is dominated only by one at least as good on both and better on one."],
+  ["g-langgraph", "LangGraph", "A library for building LLM agents as explicit graphs of nodes and edges with state. The agent here is a six-node LangGraph graph."],
+  ["g-deep", "Deep Agents", "A ready-made agent harness from the LangChain project, built on LangGraph: a free tool-call loop with a planning tool, file tools, sub-agents and conversation summarization. In M3b it drives the same model and tools as the hand-built graph, with sub-agents and the shell turned off and a cap of 22 model calls."],
+  ["g-memory", "lessons memory", "A fixed list of short, general lessons distilled by the model from attempts on other problems, then frozen and named by its content hash. M3b appends the top 5 for each task, picked by BM25, to the agent's prompt."],
+  ["g-prereg", "pre-registration", "Writing down the test, its data and its decision rule, and committing them, before any of the runs exist. The data that suggested a hypothesis then cannot also be the data that tests it."],
+  ["g-elab", "elaboration", "The step in which a tool resolves a design's modules, parameters and ports into one concrete hierarchy, before simulation or synthesis. M3c's interface check elaborates the design with pyslang and compares what it finds with the interface the agent was given."],
+  ["g-claudecode", "Claude Code", "Anthropic's command-line coding agent. In the ladder it replaces the whole LangGraph agent: run headless with <code>claude -p</code>, with file and shell tools, inside the same container and wall cap."],
+  ["g-bm25", "BM25", "A classic keyword-ranking formula from information retrieval. M3b uses it to pick lessons for a task with no model in the loop."],
+  ["g-bmc", "BMC", "Bounded model checking: a formal tool searches every input sequence up to a depth for one that breaks a property."],
+  ["g-sva", "SVA", "SystemVerilog Assertions: temporal properties written into the design or testbench, checked in simulation or formally."],
+  ["g-mut", "mutation testing", "Making small deliberate changes (mutants) to a design and checking whether the testbench fails on each. The share caught is the mutation score: a measure of the testbench, not the design."],
+  ["g-equiv", "equivalence checking", "Proving formally that two designs, or a design and its reference, produce the same outputs for every input."],
+  ["g-runners", "Arm64 / x86 runners", "GitHub Actions machines of each architecture (<code>ubuntu-24.04-arm</code> and <code>ubuntu-24.04</code>). Every image is built natively for both."],
+  ["g-null", "null agent", "An agent that changes nothing. Its score (0 of 92) is the floor, showing that no problem passes without edits."],
+  ["g-noise", "noise floor", "How much two runs with identical settings differ. An effect smaller than it cannot be told from chance."],
+  ["g-cid", "cid", "CVDP's category id: cid003 spec to RTL, cid004 RTL modification, cid005 spec to RTL with module reuse, cid016 bug fixing; cid012&ndash;014 are verification writing (commercial tools)."],
+  ["g-openrouter", "OpenRouter", "An API that routes one request format to many model providers and reports each call's cost. All costs here come from its usage reports."]
+];
+function fillText() {
+  const F = document.getElementById("faqlist");
+  FAQ.forEach(([q, a, src], i) => {
+    const d = h("details", { id: "q" + (i + 1) }, F);
+    h("summary", {}, d, `<span class="qn num">Q${String(i + 1).padStart(2, "0")}</span><span>${q}</span>`);
+    h("div", {}, d, `${a}<span class="src">source: ${src}</span>`);
+  });
+  const G = document.getElementById("gloss");
+  GLOSS.forEach(([id, t, dd]) => { h("dt", { id }, G, t); h("dd", {}, G, dd); });
+}
+
+/* ---------------------------------------------------------- page clock: cursor ns, section stamps and edges */
+const NS_PER_PX = 10;
+const secs = Array.from(document.querySelectorAll(".sec"));
+function stamps() {
+  secs.forEach((sec, i) => {
+    const t = Math.round(sec.offsetTop * NS_PER_PX / 100) * 100;
+    const st = sec.querySelector("[data-stamp]"); if (st) st.textContent = "@ " + t.toLocaleString("en-GB") + " ns";
+    const edge = sec.querySelector("[data-edge]");
+    if (edge && i > 0) {
+      const prev = secs[i - 1].dataset.val, cur = sec.dataset.val;
+      edge.innerHTML = '<svg width="34" height="18" viewBox="0 0 34 18" aria-hidden="true"><path d="M0 15H12V3H24V15H34" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>' +
+        `<span>posedge clk @ ${t.toLocaleString("en-GB")} ns</span><span class="lz c3" style="opacity:.6">${prev}</span><span>&rarr;</span><span class="lz">${cur}</span>`;
+    }
+  });
+}
+const tread = document.getElementById("tread"), prog = document.getElementById("prog"), curlab = document.getElementById("curlab");
+let rafQ = false;
+function onScroll() {
+  if (rafQ) return; rafQ = true;
+  requestAnimationFrame(() => {
+    rafQ = false;
+    const y = window.scrollY + window.innerHeight / 2;
+    tread.textContent = "T = " + Math.round(y * NS_PER_PX).toLocaleString("en-GB") + " ns";
+    const max = document.documentElement.scrollHeight - window.innerHeight;
+    prog.style.width = (max > 0 ? 100 * window.scrollY / max : 0) + "%";
+    let cur = secs[0];
+    for (const sc of secs) if (sc.offsetTop <= y) cur = sc;
+    curlab.textContent = cur.dataset.sig + " = " + cur.dataset.val;
+  });
+}
+
+/* ---------------------------------------------------------- theme toggle: paper / scope */
+const btn = document.getElementById("theme");
+function curTheme() { const a = document.documentElement.getAttribute("data-theme"); if (a) return a; return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; }
+function label() {
+  const t = curTheme();
+  btn.querySelectorAll("[data-m]").forEach(x => x.classList.toggle("on", x.dataset.m === t));
+  btn.setAttribute("aria-pressed", t === "dark" ? "true" : "false");
+  btn.setAttribute("title", t === "dark" ? "Dark theme on: switch to light" : "Light theme on: switch to dark");
+}
+try { const t = localStorage.getItem("cvdp-theme"); if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t); } catch (e) {}
+btn.addEventListener("click", () => {
+  const n = curTheme() === "dark" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", n);
+  try { localStorage.setItem("cvdp-theme", n); } catch (e) {}
+  label();
+});
+label();
+
+/* ---------------------------------------------------------- boot */
+const has = id => !!document.getElementById(id);
+const P_RASTER = Player("p-raster", { n: RCOLS, ms: 700, hold: j => (j === 5 || j === RCOLS - 1 ? 2 : 1), draw: rasterDraw, caption: rasterCap });
+const P_FOREST = Player("p-forest", { n: FOREST.length, ms: 1500, draw: forestDraw, caption: forestCap });
+const P_WAFFLE = Player("p-waffle", { n: TAX.length, ms: 1600, draw: waffleDraw, caption: waffleCap });
+const P_M3B = Player("p-m3b", { n: M3BF.length, ms: 1500, draw: m3bForestDraw, caption: m3bForestCap });
+// each sub-page carries only its own charts: draw the ones whose host is on this page
+const statics = [["c-pipe", pipeDraw], ["c-m2", m2Draw], ["c-m2cost", m2CostDraw], ["c-pareto", paretoDraw], ["c-behav", behavDraw],
+  ["c-m3bgrid", m3bGridDraw], ["c-m3bfail", m3bFailDraw], ["c-m3btok", m3bTokDraw], ["c-m3bconf", m3bConfDraw], ["c-m3bmech", m3bMechDraw],
+  ["c-m3cforest", m3cForestDraw], ["c-m3cfail", m3cFailDraw], ["c-ladder", ladderDraw], ["c-uns79", uns79Draw], ["c-m3dforest", m3dForestDraw],
+  ["c-m3dfail", m3dFailDraw], ["c-m3e", m3eDraw], ["c-probe", probeDraw], ["c-tb73", tb73Draw], ["c-cmp", cmpDraw]].filter(([id]) => has(id)).map(([, f]) => f);
+statics.forEach(f => f());
+if (has("cmp-list")) cmpLists();
+if (has("m3b-lessons")) m3bLessons();
+if (has("faqlist")) fillText();
+if (has("p-waffle")) waffleLegend();
+stamps(); onScroll();
+let lastW = window.innerWidth, rT = null;
+window.addEventListener("resize", () => {
+  clearTimeout(rT);
+  rT = setTimeout(() => { if (window.innerWidth === lastW) return; lastW = window.innerWidth; statics.forEach(f => f()); players.forEach(p => p.redraw()); stamps(); onScroll(); }, 150);
+});
+window.addEventListener("scroll", onScroll, { passive: true });
+window.addEventListener("load", () => { stamps(); onScroll(); });
+function openHash() {
+  if (!location.hash || !/^#[A-Za-z0-9._~-]+$/.test(location.hash)) return;
+  const t = document.getElementById(location.hash.slice(1));
+  if (t && t.tagName === "DETAILS") t.open = true;
+  if (t) requestAnimationFrame(() => t.scrollIntoView());  // the FAQ and glossary are built by this script, after the browser looked for the target
+}
+openHash();
+window.addEventListener("hashchange", openHash);
+})();
+</script>
+</body>
+</html>

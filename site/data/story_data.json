@@ -1167,7 +1167,7 @@
   "cost_total": 10.8709,
   "n_eval": 86,
   "prose": {
-   "spend_all": "50.76",
+   "spend_all": "70.00",
    "m3b_n": "86",
    "m3b_runs_arm": "3",
    "m3b_pr_arm": "258",
@@ -1465,7 +1465,49 @@
    "d_guard": "8",
    "d_guard_adj": "+1.9",
    "d_scored": "7.90",
-   "d_unrep": "37"
+   "d_unrep": "37",
+   "e3_model_e": "+13.4",
+   "e3_model_ci": "[+4.0, +22.4]",
+   "e3_model_p": "0.0009",
+   "e3_model_bws": "19 / 3 / 45",
+   "e3_harness_e": "\u22124.5",
+   "e3_harness_ci": "[\u221213.4, +4.5]",
+   "e3_harness_p": "0.51",
+   "e3_harness_bws": "3 / 6 / 58",
+   "e3_total_e": "+9.0",
+   "e3_total_ci": "[\u22121.0, +18.9]",
+   "e3_total_p": "0.053",
+   "e3_total_bws": "16 / 6 / 45",
+   "e3_model_e63": "+14.3",
+   "e3_model_ci63": "[+4.2, +23.8]",
+   "e3_harness_e63": "\u22124.8",
+   "e3_harness_ci63": "[\u221214.3, +4.8]",
+   "e3_rate_luna": "64.2",
+   "e3_k_luna": "129",
+   "e3_n_luna": "201",
+   "e3_rate_opus": "77.6",
+   "e3_k_opus": "52",
+   "e3_n_opus": "67",
+   "e3_rate_cc": "73.1",
+   "e3_k_cc": "49",
+   "e3_n_cc": "67",
+   "e3_n": "67",
+   "e3_n63": "63",
+   "e3_refused": "19",
+   "e3_nosc_opus": "0",
+   "e3_nosc_luna": "49",
+   "e3_cost": "17.11",
+   "e3_upp": "0.255",
+   "e3_ups": "0.329",
+   "e3_us_luna": "0.0117",
+   "e3_sx": "28",
+   "e3_smoke": "2.13",
+   "e3_spend": "19.24",
+   "e3_wall_opus": "44",
+   "e3_wall_luna": "84",
+   "proc_n": "11",
+   "proc_null": "11",
+   "proc_det": "0"
   }
  },
  "m3b_confirm": {
@@ -2268,5 +2310,179 @@
    "V": 1.6,
    "S": 2.1
   }
+ },
+ "m3e": {
+  "arms": {
+   "luna": {
+    "runs": [
+     {
+      "tag": "A1",
+      "run": "40353853802",
+      "k": 42,
+      "n": 67
+     },
+     {
+      "tag": "A2",
+      "run": "40368004835",
+      "k": 42,
+      "n": 67
+     },
+     {
+      "tag": "A3",
+      "run": "40376808643",
+      "k": 45,
+      "n": 67
+     }
+    ],
+    "k": 129,
+    "n": 201,
+    "rate": 64.2,
+    "cost": 1.5114,
+    "usd_problem": 0.0075,
+    "usd_solved": 0.0117,
+    "unreported": 4,
+    "labels": {
+     "llm_error": 2,
+     "tests_failed_selfcheck_passed": 13,
+     "sim_incomplete": 5,
+     "tests_failed_no_selfcheck": 36,
+     "compile_fail_hidden": 7,
+     "stopped_by_cap": 6,
+     "tests_failed_selfcheck_failed": 2,
+     "signal_missing_hidden": 1
+    },
+    "fails": 72,
+    "tokens": 7488325,
+    "turn_cap": 7,
+    "wall_cap": 3,
+    "wall_cap_failed": 2,
+    "wall_med": 84
+   },
+   "opus": {
+    "runs": [
+     {
+      "tag": "LG",
+      "run": "41040802008",
+      "k": 52,
+      "n": 67
+     }
+    ],
+    "k": 52,
+    "n": 67,
+    "rate": 77.6,
+    "cost": 17.1147,
+    "usd_problem": 0.2554,
+    "usd_solved": 0.3291,
+    "unreported": 0,
+    "labels": {
+     "tests_failed_selfcheck_passed": 11,
+     "compile_fail_hidden": 3,
+     "tests_failed_selfcheck_failed": 1
+    },
+    "fails": 15,
+    "tokens": 2728813,
+    "turn_cap": 0,
+    "wall_cap": 0,
+    "wall_cap_failed": 0,
+    "wall_med": 44
+   },
+   "cc": {
+    "runs": [
+     {
+      "tag": "1",
+      "run": "claude-opus-5-5",
+      "k": 49,
+      "n": 67
+     }
+    ],
+    "k": 49,
+    "n": 67,
+    "rate": 73.1,
+    "cost": 0.0,
+    "usd_problem": 0.0,
+    "usd_solved": 0.0,
+    "unreported": 0,
+    "labels": {
+     "tests_failed_no_selfcheck": 14,
+     "sim_incomplete": 2,
+     "compile_fail_own": 2
+    },
+    "fails": 18,
+    "tokens": 11247513,
+    "turn_cap": 0,
+    "wall_cap": 0,
+    "wall_cap_failed": 0,
+    "wall_med": 49
+   }
+  },
+  "effects": {
+   "model": {
+    "finding": "better than base",
+    "eff": 13.4,
+    "lo": 4.0,
+    "hi": 22.4,
+    "better": 19,
+    "worse": 3,
+    "same": 45,
+    "p": 0.000855,
+    "n": 67
+   },
+   "harness": {
+    "finding": "no detectable effect",
+    "eff": -4.5,
+    "lo": -13.4,
+    "hi": 4.5,
+    "better": 3,
+    "worse": 6,
+    "same": 58,
+    "p": 0.508,
+    "n": 67
+   },
+   "total": {
+    "finding": "no detectable effect",
+    "eff": 9.0,
+    "lo": -1.0,
+    "hi": 18.9,
+    "better": 16,
+    "worse": 6,
+    "same": 45,
+    "p": 0.0525,
+    "n": 67
+   }
+  },
+  "effects63": {
+   "model": {
+    "finding": "better than base",
+    "eff": 14.3,
+    "lo": 4.2,
+    "hi": 23.8,
+    "better": 19,
+    "worse": 3,
+    "same": 41,
+    "p": 0.000855,
+    "n": 63
+   },
+   "harness": {
+    "finding": "no detectable effect",
+    "eff": -4.8,
+    "lo": -14.3,
+    "hi": 4.8,
+    "better": 3,
+    "worse": 6,
+    "same": 54,
+    "p": 0.508,
+    "n": 63
+   }
+  },
+  "n": 67,
+  "n63": 63,
+  "refused": 19,
+  "nosc": {
+   "opus": 0,
+   "luna": 49
+  },
+  "cost_scored": 17.1147,
+  "cost_smoke": 2.1286,
+  "solved_x": 28
  }
 }

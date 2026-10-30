@@ -5,7 +5,14 @@ problems. It writes and fixes SystemVerilog, **checks its own work in simulation
 Verilator and cocotb), and records what every problem cost. Results are reported as pass rate, **cost per solved
 problem** and wall time, by category, against a null agent and against published leaderboard rows.
 
-**The story so far, as an animated page:** [cvdp-rtl-agent.vercel.app](https://cvdp-rtl-agent.vercel.app/) (also on [GitHub Pages](https://brendanjameslynskey.github.io/CVDP_RTL_Agent/)) (source in [`site/`](site/)).
+**The story so far, as an animated site:** [cvdp-rtl-agent.vercel.app](https://cvdp-rtl-agent.vercel.app/) (also on [GitHub Pages](https://brendanjameslynskey.github.io/CVDP_RTL_Agent/)) (source in [`site/`](site/)).
+A short front page (what we found, M3e included) leads to five parts:
+[how it works](https://cvdp-rtl-agent.vercel.app/how),
+[results, M0 to M3b](https://cvdp-rtl-agent.vercel.app/results-m2-m3b),
+[results, M3c to M3e](https://cvdp-rtl-agent.vercel.app/results-m3c-m3e),
+[analysis](https://cvdp-rtl-agent.vercel.app/analysis) and
+[reference](https://cvdp-rtl-agent.vercel.app/reference) (validity, open questions, FAQ, glossary).
+Old single-page links such as `/#m3d` forward to the part that now holds them.
 **Every problem, one by one:** [cvdp-rtl-agent.vercel.app/problems](https://cvdp-rtl-agent.vercel.app/problems) (also
 [on Pages](https://brendanjameslynskey.github.io/CVDP_RTL_Agent/problems.html)): the 86 evaluation problems' task
 text (CC BY 4.0, from the dataset), a pass grid for every arm, failure labels, benchmark flags and a note on why each
