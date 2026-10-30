@@ -93,14 +93,16 @@ S 56.2%. The agent now tests before it submits (runs with no self-check fall fro
 "testbench passed, hidden tests failed" and to wall-cap stops. Where all the blind spec cases passed, the hidden tests
 passed 61% of the time; where some failed, 57%. $8.19 in all.
 
-**M3e** (exploratory, partly run, [`docs/reports/M3e_report.md`](docs/reports/M3e_report.md), pre-registered in
+**M3e** (exploratory, [`docs/reports/M3e_report.md`](docs/reports/M3e_report.md), pre-registered in
 [`docs/reports/m3e/preregistration.md`](docs/reports/m3e/preregistration.md)): harness or model? Our unchanged
-LangGraph agent with `anthropic/claude-opus-5.5` (reasoning low) through OpenRouter, one run. The $20 spend cap let it
-attempt 67 of the 86 problems (the guard refused the last 19), and Sonnet was not run. On those 67: **model effect**
-LG+Opus − LG+luna **+13.4 points [+4.0, +22.4]** (77.6% against 64.2%); **harness effect** Claude Code + Opus − LG+Opus
-**−4.5 [−13.4, +4.5]**, no detectable effect. So Claude Code + Opus's lead over our luna agent (+9.0 on these 67) is
-the model, not the harness. Opus ran its own testbench on every problem without being made to. It costs $0.329 per
-solved problem, 28× luna; $19.24 in all.
+LangGraph agent with `anthropic/claude-opus-5.5` (reasoning low) through OpenRouter, one run on all 86 problems,
+merged from three dispatches on 2026-10-30 (the first one's cost guard refused the last 19, which two later dispatches
+ran). Sonnet was not run (spend). On the 86: **model effect** LG+Opus − LG+luna **+11.2 points [+2.7, +20.2]**
+(72.1% against 60.9%); **harness effect** Claude Code + Opus − LG+Opus **+1.2 [−7.0, +9.3]**, no detectable effect.
+So Claude Code + Opus's lead over our luna agent (+12.4) is the model, not the harness; the 79-problem view reads the
+same (+12.2 model, +1.3 harness). The first dispatch's 67-problem results (+13.4 model, −4.5 harness) are kept in the
+report beside these. Opus ran its own testbench on every problem without being made to. It costs $0.359 per solved
+problem, 32× luna; $24.38 in all.
 
 **M2a** (merged, [`docs/reports/M2a_report.md`](docs/reports/M2a_report.md)): reasoning limits, a retry on empty
 replies and unreadable decisions, and seeds. On the same 10 problems on Arm64, DeepSeek at `reasoning=off` passed
