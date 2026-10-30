@@ -112,10 +112,11 @@ def refused_note(cols):
 
 
 def m3e_arms():
-    """M3e (brief 14): our LangGraph agent with Claude models through OpenRouter. One arm per model in the CSVs'
-    `model` column, whatever the run tags are. Empty until its CSVs are committed."""
+    """M3e (briefs 14, 14b): our LangGraph agent with Claude models through OpenRouter. One arm per model in the CSVs'
+    `model` column, whatever the run tags are. Read from m3e/full86/, where each model's arm covers all 86 problems
+    (the Opus arm is merged from three dispatches; its run id names all three). Empty until its CSVs are committed."""
     by = collections.OrderedDict()
-    for t, rid, r in run_files(os.path.join("m3e", "runs", "*.csv")):
+    for t, rid, r in run_files(os.path.join("m3e", "full86", "*.csv")):
         model = (r[0].get("requested_model") or r[0].get("model") or "").split("/")[-1]
         by.setdefault(model, []).append({"tag": t, "run": rid, "rows": r})
     out = []
@@ -123,7 +124,9 @@ def m3e_arms():
         name = " ".join(w.capitalize() for w in model.replace("claude-", "").split("-"))
         name = re.sub(r"(\d) (\d)", r"\1.\2", name)
         out.append({"key": "m3e_" + re.sub(r"\W", "", model.replace("claude-", "").split("-")[0]),
-                    "label": f"LG + {name}", "group": "M3e", "desc": f"our LangGraph agent with {model}, {len(cols)} run(s)" + refused_note(cols),
+                    "label": f"LG + {name}", "group": "M3e", "desc": f"our LangGraph agent with {model}, {len(cols)} run(s)" + refused_note(cols)
+                    + "".join(f"; merged from {c['run'].count('+') + 1} dispatches ({c['run'].split('_', 1)[-1].replace('+', ', ')}), each problem run once"
+                              for c in cols if "+" in c["run"]),
                     "cols": cols})
     return out
 
@@ -391,15 +394,17 @@ check(all(set(p["task"]) == {"prompt", "docs", "given"} for p in problems), "tas
 REPORT_TABLE = {"m3c_A": ("m3c/arms_paired_eval86.md", "A (base)"), "m3d_A": ("m3d/arms_paired_eval86.md", "A (base)"),
                 "m3d_V": ("m3d/arms_paired_eval86.md", "V"), "m3d_S": ("m3d/arms_paired_eval86.md", "S"),
                 "cc_haiku": ("claude_code/ladder_paired_eval86.md", "haiku"), "cc_sonnet": ("claude_code/ladder_paired_eval86.md", "sonnet"),
-                "cc_opus": ("claude_code/ladder_paired_eval86.md", "opus"), "cc_fable": ("claude_code/ladder_paired_eval86.md", "fable")}
+                "cc_opus": ("claude_code/ladder_paired_eval86.md", "opus"), "cc_fable": ("claude_code/ladder_paired_eval86.md", "fable"),
+                "m3e_opus": ("m3e/vs_luna_eval86.md", "LG+Opus")}
+# LG+Sonnet (M3e) was not run (spend); when its CSV is in m3e/full86/, add "m3e_sonnet": ("m3e/vs_luna_eval86.md", "LG+Sonnet").
 for a in data["arms"]:
     if a["key"] in REPORT_TABLE:
         f, lab = REPORT_TABLE[a["key"]]
         m = re.search(rf"^\| {re.escape(lab)} \| \d+: [^|]+ \| (\d+)/(\d+) = ", open(os.path.join(REP, f)).read(), re.M)
         check(m is not None and (a["k"], a["n"]) == (int(m.group(1)), int(m.group(2))), f"arm {a['key']} {a['k']}/{a['n']} vs {f}")
     elif a["group"] == "M3e":
-        # M3e's full-86 view (the guard-refused problems counted as failures), as ablate.py printed it
-        rep = glob.glob(os.path.join(REP, "m3e", "vs_luna_full86*.md"))
+        # another M3e arm (not in REPORT_TABLE yet): its row in M3e's all-86 table, as ablate.py printed it
+        rep = glob.glob(os.path.join(REP, "m3e", "vs_luna_eval86.md"))
         lab = "LG+" + a["label"].split("+ ")[-1].split()[0]
         m = re.search(rf"^\| {re.escape(lab)} \| \d+: [^|]+ \| (\d+)/(\d+) = ", open(rep[0]).read(), re.M) if rep else None
         check(m is not None and (a["k"], a["n"]) == (int(m.group(1)), int(m.group(2))), f"M3e arm {a['key']} {a['k']}/{a['n']} vs {rep}")
@@ -408,7 +413,8 @@ for a in data["arms"]:
 story = json.load(open(STORY))
 check({a["key"]: a["k"] for a in data["arms"] if a["key"] in REPORT_TABLE} ==
       {"m3c_A": story["m3c"]["arms"]["A"]["k"], "m3d_A": story["m3d"]["arms"]["A"]["k"], "m3d_V": story["m3d"]["arms"]["V"]["k"],
-       "m3d_S": story["m3d"]["arms"]["S"]["k"], **{f"cc_{k}": v["k"] for k, v in story["ladder"]["arms"].items()}},
+       "m3d_S": story["m3d"]["arms"]["S"]["k"], **{f"cc_{k}": v["k"] for k, v in story["ladder"]["arms"].items()},
+       **({"m3e_opus": story["m3e"]["full"]["arms"]["opus"]["k"]} if any(a["key"] == "m3e_opus" for a in data["arms"]) else {})},
       "arm pass counts match story_data.json")
 # our agent: the pooled arm-A counts each report prints
 ours_k = collections.Counter()

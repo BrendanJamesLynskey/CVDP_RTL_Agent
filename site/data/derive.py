@@ -547,8 +547,30 @@ m3e = {"arms": {a: public(v) for a, v in e_arms.items()}, "effects": {k: e_eff[v
        "effects63": {k: e_eff63[E_KEYS[k]] for k in ("model", "harness")}, "n": len(E_ATT), "n63": len(E_ATT63),
        "refused": e_refused, "nosc": e_nosc, "cost_scored": e_scored, "cost_smoke": e_smoke,
        "solved_x": round(e_arms["opus"]["usd_solved"] / e_arms["luna"]["usd_solved"])}
+# brief 14b: the full 86-problem LG+Opus arm, merged from three dispatches (m3e/full86/; raw finishing runs in m3e/finish/)
+E_RUNS86 = ["41040802008", "41095517652", "41097171384"]
+e86_all = rows(os.path.join(M3E, "full86", "LG_opus_" + "+".join(E_RUNS86) + ".csv"))
+e_fin = {os.path.basename(f)[8:-4]: rows(f) for f in sorted(glob.glob(os.path.join(M3E, "finish", "LG_opus_*.csv")))}
+e_finish = round(sum(float(x["cost_usd"] or 0) for r in e_fin.values() for x in r), 4)
+e86_arms = {
+    "luna": pool(restrict(d_runs["A"], EVAL)),
+    "opus": pool([("LG", "+".join(E_RUNS86), e86_all)]),
+    "cc": pool(restrict([("1", "claude-opus-5-5", rows(os.path.join(REP, "claude_code", "runs", "claude-opus-5-5.csv")))], EVAL)),
+}
+e86_eff = {**parse_plus(os.path.join(M3E, "vs_luna_eval86.md")), **parse_plus(os.path.join(M3E, "harness_opus_eval86.md"))}
+e79_eff = {**parse_plus(os.path.join(M3E, "vs_luna_eval79.md")), **parse_plus(os.path.join(M3E, "harness_opus_eval79.md"))}
+e86_chk = {"model": paired_ids(e86_arms["opus"], e86_arms["luna"], EVAL), "harness": paired_ids(e86_arms["cc"], e86_arms["opus"], EVAL),
+           "total": paired_ids(e86_arms["cc"], e86_arms["luna"], EVAL)}
+e79_chk = {k: paired_ids(*{"model": (e86_arms["opus"], e86_arms["luna"]), "harness": (e86_arms["cc"], e86_arms["opus"]),
+                           "total": (e86_arms["cc"], e86_arms["luna"])}[k], EVAL79) for k in E_KEYS}
+e_tail = {a: sum(int(e86_arms[a]["_rate"][p]) for p in E_REF) for a in ("opus", "cc")}
+e86_nosc = round(100 * sum(1 for x in e86_all if int(x["selfcheck_runs"] or 0) == 0) / len(e86_all))
+m3e["full"] = {"arms": {a: public(v) for a, v in e86_arms.items()}, "effects": {k: e86_eff[v] for k, v in E_KEYS.items()},
+               "effects79": {k: e79_eff[v] for k, v in E_KEYS.items()}, "n": len(EVAL), "n79": len(EVAL79), "runs": E_RUNS86,
+               "cost_finish": e_finish, "tail": e_tail, "nosc": e86_nosc,
+               "solved_x": round(e86_arms["opus"]["usd_solved"] / e86_arms["luna"]["usd_solved"])}
 
-spend_all = round(spend_all + conf_cost + m3c_scored + m3c_smoke + m3d_scored + m3d_smoke + e_scored + e_smoke, 2)  # + confirming run, M3c, M3d and M3e scored sweeps and smoke runs
+spend_all = round(spend_all + conf_cost + m3c_scored + m3c_smoke + m3d_scored + m3d_smoke + e_scored + e_smoke + e_finish, 2)  # + confirming run, M3c, M3d and M3e scored sweeps (with brief 14b's two) and smoke runs
 
 # Prose numbers in story.html: <span data-d="key">value</span>; --inject rewrites the value from here.
 MINUS = "−"
@@ -675,8 +697,24 @@ prose["e3_n"] = str(m3e["n"]); prose["e3_n63"] = str(m3e["n63"]); prose["e3_refu
 prose["e3_nosc_opus"] = str(e_nosc["opus"]); prose["e3_nosc_luna"] = str(e_nosc["luna"])
 prose["e3_cost"] = f"{e_arms['opus']['cost']:.2f}"; prose["e3_upp"] = f"{e_arms['opus']['cost'] / e_arms['opus']['n']:.3f}"
 prose["e3_ups"] = f"{e_arms['opus']['cost'] / e_arms['opus']['k']:.3f}"; prose["e3_us_luna"] = f"{e_arms['luna']['usd_solved']:.4f}"
-prose["e3_sx"] = str(m3e["solved_x"]); prose["e3_smoke"] = f"{e_smoke:.2f}"; prose["e3_spend"] = f"{e_scored + e_smoke:.2f}"
+prose["e3_sx"] = str(m3e["solved_x"]); prose["e3_smoke"] = f"{e_smoke:.2f}"; prose["e3_spend"] = f"{e_scored + e_smoke + e_finish:.2f}"
 prose["e3_wall_opus"] = str(e_arms["opus"]["wall_med"]); prose["e3_wall_luna"] = str(e_arms["luna"]["wall_med"])
+# M3e, all 86 problems (brief 14b's merged arm)
+F3 = m3e["full"]
+for k, e in F3["effects"].items():
+    put_eff(f"e3f_{k}_", e)
+for k, e in F3["effects79"].items():
+    prose[f"e3f_{k}_e79"] = sg(e["eff"]); prose[f"e3f_{k}_ci79"] = ci(e)
+for a, v in e86_arms.items():
+    prose[f"e3f_rate_{a}"] = f"{v['rate']:.1f}"; prose[f"e3f_k_{a}"] = str(v["k"]); prose[f"e3f_n_{a}"] = str(v["n"])
+prose["e3f_cost"] = f"{e86_arms['opus']['cost']:.2f}"; prose["e3f_upp"] = f"{e86_arms['opus']['cost'] / e86_arms['opus']['n']:.3f}"
+prose["e3f_ups"] = f"{e86_arms['opus']['cost'] / e86_arms['opus']['k']:.3f}"; prose["e3f_us_luna"] = f"{e86_arms['luna']['usd_solved']:.4f}"
+prose["e3f_sx"] = str(F3["solved_x"]); prose["e3f_finish"] = f"{e_finish:.2f}"; prose["e3f_nosc"] = str(e86_nosc)
+prose["e3f_nosc_luna"] = str(round(100 * sum(1 for _, _, r in d_runs["A"] for x in r if int(x["selfcheck_runs"] or 0) == 0) / e86_arms["luna"]["n"]))
+prose["e3f_tail_opus"] = str(e_tail["opus"]); prose["e3f_tail_cc"] = str(e_tail["cc"]); prose["e3f_tail_n"] = str(len(E_REF))
+for k in E_KEYS:
+    prose[f"e3f_{k}_p"] = f"{F3['effects'][k]['p']:.2g}"  # 0.0014, 1, 0.0046, as the report prints them
+prose["e3f_wall_opus"] = str(e86_arms["opus"]["wall_med"]); prose["e3f_wall_luna"] = str(e86_arms["luna"]["wall_med"])
 # the front page: process changes on gpt-6-luna with no detectable effect (M3's six ablations, M3b's memory, M3c's two checks, M3d's two steps)
 proc = [effects[a] for a in "BCDEFG"] + [m3b_eff["C-A"]] + [m3c_eff[k] for k in ("M-A", "I-A")] + [m3d_eff[k] for k in ("V-A", "S-A")]
 prose["proc_n"] = str(len(proc)); prose["proc_null"] = str(sum(1 for e in proc if e["lo"] <= 0 <= e["hi"]))
@@ -930,6 +968,27 @@ check(f"$17.11 on 67 problems: **${prose['e3_upp']} per problem, ${prose['e3_ups
 check(f"smoke runs ${e_smoke:.2f}" in rep3e and f"Spend for this brief: ${e_scored + e_smoke:.2f}" in rep3e, f"M3e spend {e_scored} {e_smoke}")
 check(e_nosc == {"opus": 0, "luna": 49} and "| LG+Opus | 67 | 1 / 2.15 | 34 (51%) | 3 / 5.30 | 1 / 1.99 | 0 (0%) |" in open(os.path.join(M3E, "secondary_tables_attempted67.md")).read(), f"M3e no-self-check {e_nosc}")
 check((e_arms["opus"]["wall_med"], e_arms["luna"]["wall_med"]) == (44, 84), f"M3e median wall {e_arms['opus']['wall_med']} {e_arms['luna']['wall_med']}")
+# M3e full 86 (brief 14b): the merged arm, its effects against the ablate.py outputs, and the report
+check(len(e86_all) == 86 and sorted(x["id"] for x in e86_all) == sorted(EVAL) and not any(x["stop_reason"] == "run_budget_exhausted" for x in e86_all), "M3e merged arm: 86 problems, none refused")
+e_src = {x["id"]: x for x in e_all if x["id"] in set(E_ATT)}
+for r in e_fin.values():
+    e_src.update({x["id"]: x for x in r if x["stop_reason"] != "run_budget_exhausted"})
+check(sorted(e_src) == sorted(EVAL) and all(e_src[x["id"]] == x for x in e86_all) and sorted(e_fin) == E_RUNS86[1:], "M3e merged arm = first dispatch's 67 + the finishing runs' attempted rows")
+for k, key in E_KEYS.items():
+    e, e7 = e86_eff[key], e79_eff[key]
+    check((e["eff"], e["better"], e["worse"], e["same"]) == e86_chk[k] and e["n"] == 86, f"M3e full {k} effect {e} vs {e86_chk[k]}")
+    check((e7["eff"], e7["better"], e7["worse"], e7["same"]) == e79_chk[k] and e7["n"] == 79, f"M3e 79 {k} effect {e7} vs {e79_chk[k]}")
+check("**LG+Opus − LG+luna = +11.2 points [+2.7, +20.2]** (24 better, 6 worse, 56 same" in rep3e and F3["effects"]["model"]["eff"] == 11.2, "M3e full model effect in report")
+check("**CC+Opus − LG+Opus = +1.2 points\n  [−7.0, +9.3]** (7 better, 6 worse, 73 same, p = 1)" in rep3e and F3["effects"]["harness"]["eff"] == 1.2, "M3e full harness effect in report")
+check("**+12.4 [+3.1, +21.7]**" in rep3e and F3["effects"]["total"]["eff"] == 12.4, "M3e full total in report")
+check("model +12.2 [+3.4, +21.5], harness\n  +1.3 [−7.6, +10.1], total +13.5 [+3.4, +23.2]" in rep3e, "M3e 79-problem view in report")
+check((e86_arms["opus"]["k"], e86_arms["luna"]["k"], e86_arms["luna"]["n"], e86_arms["cc"]["k"]) == (62, 157, 258, 63)
+      and "**62/86 = 72.1% [62.8, 81.4]**" in rep3e and "157/258 = 60.9%" in rep3e and "63/86 = 73.3%" in rep3e, "M3e full pooled rates")
+check(f"$22.25 on 86 problems: **${prose['e3f_upp']} per problem, ${prose['e3f_ups']} per solved problem**" in rep3e
+      and round(e86_arms["opus"]["cost"], 2) == 22.25 and f"({F3['solved_x']}× as much)" in rep3e, f"M3e full cost {prose['e3f_upp']} {prose['e3f_ups']} {F3['solved_x']}")
+check(f"**Spend for brief 14b: ${e_finish:.2f}**" in rep3e and f"**M3e in all: ${e_scored + e_smoke + e_finish:.2f}**" in rep3e, f"M3e finish spend {e_finish}")
+check(e_tail == {"opus": 10, "cc": 14} and "LG+Opus solved 10 of them, Claude Code + Opus 14" in rep3e, f"M3e tail {e_tail}")
+check(e86_nosc == 0 and "| LG+Opus | 86 | 2 / 2.30 | 40 (47%) | 5 / 5.60 | 1 / 2.06 | 0 (0%) |" in open(os.path.join(M3E, "secondary_tables_eval86.md")).read(), f"M3e full no-self-check {e86_nosc}")
 check(prose["proc_null"] == prose["proc_n"] == "11" and prose["proc_det"] == "0", f"process changes null {prose['proc_null']} of {prose['proc_n']}")
 
 json.dump(data, open(OUT, "w"), indent=1, sort_keys=False)
