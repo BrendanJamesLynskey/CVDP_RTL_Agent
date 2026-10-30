@@ -50,7 +50,7 @@ def test_every_page_carries_derive_numbers():
         for k, v in re.findall(r'<span data-d="(\w+)">([^<]*)</span>', doc(f)):
             assert prose[k] == v, f"{f}: data-d {k} = {v!r}, derive.py says {prose[k]!r}"
             seen.add(k)
-    assert {"e3_model_e", "e3_harness_e", "proc_null", "spend_all"} <= seen
+    assert {"e3_model_e", "e3_harness_e", "proc_null", "spend_all", "g_ho_e", "g_d86_e"} <= seen
 
 
 def test_theme_button_says_dark_light():
@@ -72,7 +72,7 @@ def test_problems_link_in_hero_and_bar():
 
 def test_every_old_section_id_still_present():
     _, idmap = build.split_story()
-    for sec in SECTIONS + ["m3e"]:
+    for sec in SECTIONS + ["m3e", "m3g"]:
         assert sec in idmap, sec
         f = build.href(idmap[sec])
         f = "index.html" if f == "./" else f
@@ -88,6 +88,7 @@ def test_old_anchors_forward_from_the_front_page():
         if p != "index":
             assert fwd[i] == build.href(p)
     assert fwd["m3d"] == "results-m3c-m3e.html" and fwd["how"] == "how.html"
+    assert fwd["m3g"] == "results-m3c-m3e.html"  # brief 19: M3g lives on the page that kept its M3e file name
     assert any(re.fullmatch(pat, "g-langgraph") and f == "reference.html" for pat, f in pats)
 
 
@@ -101,3 +102,15 @@ def test_cross_page_links_land():
                 continue  # problem rows are built by the browser from problems.json
             page = f if target == "" else "index.html" if target == "./" else target
             assert i in ids[page] or (page == "reference.html" and built.fullmatch(i)), (f, target, i)
+
+
+def test_no_heldout_problem_on_the_site():
+    """M3g's held-out problems stay unread: no id of theirs on any page, in the data block or in the problem browser."""
+    ids = [l.strip() for l in open(os.path.join(ROOT, "tools", "m3g_heldout_ids.txt")) if l.strip() and not l.startswith("#")]
+    assert len(ids) == 100
+    texts = {f: doc(f) for f in STORY_FILES + ["problems.html", "problems.json"]}
+    texts["story_data.json"] = open(os.path.join(ROOT, "site", "data", "story_data.json")).read()
+    for f, t in texts.items():
+        hits = [i for i in ids if i in t]
+        assert not hits, (f, hits[:3])
+    assert len(json.load(open(os.path.join(ROOT, "docs", "problems.json")))["problems"]) == 92
