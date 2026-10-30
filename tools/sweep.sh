@@ -41,6 +41,7 @@ MUTATION_GATE=${MUTATION_GATE:-0}    # M3c: 1 = mutation-score gate before submi
 INTERFACE_CHECK=${INTERFACE_CHECK:-0} # M3c: 1 = interface diff by elaboration after each edit (langgraph only)
 VERIFY_SUBMIT=${VERIFY_SUBMIT:-0}    # M3d: 1 = a submit is refused until the design passed a simulation (langgraph)
 SPEC_VECTORS=${SPEC_VECTORS:-0}      # M3d: 1 = VERIFY_SUBMIT plus blind reference cases from the spec (langgraph)
+SKILLS=${SKILLS:-}                   # M3g: a knowledge pack directory in the repo (MANIFEST.sha256); blank = none
 STEP_BUDGET_S=${STEP_BUDGET_S:-}
 SEED_PROBLEM_WORST_S=${SEED_PROBLEM_WORST_S:-660}
 T0=$(date +%s)
@@ -76,6 +77,11 @@ if [ "$HARNESS" != langgraph ] && [ "$VERIFY_SUBMIT" = 1 ]; then
 fi
 if [ "$VERIFY_SUBMIT" = 1 ] && [ "$MUTATION_GATE" = 1 ]; then die "VERIFY_SUBMIT and MUTATION_GATE are separate arms"; fi
 if [ "$VERIFY_SUBMIT" = 1 ] && [ "$SELF_CHECK" = 0 ]; then die "VERIFY_SUBMIT needs SELF_CHECK=1 (it needs a testbench)"; fi
+if [ -n "$SKILLS" ]; then
+  [[ "$SKILLS" =~ ^[A-Za-z0-9._/-]+$ ]] || die "SKILLS must be a path to a pack directory, got '$SKILLS'"
+  [ -f "$SKILLS/MANIFEST.sha256" ] || die "SKILLS: no MANIFEST.sha256 in '$SKILLS'"
+  [ "$HARNESS" = langgraph ] || die "SKILLS is a step of the LangGraph graph: use HARNESS=langgraph"
+fi
 if [ -n "$MEMORY" ]; then
   [[ "$MEMORY" =~ ^[A-Za-z0-9._/-]+\.json$ ]] || die "MEMORY must be a path to a .json snapshot, got '$MEMORY'"
   [ -f "$MEMORY" ] || die "MEMORY: no such file '$MEMORY'"
@@ -84,9 +90,14 @@ fi
 case "$PHASE" in all|run|collect) ;; *) die "phase must be all, run or collect" ;; esac
 
 repo=$(cd "$(dirname "$0")/.." && pwd)
+FORCE_AGENTIC=""
 case "$SPLIT" in
   agentic) src="$DATA_DIR/agentic_code_generation_no_commercial.jsonl" ;;
   heavy) src="$DATA_DIR/agentic_heavy_code_generation_no_commercial.jsonl" ;;
+  # M3g: non-agentic problems in the agentic format (tools/m3g_heldout.py build); the harness needs --force-agentic
+  # to run cvdp_copilot_* ids through the agent (its transformer leaves rows already in that format unchanged)
+  m3g_heldout) src="$DATA_DIR/m3g_heldout_agentic.jsonl"; FORCE_AGENTIC=--force-agentic ;;
+  m3g_smoke) src="$DATA_DIR/m3g_smoke_agentic.jsonl"; FORCE_AGENTIC=--force-agentic ;;
   *) die "unknown split $SPLIT" ;;
 esac
 
@@ -113,7 +124,7 @@ run_phase() {
   printf '{"problems": %s, "seeds": %s, "seed_offset": %s, "run_budget_usd": %s, "model": "%s", "reasoning": "%s", "provider_order": "%s"}\n' \
     "$n" "$SEEDS" "$SEED_OFFSET" "$guard" "$MODEL" "$REASONING" "$PROVIDER_ORDER" > "$work.run.json"
   python3 - "$work.run.json" "$HARNESS" "$MEMORY" "$MUTATION_GATE" "$INTERFACE_CHECK" "$VERIFY_SUBMIT" \
-    "$SPEC_VECTORS" <<'EOF'
+    "$SPEC_VECTORS" "$SKILLS" "$SPLIT" <<'EOF'
 import json, sys
 run = json.load(open(sys.argv[1]))
 run.update(harness=sys.argv[2], memory=sys.argv[3])
@@ -121,6 +132,10 @@ if sys.argv[4] == "1" or sys.argv[5] == "1":  # M3c: named only when on, so an M
     run.update(mutation_gate=sys.argv[4] == "1", interface_check=sys.argv[5] == "1")
 if sys.argv[6] == "1":  # M3d, likewise
     run.update(verify_submit=True, spec_vectors=sys.argv[7] == "1")
+if sys.argv[8]:  # M3g, likewise
+    run.update(skills=sys.argv[8])
+if sys.argv[9].startswith("m3g_"):
+    run.update(split=sys.argv[9])
 json.dump(run, open(sys.argv[1], "w"))
 EOF
 
@@ -136,6 +151,11 @@ EOF
     export CVDP_AGENT_MOUNTS="$CVDP_AGENT_MOUNTS;$(cd "$(dirname "$MEMORY")" && pwd)/$(basename "$MEMORY"):$CVDP_MEMORY:ro"
   fi
   export CVDP_AGENT_ENV=CVDP_PROVIDER,CVDP_MODEL,CVDP_BUDGET_USD,CVDP_MAX_TURNS,CVDP_SELF_CHECK,CVDP_LINT,CVDP_LEDGER_DIR,CVDP_RUN_BUDGET_USD,CVDP_REASONING,CVDP_SEED,CVDP_PROVIDER_ORDER,CVDP_HARNESS,CVDP_MEMORY,CVDP_MUTATION_GATE,CVDP_INTERFACE_CHECK,CVDP_VERIFY_SUBMIT,CVDP_SPEC_VECTORS
+  if [ -n "$SKILLS" ]; then  # M3g: the pack, read-only, at /skills/<its name>; named only when set
+    export CVDP_SKILLS="/skills/$(basename "$SKILLS")"
+    export CVDP_AGENT_MOUNTS="$CVDP_AGENT_MOUNTS;$(cd "$SKILLS" && pwd):$CVDP_SKILLS:ro"
+    export CVDP_AGENT_ENV="$CVDP_AGENT_ENV,CVDP_SKILLS"
+  fi
   if [ "$CVDP_PROVIDER" = openrouter ]; then
     test -n "${OPENROUTER_API_KEY:-}" || die "OPENROUTER_API_KEY is not set"
     export CVDP_AGENT_ENV="OPENROUTER_API_KEY,$CVDP_AGENT_ENV"
@@ -161,7 +181,7 @@ EOF
     mkdir -p "$work/seed$seed"
     export CVDP_SEED=$seed
     start=$(date +%s)
-    (cd "$CVDP_DIR" && ./run_benchmark.py -f "$subset" -l -g "$AGENT_IMAGE" -p "$work/seed$seed" -t "$THREADS") || true
+    (cd "$CVDP_DIR" && ./run_benchmark.py -f "$subset" -l -g "$AGENT_IMAGE" -p "$work/seed$seed" -t "$THREADS" $FORCE_AGENTIC) || true
     python3 - "$work.run.json" "$seed" "$start" "$(date +%s)" <<'EOF'
 import datetime, json, sys
 path, seed, start, end = sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4])

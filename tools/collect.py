@@ -41,7 +41,10 @@ FIELDS = ["label", "id", "seed", "cid", "difficulty", "pass", "tests", "tests_pa
           "verify_submit", "spec_vectors", "verify_runs", "verify_refusals", "verify_let_through", "verify_outcomes",
           "verify_reruns", "testbench_runs", "verified_at_submit", "spec_status", "spec_failed_open", "spec_cases",
           "spec_steps", "spec_runs", "spec_unbuildable_runs", "spec_final_status", "spec_final_passed",
-          "spec_final_total"]
+          "spec_final_total",
+          # M3g (after M3d's): the knowledge pack's manifest hash and the skills the plan loaded, blank with no pack
+          "skills_pack", "skills_status", "skills_loaded", "skills_requested", "skills_unknown", "skills_bytes",
+          "skills_truncated"]
 M3C_GATE = ("gate_runs", "gate_failures", "mutants_generated", "mutants_compiled", "mutants_killed",
             "mutants_unfinished", "gate_wall_s")
 M3C_IFACE = ("interface_runs", "interface_mismatch_runs", "interface_blocks")
@@ -110,6 +113,19 @@ def m3d_columns(s):
     return out
 
 
+def m3g_columns(s):
+    """M3g's columns from a summary; blank for an agent without a pack (or an older one)."""
+    out = {k: "" for k in FIELDS[FIELDS.index("skills_pack"):]}
+    if "skills_status" in s:
+        out["skills_pack"] = s.get("skills_pack") or ""
+        out["skills_status"] = s.get("skills_status") or ""
+        for k in ("skills_loaded", "skills_requested", "skills_unknown"):
+            out[k] = "+".join(str(x) for x in (s.get(k) or []))
+        out["skills_bytes"] = s.get("skills_bytes", 0)
+        out["skills_truncated"] = int(bool(s.get("skills_truncated")))
+    return out
+
+
 def rows(work, dataset=None, runner="", model="", seed="", reasoning_hint=""):
     """`reasoning_hint` is the sweep's setting, used for a row whose agent left no summary."""
     raw = json.load(open(os.path.join(work, "raw_result.json")))
@@ -175,6 +191,7 @@ def rows(work, dataset=None, runner="", model="", seed="", reasoning_hint=""):
         row = out[-1]
         row.update(m3c_columns(s))
         row.update(m3d_columns(s))
+        row.update(m3g_columns(s))
         ev, _ = taxonomy.evidence_from_dir(work, pid, e, pdir)
         row.update(ev)
         if row["pass"] != 1:

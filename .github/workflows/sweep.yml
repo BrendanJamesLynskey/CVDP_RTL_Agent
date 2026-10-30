@@ -12,9 +12,9 @@ on:
         type: string
         default: anthropic/claude-haiku-5.5
       split:
-        description: "Dataset split"
+        description: "Dataset split (m3g_heldout = M3g's frozen 100 non-agentic problems, m3g_smoke = its 3 smoke problems)"
         type: choice
-        options: [agentic, heavy]
+        options: [agentic, heavy, m3g_heldout, m3g_smoke]
         default: agentic
       ids:
         description: "Comma-separated problem ids (blank = the whole split)"
@@ -91,6 +91,10 @@ on:
         description: "Pin OpenRouter providers, comma-separated, in order, no fallbacks (blank = OpenRouter routes)"
         type: string
         default: ""
+      skills:
+        description: "M3g: knowledge pack directory in the repo, e.g. agent/cvdp_agent/skills/rtl_pack (blank = none; langgraph only)"
+        type: string
+        default: ""
   pull_request:
 
 permissions:
@@ -119,6 +123,9 @@ env:
   PROVIDER_ORDER: ${{ github.event_name == 'pull_request' && '' || inputs.provider_order }}
   HARNESS: ${{ github.event_name == 'pull_request' && 'langgraph' || inputs.harness }}
   MEMORY: ${{ github.event_name == 'pull_request' && '' || inputs.memory }}
+  SKILLS: ${{ github.event_name == 'pull_request' && '' || inputs.skills }}
+  # M3g's held-out problems come from the non-agentic file at the same dataset revision, checked by its hash
+  NONAGENTIC_SHA256: cbcd81295561ebb16e4d857e096f4d9908d042c33aff3b58abf236e868411857
   MUTATION_GATE: ${{ (github.event_name == 'workflow_dispatch' && inputs.mutation_gate) && '1' || '0' }}
   INTERFACE_CHECK: ${{ (github.event_name == 'workflow_dispatch' && inputs.interface_check) && '1' || '0' }}
   VERIFY_SUBMIT: ${{ (github.event_name == 'workflow_dispatch' && inputs.verify_submit) && '1' || '0' }}
@@ -192,6 +199,13 @@ jobs:
               curl -sSfL -o "data/heavy/$b" "$base/cvdp_v1.1.0_agentic_heavy_code_generation_public/$b"
             done
             echo "CVDP_HEAVY_REPOS_PATH=$PWD/data/heavy" >> cvdp/.env
+          fi
+          if [ "$SPLIT" = m3g_heldout ] || [ "$SPLIT" = m3g_smoke ]; then
+            f=cvdp_v1.1.0_nonagentic_code_generation_no_commercial.jsonl
+            curl -sSfL -o "data/$f" "$base/$f"
+            echo "$NONAGENTIC_SHA256  data/$f" | sha256sum -c -
+            ids=tools/m3g_heldout_ids.txt; [ "$SPLIT" = m3g_heldout ] || ids=tools/m3g_smoke_ids.txt
+            python3 tools/m3g_heldout.py build "data/$f" "$ids" "data/${SPLIT}_agentic.jsonl" --cvdp cvdp
           fi
 
       - name: Key usage before the run

@@ -147,6 +147,9 @@ class Runtime:
         self.spec_stats = {"spec_status": "not_run", "spec_failed_open": False, "spec_cases": 0, "spec_steps": 0,
                            "spec_cases_dropped": 0, "spec_runs": 0, "spec_unbuildable_runs": 0,
                            "spec_final_status": None, "spec_final_passed": None, "spec_final_total": None}
+        # M3g: the knowledge pack, the skills the plan loaded, and their text for the edit prompts ("" with none)
+        self.pack = None
+        self.skills_text = ""
 
     # ---------- stop rules ----------
     def elapsed(self):
@@ -300,6 +303,38 @@ class Runtime:
                         retrieved=[{"id": x["id"], "score": sc} for x, sc in got])
         return prompts.LESSONS.format(lessons="\n".join(f"- {x['text']}" for x, _ in got)) if got else ""
 
+    # ---------- knowledge pack (M3g) ----------
+    def load_pack(self):
+        """Read and check the pack named by cfg.skills; False (traced, summary marked) if it fails its manifest."""
+        from . import skillpack
+
+        try:
+            self.pack = skillpack.Pack(self.cfg.skills)
+        except (OSError, skillpack.PackError) as e:
+            self.summary_extra.update({"skills_pack": None, "skills_status": "pack_error"})
+            self.tracer.log("skills", pack=None, error=truncate(f"{type(e).__name__}: {e}", 1000))
+            return False
+        self.summary_extra.update({"skills_pack": self.pack.hash, "skills_status": "not_chosen",
+                                   "skills_requested": [], "skills_loaded": [], "skills_unknown": [],
+                                   "skills_bytes": 0, "skills_truncated": False})
+        return True
+
+    def choose_skills(self, reply_text):
+        """The plan reply's "skills" list -> the loaded text for every edit prompt; traced and summarised."""
+        from .parse import extract_json
+
+        obj = extract_json(reply_text) or {}
+        requested = obj.get("skills", [])
+        names, unknown = self.pack.select(requested, k=self.cfg.skills_max)
+        text, loaded, size, truncated = self.pack.block(names, cap=self.cfg.skills_cap_bytes)
+        self.skills_text = prompts.SKILLS_LOADED.format(bodies=text) if loaded else ""
+        req = [str(x)[:80] for x in requested][:20] if isinstance(requested, list) else [str(requested)[:80]]
+        self.summary_extra.update({"skills_status": "loaded" if loaded else "not_chosen", "skills_requested": req,
+                                   "skills_loaded": loaded, "skills_unknown": unknown, "skills_bytes": size,
+                                   "skills_truncated": truncated})
+        self.tracer.log("skills", pack=self.pack.hash, requested=req, loaded=loaded, unknown=unknown, bytes=size,
+                        cap=self.cfg.skills_cap_bytes, truncated=truncated)
+
     # ---------- context ----------
     def contents(self):
         parts, total = [], 0
@@ -351,6 +386,8 @@ def build(rt):
                               exit_code=1, output=truncate(f"{type(e).__name__}: {e}", 1000))
         if cfg.spec_vectors:  # M3d: what the blind spec call may see, read now, before any edit
             rt.spec_inputs = spec_inputs(rt, task)
+        if cfg.skills and not rt.load_pack():  # M3g: a pack that fails its manifest is never used
+            out["stop_reason"] = "skills_error"
         if run_budget_exhausted(cfg, rt.tracer):
             out["stop_reason"] = "run_budget_exhausted"
         return out
@@ -395,10 +432,14 @@ def build(rt):
             tools=", ".join(k for k, v in rt.tools.items() if v) or "none",
             check_options=prompts.check_options(cfg, rt.tools))
         msg += rt.lessons_block(state["task"])  # "" with no memory: the M1-M3 prompt, unchanged
+        if rt.pack is not None:  # M3g: the pack's index; nothing is added without a pack
+            msg += prompts.SKILLS_INDEX.format(k=cfg.skills_max, index=rt.pack.index)
         r = rt.ask("plan", [{"role": "system", "content": prompts.SYSTEM}, {"role": "user", "content": msg}], state)
         if r is None:
             return {"stop_reason": "llm_error"}
         p = parse_plan(r.text)
+        if rt.pack is not None:
+            rt.choose_skills(r.text)
         rt.log_llm("plan", r, state, decision="plan")
         return {"plan": p}
 
@@ -411,8 +452,8 @@ def build(rt):
                                                results=checks_mod.render(state["results"]),
                                                reason=state.get("reason", ""))
         msg = prompts.EDIT.format(
-            task=state["task"], plan=json.dumps(state.get("plan", {}), indent=1), contents=rt.contents(),
-            feedback=feedback, tb_instructions=prompts.TB_ON if cfg.self_check else prompts.TB_OFF,
+            task=state["task"], plan=json.dumps(state.get("plan", {}), indent=1) + rt.skills_text,
+            contents=rt.contents(), feedback=feedback, tb_instructions=prompts.TB_ON if cfg.self_check else prompts.TB_OFF,
             check_options=prompts.check_options(cfg, rt.tools))
         r = rt.ask("edit", [{"role": "system", "content": prompts.SYSTEM}, {"role": "user", "content": msg}],
                    {**state, "turn": turn})

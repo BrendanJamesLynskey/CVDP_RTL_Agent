@@ -99,6 +99,21 @@ LESSONS = """
 General advice learned on other problems (not on this one). Use what applies here:
 {lessons}"""
 
+# M3g: the knowledge pack. The plan prompt gets the pack's INDEX.md as it is, and the plan names skills; their text
+# then goes into every edit prompt, after the plan. Nothing is added without a pack.
+SKILLS_INDEX = """
+
+# Skills you can load
+A pack of general RTL design know-how (not written for this task). Its index follows. Choose at most {k} skills that
+fit this task and add them to your JSON reply as "skills": ["<name>", ...], most useful first. Their full text is
+then shown to you while you write the design. Leave the list empty if none fit.
+{index}"""
+
+SKILLS_LOADED = """
+
+# Skills loaded (chosen in your plan)
+{bodies}"""
+
 # Added to the messages for the one retry after an empty reply, and after an unparseable reflect reply.
 ANSWER_ONLY = """Your last reply was empty. Reply now with the answer only, in the format asked for above, with no
 reasoning, no tool calls and nothing else."""
