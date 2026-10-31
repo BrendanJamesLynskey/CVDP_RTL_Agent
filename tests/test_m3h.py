@@ -559,3 +559,18 @@ def test_workflow_passes_the_public_v1_copy_and_withholds():
     text = open(os.path.join(ROOT, ".github", "workflows", "sweep.yml")).read()
     assert '[ "$SKILL_PACK" != v1.0 ] || pub+=(--public agent/cvdp_agent/skills/rtl_pack)' in text
     assert "--withhold work" in text and "--annotate work/results.csv" in text and "work/withheld.csv" in text
+
+
+def test_copied_counts_artifact_files_and_withheld_rows(tmp_path, capsys):
+    import m3h_copied
+
+    co, _ = make_pack(tmp_path)
+    art = tmp_path / "art"
+    work, task = work_tree(art)
+    (task / "agent_changes.patch").write_text("".join("+" + ln + "\n" for ln in BODY_B.splitlines()))
+    wh = tmp_path / "withheld.csv"
+    wh.write_text("id,seed,file,skill,matches,longest_bytes\ncvdp_copilot_x_0002,1,f,alpha-skill,1,90\n")
+    m3h_copied.main(["--pack", str(co / "generic"), "--arm", f"S2c:10={art},{wh}"])
+    out = capsys.readouterr().out
+    assert "| S2c | 10 | 2 (20.0%) |" in out and "`beta-skill` 1" in out and "`alpha-skill` 1" in out
+    assert "gadget" not in out

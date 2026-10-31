@@ -17,3 +17,7 @@ python3 tools/taxonomy.py --arm heldout_A=$HA --arm heldout_S1c=$HS1C --arm held
   > $O/taxonomy_heldout.md
 python3 tools/m3h_tables.py --arm A=$HA --arm S1c=$HS1C --arm S2c=$HS2C --arm "S2 (no hint, 1 run)=$HS2" --ids $H \
   > $O/tables_heldout.md
+# Local only (needs the private pack checkout and the downloaded artifacts; writes names and counts only):
+#   python3 tools/m3h_copied.py --pack <v2.0 generic/> --public <dataset dir> \
+#     --arm "S1c:300=<S1c artifact dirs>,<withheld_S1c*.csv>" --arm "S2c:300=..." --arm "S2 (no hint):100=..." \
+#     --arm "A (no pack installed; control for chance matches):300=<A artifact dirs>"  -> copied_heldout.md

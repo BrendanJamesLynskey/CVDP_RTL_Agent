@@ -1,0 +1,2 @@
+id,seed,file,skill,matches,longest_bytes
+cvdp_copilot_cascaded_adder_0001,2,seed2/cvdp_copilot_cascaded_adder/harness/1/rtl/cascaded_adder.sv,valid-ready-handshake,1,80
