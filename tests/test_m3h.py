@@ -459,3 +459,17 @@ def test_merge_replaces_only_rate_limited_rows(tmp_path):
     (tmp_path / "c.csv").write_text("id,pass\nx,1\n")
     with pytest.raises(SystemExit):
         m3h_merge.merge([str(a), str(tmp_path / "c.csv")])
+
+
+def test_m3h_tables_on_the_smoke_csvs(capsys):
+    import m3h_tables
+
+    d = os.path.join(ROOT, "docs", "reports", "m3h", "smoke")
+    m3h_tables.main(["--arm", f"A={d}/A_heldout.csv", "--arm", f"S2c={d}/S2c_heldout.csv",
+                     "--arm", f"S2={d}/S2_heldout.csv"])
+    out = capsys.readouterr().out
+    assert "| S2c | 3 | 25.0 | 3 (100.0%)" in out and "| S2 | 3 | 25.0 | 0 (0.0%)" in out
+    assert "`spec-reading` | 3 |" in out
+    assert sorted(m3h_tables.V1) == sorted(
+        ln.split(":")[0] for ln in open(os.path.join(ROOT, "agent", "cvdp_agent", "skills", "rtl_pack", "INDEX.md"))
+        if ":" in ln and not ln.startswith(("#", "Load")))
