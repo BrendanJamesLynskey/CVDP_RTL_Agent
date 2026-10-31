@@ -45,6 +45,13 @@ FIELDS = ["label", "id", "seed", "cid", "difficulty", "pass", "tests", "tests_pa
           # M3g (after M3d's): the knowledge pack's manifest hash and the skills the plan loaded, blank with no pack
           "skills_pack", "skills_status", "skills_loaded", "skills_requested", "skills_unknown", "skills_bytes",
           "skills_truncated"]
+# M3h: Claude Code's native skills, appended only for a sweep with a skill pack (`--skill-pack`), so a CSV without
+# one keeps exactly the columns above. M3g's skills_loaded column holds every Skill call in order (";"), bundled
+# skills' names included; skills_listed: pack skills in Claude Code's own init list; skills_n: distinct pack skills
+# loaded; skill_first_turn: the assistant turn of the first pack load. skills_loaded is M3g's column (blank without
+# M3g's pack), reused rather than added twice.
+M3H_FIELDS = ["skill_pack", "skill_pack_sha", "skill_hint", "skills_installed", "skills_listed", "skills_n",
+              "skill_first_turn", "rate_limit"]
 M3C_GATE = ("gate_runs", "gate_failures", "mutants_generated", "mutants_compiled", "mutants_killed",
             "mutants_unfinished", "gate_wall_s")
 M3C_IFACE = ("interface_runs", "interface_mismatch_runs", "interface_blocks")
@@ -126,7 +133,24 @@ def m3g_columns(s):
     return out
 
 
-def rows(work, dataset=None, runner="", model="", seed="", reasoning_hint=""):
+def m3h_columns(s):
+    """M3h's columns from a summary (blank for a problem whose agent left none)."""
+    out = {k: "" for k in M3H_FIELDS}
+    out["skills_loaded"] = ""
+    if "skill_pack" in s:
+        out["skill_pack"] = s.get("skill_pack") or ""
+        out["skill_pack_sha"] = s.get("skill_pack_sha") or ""
+        out["skill_hint"] = int(bool((s.get("switches") or {}).get("skill_hint")))
+        out["skills_installed"] = s.get("skills_installed", 0)
+        out["skills_listed"] = "" if s.get("skills_listed") is None else s["skills_listed"]
+        out["skills_loaded"] = ";".join(str(x) for x in (s.get("skills_loaded") or []))
+        out["skills_n"] = s.get("skills_n", 0)
+        out["skill_first_turn"] = "" if s.get("skill_first_turn") is None else s["skill_first_turn"]
+    out["rate_limit"] = s.get("rate_limit") or ""
+    return out
+
+
+def rows(work, dataset=None, runner="", model="", seed="", reasoning_hint="", skill_pack=False):
     """`reasoning_hint` is the sweep's setting, used for a row whose agent left no summary."""
     raw = json.load(open(os.path.join(work, "raw_result.json")))
     meta = {}
@@ -200,6 +224,8 @@ def rows(work, dataset=None, runner="", model="", seed="", reasoning_hint=""):
         else:
             row["failure_label"] = row["failure_flags"] = ""
         row["memory"] = s.get("memory") or ""
+        if skill_pack:
+            row.update(m3h_columns(s))
     return out
 
 
@@ -212,11 +238,12 @@ def main():
     ap.add_argument("--seed", default="", help="the sweep's repeat number for this work dir")
     ap.add_argument("--reasoning", default="", help="the sweep's reasoning setting (labels rows with no summary)")
     ap.add_argument("--no-header", action="store_true", help="rows only, to append another seed's")
+    ap.add_argument("--skill-pack", action="store_true", help="M3h: append the skill pack columns")
     a = ap.parse_args()
-    w = csv.DictWriter(sys.stdout, fieldnames=FIELDS)
+    w = csv.DictWriter(sys.stdout, fieldnames=FIELDS + (M3H_FIELDS if a.skill_pack else []))
     if not a.no_header:
         w.writeheader()
-    for r in rows(a.work, a.dataset, a.runner, a.model, a.seed, a.reasoning):
+    for r in rows(a.work, a.dataset, a.runner, a.model, a.seed, a.reasoning, a.skill_pack):
         w.writerow(r)
 
 

@@ -48,6 +48,9 @@ class Config:
     skills: str = ""                    # M3g: a knowledge pack directory (INDEX.md, skills, MANIFEST.sha256); blank = none
     skills_max: int = 3                 # M3g: skills the plan may load
     skills_cap_bytes: int = 13_000      # M3g: loaded skill text per edit prompt, at most
+    skill_pack: str = ""                # M3h: a tag of the private pack (native_skills.PINNED); blank = none
+    skill_pack_dir: str = ""            # M3h: the pack's generic/ directory, mounted read-only (claudecode only)
+    skill_hint: bool = False            # M3h S2c: a one-line user CLAUDE.md saying the skills are installed
     out_dir: str = ""                   # default <root>/rundir/agent_out
     fake_script: str = ""               # fake provider: a JSON file or inline JSON list of responses
     ledger_dir: str = ""                # whole-run spend guard: shared directory of per-problem costs
@@ -81,6 +84,9 @@ class Config:
             **({"spec_vectors": True} if self.spec_vectors else {}),
             # M3g, likewise only when set
             **({"skills": self.skills} if self.skills else {}),
+            # M3h, likewise only when set
+            **({"skill_pack": self.skill_pack} if self.skill_pack else {}),
+            **({"skill_hint": True} if self.skill_hint else {}),
         }
 
     def __post_init__(self):
@@ -88,6 +94,10 @@ class Config:
             self.verify_submit = True
         if self.skills and self.harness != "langgraph":  # M3g: the pack is loaded by the LangGraph graph's nodes
             raise ValueError("CVDP_SKILLS is a step of the LangGraph graph: use CVDP_HARNESS=langgraph")
+        if (self.skill_pack or self.skill_hint) and self.harness != "claudecode":  # M3h: Claude Code's own skills
+            raise ValueError("CVDP_SKILL_PACK installs Claude Code skills: use CVDP_HARNESS=claudecode")
+        if self.skill_hint and not self.skill_pack:
+            raise ValueError("CVDP_SKILL_HINT needs CVDP_SKILL_PACK")
 
 
 def _reasoning(name):
@@ -129,6 +139,9 @@ def from_env():
         spec_vectors=_flag("CVDP_SPEC_VECTORS", False),
         skills=os.environ.get("CVDP_SKILLS", "").strip(),
         skills_cap_bytes=_num("CVDP_SKILLS_CAP_BYTES", 13_000, int),
+        skill_pack=os.environ.get("CVDP_SKILL_PACK", "").strip(),
+        skill_pack_dir=os.environ.get("CVDP_SKILL_PACK_DIR", "").strip(),
+        skill_hint=_flag("CVDP_SKILL_HINT", False),
         out_dir=os.environ.get("CVDP_OUT_DIR", ""),
         fake_script=os.environ.get("CVDP_FAKE_SCRIPT", ""),
         ledger_dir=os.environ.get("CVDP_LEDGER_DIR", ""),

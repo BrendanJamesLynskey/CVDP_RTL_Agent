@@ -54,8 +54,14 @@ def settings(r):
 
 
 def load(path):
+    """A run CSV's rows. M3h: a row stopped by the Claude plan's limit (stop_reason `rate_limited`) was not run, so it
+    is left out (counted on stderr), never scored as a failure; it is rerun and the rerun's row is used instead."""
     with open(path) as f:
         rows = list(csv.DictReader(f))
+    limited = [r for r in rows if r.get("stop_reason") == "rate_limited"]
+    if limited:
+        print(f"ablate.py: {path}: {len(limited)} rate-limited row(s) left out (not run)", file=sys.stderr)
+        rows = [r for r in rows if r.get("stop_reason") != "rate_limited"]
     for r in rows:
         r["_run"] = f"{os.path.normpath(path)}#seed{r.get('seed') or '1'}"
     return rows
