@@ -90,23 +90,23 @@ def setup(tmp_path, monkeypatch):
     return from_env()
 
 
-def test_openrouter_endpoint_env_and_provider_reported_cost(tmp_path, monkeypatch):
+def test_openrouter_endpoint_env_and_key_usage(tmp_path, monkeypatch):
     cfg = setup(tmp_path, monkeypatch)
-    looked = []
+    seen_keys, usage = [], iter([10.0, 10.25])
 
-    def fake_costs(ids, key, deadline=None):
-        looked.extend(ids)
-        assert key == KEY
-        return {"gen-1": 0.0012, "gen-2": None}
-    monkeypatch.setattr(claude_code, "generation_costs", fake_costs)
+    def fake_usage(key):
+        seen_keys.append(key)
+        return next(usage)
+    monkeypatch.setattr(claude_code, "key_usage", fake_usage)
     s = claude_code.run(cfg)
     seen = json.load(open(tmp_path / "seen.json"))
     assert seen == {"ANTHROPIC_BASE_URL": "https://openrouter.ai/api", "ANTHROPIC_API_KEY": "",
                     "ANTHROPIC_MODEL": "z-ai/glm-5.3-flash", "ANTHROPIC_SMALL_FAST_MODEL": "z-ai/glm-5.3-flash",
                     "CLAUDE_CODE_SUBAGENT_MODEL": "z-ai/glm-5.3-flash", "has_auth": True, "has_oauth": False}
-    assert looked == ["gen-1", "gen-2"]  # one lookup per distinct message id
-    assert s["provider"] == "claude_openrouter"
-    assert s["cost_usd"] == 0.0012 and s["cost_unreported_calls"] == 1
+    assert seen_keys == [KEY, KEY]
+    assert s["provider"] == "claude_openrouter" and s["stop_reason"] == "submit"
+    assert s["cost_usd"] is None and s["cost_unreported_calls"] == 0  # nothing estimated, nothing charged per call
+    assert s["key_usage_before_usd"] == 10.0 and s["key_usage_after_usd"] == 10.25
     assert s["plan_cost_estimate_usd"] == 0.9  # Claude Code's own figure, kept apart
     for name in os.listdir(cfg.agent_out):
         text = open(os.path.join(cfg.agent_out, name)).read()
@@ -120,36 +120,36 @@ def test_openrouter_endpoint_needs_the_key_not_the_token(tmp_path, monkeypatch):
     assert s["stop_reason"] == "error" and "OPENROUTER_API_KEY" in s["error"]
 
 
-def test_openrouter_endpoint_respects_the_run_guard(tmp_path, monkeypatch):
+def _guard_cfg(tmp_path, monkeypatch, budget="0.5"):
     ledger = tmp_path / "ledger"
-    ledger.mkdir()
-    (ledger / "a.json").write_text(json.dumps({"cost_usd": 1.0, "cost_unreported_calls": 0, "guard_charge_usd": 1.0}))
+    ledger.mkdir(exist_ok=True)
     monkeypatch.setenv("CVDP_LEDGER_DIR", str(ledger))
-    monkeypatch.setenv("CVDP_RUN_BUDGET_USD", "0.5")
-    cfg = setup(tmp_path, monkeypatch)
+    monkeypatch.setenv("CVDP_RUN_BUDGET_USD", budget)
+    return setup(tmp_path, monkeypatch), ledger
+
+
+def test_key_guard_baseline_then_stop(tmp_path, monkeypatch):
+    cfg, ledger = _guard_cfg(tmp_path, monkeypatch)
+    assert claude_code.key_guard(cfg, 20.0) == (False, 20.0)  # the first problem sets the baseline
+    assert claude_code.key_guard(cfg, 20.3) == (False, 20.0)
+    assert claude_code.key_guard(cfg, 20.5) == (True, 20.0)
+    assert claude_code.key_guard(cfg, None) == (True, 20.0)  # unreadable usage fails safe
+    assert (ledger / "key_baseline.txt").read_text() == "20.000000"
+    assert not list(ledger.glob("*.json"))  # not a ledger entry
+
+
+def test_openrouter_endpoint_stops_on_the_key_guard(tmp_path, monkeypatch):
+    cfg, ledger = _guard_cfg(tmp_path, monkeypatch)
+    (ledger / "key_baseline.txt").write_text("1.0")
+    monkeypatch.setattr(claude_code, "key_usage", lambda key: 1.6)
     s = claude_code.run(cfg)
-    assert s["stop_reason"] == "run_budget_exhausted"
+    assert s["stop_reason"] == "run_budget_exhausted" and s["key_usage_baseline_usd"] == 1.0
     assert not (tmp_path / "seen.json").exists()  # Claude Code never started
 
 
-def test_generation_costs_waits_for_lag_and_gives_up_on_other_errors():
-    calls = []
-
-    def get(gid):
-        calls.append(gid)
-        if gid == "lagging" and calls.count(gid) < 2:
-            return 404, {}
-        if gid == "bad":
-            return 400, {}
-        return 200, {"data": {"total_cost": 0.5}}
-    out = claude_code.generation_costs(["lagging", "bad"], KEY, get=get, waits=(0.01, 0.01))
-    assert out == {"lagging": 0.5, "bad": None}
-    assert calls.count("bad") == 1
-
-
-def test_message_ids_dedupes():
-    lines = [json.dumps({"type": "assistant", "message": {"id": i}}) for i in ("a", "a", "b")] + ["not json"]
-    assert claude_code.message_ids(lines) == ["a", "b"]
+def test_key_usage_reads_only_usage():
+    assert claude_code.key_usage("k", get=lambda: (200, {"data": {"usage": 3.5, "label": "sk-or-x"}})) == 3.5
+    assert claude_code.key_usage("k", get=lambda: (401, {})) is None
 
 
 def _sweep(tmp_path, **env):
@@ -165,3 +165,31 @@ def test_sweep_refuses_bad_combinations(tmp_path):
     assert r.returncode == 2 and "Claude Code makes its own requests" in r.stderr
     r = _sweep(tmp_path, AGENT_IMAGE="x", DATA_COLLECTION="allow")
     assert r.returncode == 2 and "blank or deny" in r.stderr
+
+
+def test_reliability_counts_from_a_trace(tmp_path):
+    import reliability
+
+    out = tmp_path / "art" / "work" / "seed2" / "cvdp_agentic_lfsr" / "harness" / "1" / "rundir" / "agent_out"
+    out.mkdir(parents=True)
+    ev = [
+        {"kind": "llm", "node": "edit", "turn": 1, "finish_reason": "length", "completion": "<diff>x</diff>",
+         "decision": {"changed": [], "errors": 1, "checks": ["compile"], "testbench": []}},
+        {"kind": "tool", "check": "file_write", "exit_code": 1},
+        {"kind": "llm", "node": "edit", "turn": 2, "finish_reason": "stop", "completion": "<diff>x</diff>",
+         "decision": {"changed": [], "errors": 1, "checks": ["compile"], "testbench": []}},
+        {"kind": "llm", "node": "edit", "turn": 3, "finish_reason": "stop", "completion": "prose only",
+         "decision": {"changed": [], "errors": 0, "checks": [], "testbench": []}},
+        {"kind": "llm", "node": "reflect", "decision": "unparseable"},
+        {"kind": "llm", "node": "reflect", "error": "APIError: 502", "cost": None},
+        {"kind": "llm", "node": "plan", "error": "HTTP 400", "reasoning_rejected": True},
+    ]
+    (out / "trace.jsonl").write_text("\n".join(json.dumps(e) for e in ev) + "\nnot json\n")
+    (out / "summary.json").write_text(json.dumps({"stop_reason": "max_turns", "empty_replies": 1}))
+    r = reliability.runs(str(tmp_path / "art"))
+    (key, probs), = r.items()
+    assert key[1] == "2" and list(probs) == ["cvdp_agentic_lfsr_0001"]
+    c, stop = probs["cvdp_agentic_lfsr_0001"]
+    assert stop == "max_turns"
+    assert c == {"unparsable": 2, "invalid_edit": 1, "length": 1, "empty": 1, "provider_err": 1, "loop": 2,
+                 "cap_stop": 1}

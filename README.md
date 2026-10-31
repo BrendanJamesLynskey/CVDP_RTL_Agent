@@ -408,7 +408,9 @@ routes each call; the provider that served it is in the trace, and its price can
 `deny_data_collection` (default false: sends `provider: {data_collection: "deny"}` so OpenRouter routes only to
 providers that collect no data; not with `claudecode`) and `claude_endpoint` (`plan`, the default, or `openrouter`:
 with `harness=claudecode`, Claude Code runs any OpenRouter model through OpenRouter's Anthropic-compatible endpoint,
-billed to the key, with each call's cost looked up on the generation endpoint, so the cost is provider-reported).
+billed to the key; the endpoint's message ids are not generation ids, so the provider-reported cost is the key's own
+usage, read before and after each problem and the whole run, and the whole-run guard is the key's usage since the
+run's first problem).
 Tables and `results.csv` label each row with the model and its reasoning setting, e.g.
 `deepseek/deepseek-v4.1-flash-1017 (reasoning off)`.
 
