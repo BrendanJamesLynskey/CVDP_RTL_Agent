@@ -410,7 +410,8 @@ providers that collect no data; not with `claudecode`) and `claude_endpoint` (`p
 with `harness=claudecode`, Claude Code runs any OpenRouter model through OpenRouter's Anthropic-compatible endpoint,
 billed to the key; the endpoint's message ids are not generation ids, so the provider-reported cost is the key's own
 usage, read before and after each problem and the whole run, and the whole-run guard is the key's usage since the
-run's first problem).
+run's first problem), and `wall_s` (blank, the default: the agent's 480 s wall cap under the harness's 600 s agent
+timeout; a number sets the agent's cap and the harness's kill 120 s above it, and the seed's worst-case time follows).
 Tables and `results.csv` label each row with the model and its reasoning setting, e.g.
 `deepseek/deepseek-v4.1-flash-1017 (reasoning off)`.
 

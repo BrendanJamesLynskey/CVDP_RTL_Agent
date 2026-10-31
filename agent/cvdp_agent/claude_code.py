@@ -23,8 +23,10 @@ None with no unreported calls (nothing is estimated). The whole-run guard is the
 problem started (`key_guard`). Claude Code's own figure stays in `plan_cost_estimate_usd` (an estimate at
 Anthropic's prices, never a cost).
 
-Caps: the same 480 s wall time as the LangGraph agent (the harness kills at 600 s), and `--max-turns`
-(`CVDP_MAX_ROUNDS`, here a cap on Claude Code's own turns, default 60)."""
+Caps: the same wall time as the LangGraph agent (`CVDP_WALL_S`, default 480 s; the harness kills at 600 s by default,
+and the sweep's `wall_s` input moves both, keeping the harness 120 s above the agent), and `--max-turns`
+(`CVDP_MAX_ROUNDS`, here a cap on Claude Code's own turns, default 60). A problem stopped by the wall cap has whatever
+Claude Code left on disk scored; its stream is cut, so its token and turn counts read 0."""
 import json
 import os
 import re

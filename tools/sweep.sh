@@ -14,8 +14,11 @@
 # A seed is started only if the step has time for its worst case (STEP_BUDGET_S, counted from when this script
 # starts; blank = no limit): the harness writes raw_result.json only when a run ends, so a seed killed part-way
 # loses every problem it finished while its spend stays in the ledger. Worst case = ceil(problems / threads) x
-# SEED_PROBLEM_WORST_S (default 660: the harness's 600 s agent timeout plus the tests) + 300 s. A seed not started
-# is listed in table.md. Each seed's UTC start and end go into $WORK.run.json and table.md.
+# SEED_PROBLEM_WORST_S (default: the harness's agent timeout plus 60 s for the tests, 660 with the default caps) +
+# 300 s. A seed not started is listed in table.md. Each seed's UTC start and end go into $WORK.run.json and table.md.
+#
+# WALL_S=n sets the agent's wall cap (CVDP_WALL_S) and the harness's agent kill (DOCKER_TIMEOUT_AGENT = n + 120, the
+# same margin as the defaults, 480 under 600); blank leaves both at their defaults and the agent's environment as it was.
 #
 # Needs: the harness checked out in $CVDP_DIR (with its requirements installed and .env set), the dataset in
 # $DATA_DIR, nvidia/cvdp-sim:v1.0.0 and $AGENT_IMAGE in the local Docker.
@@ -44,8 +47,10 @@ SPEC_VECTORS=${SPEC_VECTORS:-0}      # M3d: 1 = VERIFY_SUBMIT plus blind referen
 DATA_COLLECTION=${DATA_COLLECTION:-} # F1B: deny = OpenRouter routes only to providers that collect no data; blank = as before
 CLAUDE_ENDPOINT=${CLAUDE_ENDPOINT:-plan} # F1B, claudecode only: plan (the owner's plan) | openrouter (any OpenRouter model)
 SKILLS=${SKILLS:-}                   # M3g: a knowledge pack directory in the repo (MANIFEST.sha256); blank = none
+WALL_S=${WALL_S:-}                   # agent wall-time cap per problem, seconds; blank = the agent's default (480) under
+                                     # the harness's default agent timeout (600); set, the harness kills at WALL_S+120
 STEP_BUDGET_S=${STEP_BUDGET_S:-}
-SEED_PROBLEM_WORST_S=${SEED_PROBLEM_WORST_S:-660}
+SEED_PROBLEM_WORST_S=${SEED_PROBLEM_WORST_S:-}   # blank = the harness's agent timeout + 60 s for the tests (660 by default)
 T0=$(date +%s)
 THREADS=${THREADS:-2}
 WORK=${WORK:-work}
@@ -68,6 +73,9 @@ case "$REASONING" in
 esac
 [ -z "$RUN_BUDGET_USD" ] || num RUN_BUDGET_USD "$RUN_BUDGET_USD"
 [ -z "$STEP_BUDGET_S" ] || int STEP_BUDGET_S "$STEP_BUDGET_S"
+[ -z "$WALL_S" ] || int WALL_S "$WALL_S"
+HARNESS_AGENT_TIMEOUT_S=$(( ${WALL_S:-480} + 120 ))   # the harness's DOCKER_TIMEOUT_AGENT: its default 600 when WALL_S is blank
+[ -n "$SEED_PROBLEM_WORST_S" ] || SEED_PROBLEM_WORST_S=$(( HARNESS_AGENT_TIMEOUT_S + 60 ))
 int SEED_PROBLEM_WORST_S "$SEED_PROBLEM_WORST_S"
 [[ "$PROVIDER_ORDER" =~ ^[A-Za-z0-9\ ._,/-]*$ ]] || die "PROVIDER_ORDER has unexpected characters: '$PROVIDER_ORDER'"
 case "$HARNESS" in langgraph|deepagents|claudecode) ;; *) die "HARNESS must be langgraph, deepagents or claudecode, got '$HARNESS'" ;; esac
@@ -132,7 +140,7 @@ run_phase() {
   printf '{"problems": %s, "seeds": %s, "seed_offset": %s, "run_budget_usd": %s, "model": "%s", "reasoning": "%s", "provider_order": "%s"}\n' \
     "$n" "$SEEDS" "$SEED_OFFSET" "$guard" "$MODEL" "$REASONING" "$PROVIDER_ORDER" > "$work.run.json"
   python3 - "$work.run.json" "$HARNESS" "$MEMORY" "$MUTATION_GATE" "$INTERFACE_CHECK" "$VERIFY_SUBMIT" \
-    "$SPEC_VECTORS" "$SKILLS" "$SPLIT" "$DATA_COLLECTION" "$CLAUDE_ENDPOINT" <<'EOF'
+    "$SPEC_VECTORS" "$SKILLS" "$SPLIT" "$DATA_COLLECTION" "$CLAUDE_ENDPOINT" "$WALL_S" "$HARNESS_AGENT_TIMEOUT_S" <<'EOF'
 import json, sys
 run = json.load(open(sys.argv[1]))
 run.update(harness=sys.argv[2], memory=sys.argv[3])
@@ -148,6 +156,8 @@ if sys.argv[10]:  # F1B, likewise
     run.update(data_collection=sys.argv[10])
 if sys.argv[11] != "plan":
     run.update(claude_endpoint=sys.argv[11])
+if sys.argv[12]:  # a wall cap other than the default, likewise: the agent's cap and the harness's kill
+    run.update(wall_s=int(sys.argv[12]), harness_agent_timeout_s=int(sys.argv[13]))
 json.dump(run, open(sys.argv[1], "w"))
 EOF
 
@@ -172,6 +182,11 @@ EOF
   fi
   if [ -n "$DATA_COLLECTION" ]; then  # F1B: named only when set
     export CVDP_DATA_COLLECTION="$DATA_COLLECTION" CVDP_AGENT_ENV="$CVDP_AGENT_ENV,CVDP_DATA_COLLECTION"
+  fi
+  if [ -n "$WALL_S" ]; then  # the agent's cap, and the harness's kill (DOCKER_TIMEOUT_AGENT, read from its environment)
+    # 120 s above it, as the defaults are (480 under 600); named only when set, so a default run's env is unchanged
+    export CVDP_WALL_S="$WALL_S" DOCKER_TIMEOUT_AGENT="$HARNESS_AGENT_TIMEOUT_S" CVDP_AGENT_ENV="$CVDP_AGENT_ENV,CVDP_WALL_S"
+    echo "wall cap: agent ${WALL_S} s, harness kill ${HARNESS_AGENT_TIMEOUT_S} s, seed worst case ${SEED_PROBLEM_WORST_S} s/problem"
   fi
   if [ "$CVDP_PROVIDER" = openrouter ] || [ "$CVDP_PROVIDER" = claude_openrouter ]; then
     test -n "${OPENROUTER_API_KEY:-}" || die "OPENROUTER_API_KEY is not set"

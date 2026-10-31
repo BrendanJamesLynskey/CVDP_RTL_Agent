@@ -104,6 +104,10 @@ on:
         type: choice
         options: [plan, openrouter]
         default: plan
+      wall_s:
+        description: "Agent wall-time cap per problem, seconds (blank = the default 480, harness kill 600; set, the harness kills 120 s above it; the seed worst case follows)"
+        type: string
+        default: ""
   pull_request:
 
 permissions:
@@ -135,6 +139,7 @@ env:
   SKILLS: ${{ github.event_name == 'pull_request' && '' || inputs.skills }}
   DATA_COLLECTION: ${{ (github.event_name == 'workflow_dispatch' && inputs.deny_data_collection) && 'deny' || '' }}
   CLAUDE_ENDPOINT: ${{ github.event_name == 'pull_request' && 'plan' || inputs.claude_endpoint }}
+  WALL_S: ${{ github.event_name == 'pull_request' && '' || inputs.wall_s }}
   # M3g's held-out problems come from the non-agentic file at the same dataset revision, checked by its hash
   NONAGENTIC_SHA256: cbcd81295561ebb16e4d857e096f4d9908d042c33aff3b58abf236e868411857
   MUTATION_GATE: ${{ (github.event_name == 'workflow_dispatch' && inputs.mutation_gate) && '1' || '0' }}
