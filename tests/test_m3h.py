@@ -473,3 +473,89 @@ def test_m3h_tables_on_the_smoke_csvs(capsys):
     assert sorted(m3h_tables.V1) == sorted(
         ln.split(":")[0] for ln in open(os.path.join(ROOT, "agent", "cvdp_agent", "skills", "rtl_pack", "INDEX.md"))
         if ":" in ln and not ln.startswith(("#", "Load")))
+
+
+# ---------- the withhold rule (planner decision after S1c1) ----------
+
+def work_tree(tmp_path):
+    """A sweep work dir with one problem's task tree, its report log, a results.csv and a table."""
+    work = tmp_path / "work"
+    task = work / "seed1" / "cvdp_copilot_top" / "harness" / "1"
+    (task / "rtl").mkdir(parents=True)
+    (task / "rundir" / "agent_tb").mkdir(parents=True)
+    (work / "seed1" / "cvdp_copilot_top" / "reports").mkdir(parents=True)
+    (task / "rtl" / "top.sv").write_text("module top; endmodule\n")
+    (work / "seed1" / "cvdp_copilot_top" / "reports" / "1.txt").write_text("PASS\n")
+    (work / "results.csv").write_text("id,seed,pass,skill_text_copied,skill_text_copied_skills\n"
+                                      "cvdp_copilot_top_0001,1,1,,\ncvdp_copilot_other_0002,1,0,,\n")
+    (work / "table.md").write_text("| a | b |\n")
+    return work, task
+
+
+def guard(args):
+    return subprocess.run(["python3", os.path.join(ROOT, "tools", "leak_guard.py"), *args], capture_output=True,
+                          text=True, cwd=ROOT)
+
+
+def test_a_match_in_a_model_file_is_withheld_and_the_job_passes(tmp_path):
+    co, _ = make_pack(tmp_path)
+    work, task = work_tree(tmp_path)
+    (task / "rtl" / "top.sv").write_text("module top;\n" + BODY_A[20:140] + "endmodule\n")  # a pasted skill
+    (work / "seed1" / "cvdp_copilot_top" / "reports" / "1.txt").write_text(BODY_B)
+    r = guard(["--pack", str(co / "generic"), "--withhold", str(work), "--withheld-csv", str(work / "withheld.csv"),
+               "--annotate", str(work / "results.csv"), str(work)])
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert not (task / "rtl" / "top.sv").exists() and not (work / "seed1" / "cvdp_copilot_top" / "reports" /
+                                                           "1.txt").exists()
+    rows = list(csv.DictReader(open(work / "withheld.csv")))
+    assert {(x["id"], x["seed"], x["skill"]) for x in rows} == {("cvdp_copilot_top_0001", "1", "alpha-skill"),
+                                                                ("cvdp_copilot_top_0001", "1", "beta-skill")}
+    assert all(int(x["longest_bytes"]) >= 80 and int(x["matches"]) >= 1 for x in rows)
+    res = {x["id"]: x for x in csv.DictReader(open(work / "results.csv"))}
+    assert res["cvdp_copilot_top_0001"]["skill_text_copied"] == "1"
+    assert res["cvdp_copilot_top_0001"]["skill_text_copied_skills"] == "alpha-skill;beta-skill"
+    assert res["cvdp_copilot_other_0002"]["skill_text_copied"] == "0" and res["cvdp_copilot_top_0001"]["pass"] == "1"
+    for t in (open(work / "withheld.csv").read(), r.stdout, r.stderr):
+        assert "widget" not in t and "gadget" not in t  # names and counts only
+
+
+@pytest.mark.parametrize("where", ["results.csv", "table.md", "summary", "work.problems.jsonl"])
+def test_a_match_anywhere_else_still_fails(tmp_path, where):
+    co, _ = make_pack(tmp_path)
+    work, task = work_tree(tmp_path)
+    (task / "rtl" / "top.sv").write_text(BODY_A)  # withheld, but the other one is not
+    extra = {"results.csv": work / "results.csv", "table.md": work / "table.md",
+             "summary": tmp_path / "step_summary" / "step_summary_1",
+             "work.problems.jsonl": tmp_path / "work.problems.jsonl"}[where]
+    extra.parent.mkdir(parents=True, exist_ok=True)
+    extra.write_text((extra.read_text() if extra.exists() else "") + json.dumps({"x": BODY_B}) + "\n")
+    r = guard(["--pack", str(co / "generic"), "--withhold", str(work), "--withheld-csv", str(work / "withheld.csv"),
+               str(work), str(tmp_path / "work.problems.jsonl"), str(tmp_path / "step_summary")])
+    assert r.returncode == 1 and "beta-skill" in r.stdout and "gadget" not in r.stdout + r.stderr
+
+
+def test_v1_text_already_public_in_the_repo_is_allowed(tmp_path):
+    """A v1.0 arm passes the repo's public copy as --public: text found there is not private."""
+    co, _ = make_pack(tmp_path)
+    public_copy = tmp_path / "rtl_pack"
+    shutil.copytree(co / "generic", public_copy)
+    work, task = work_tree(tmp_path)
+    (work / "table.md").write_text(BODY_A)  # even outside the model's files
+    assert guard(["--pack", str(co / "generic"), str(work)]).returncode == 1
+    r = guard(["--pack", str(co / "generic"), "--public", str(public_copy), str(work)])
+    assert r.returncode == 0, r.stdout + r.stderr
+    # and the real v1.0 tag is byte-identical to the copy in this repo (local check, where the private repo is)
+    if os.path.isdir(os.path.join(REAL, ".git")):
+        pub = os.path.join(ROOT, "agent", "cvdp_agent", "skills", "rtl_pack")
+        for name in sorted(os.listdir(pub)):
+            if name.endswith(".md") and name != "PROVENANCE.md":
+                src = subprocess.run(["git", "-C", REAL, "show", f"v1.0:generic/{name}"], capture_output=True,
+                                     check=True).stdout
+                assert hashlib.sha256(src).hexdigest() == hashlib.sha256(open(os.path.join(pub, name), "rb")
+                                                                         .read()).hexdigest(), name
+
+
+def test_workflow_passes_the_public_v1_copy_and_withholds():
+    text = open(os.path.join(ROOT, ".github", "workflows", "sweep.yml")).read()
+    assert '[ "$SKILL_PACK" != v1.0 ] || pub+=(--public agent/cvdp_agent/skills/rtl_pack)' in text
+    assert "--withhold work" in text and "--annotate work/results.csv" in text and "work/withheld.csv" in text

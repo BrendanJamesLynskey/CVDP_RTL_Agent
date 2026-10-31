@@ -275,8 +275,15 @@ jobs:
       - name: Leak guard (skill pack text)
         id: leak
         if: always() && env.SKILL_PACK != ''
+        # A match in a model-written file (the agent's task tree, a report log) removes that file from the upload and
+        # is recorded as data (work/withheld.csv; skill_text_copied in results.csv); a match anywhere else, or left
+        # after that, fails the job. v1.0's text is already public in this repo (agent/cvdp_agent/skills/rtl_pack,
+        # byte-identical), so it is public text for a v1.0 arm.
         run: |
-          python3 tools/leak_guard.py --pack "$SKILL_PACK_DIR/generic" --public data --public cvdp \
+          pub=(--public data --public cvdp)
+          [ "$SKILL_PACK" != v1.0 ] || pub+=(--public agent/cvdp_agent/skills/rtl_pack)
+          python3 tools/leak_guard.py --pack "$SKILL_PACK_DIR/generic" "${pub[@]}" --withhold work \
+            --withheld-csv work/withheld.csv --annotate work/results.csv \
             work work.* "$(dirname "$GITHUB_STEP_SUMMARY")"
 
       - name: Publish the table
@@ -335,6 +342,7 @@ jobs:
           name: sweep-${{ github.event_name == 'pull_request' && 'smoke' || inputs.split }}-${{ github.run_id }}
           path: |
             work/results.csv
+            work/withheld.csv
             work/table.md
             work/seed*.skipped
             work/seed*/raw_result.json

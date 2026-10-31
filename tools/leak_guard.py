@@ -13,6 +13,13 @@ the same bytes are in the public benchmark itself. `--public` names text the job
 (the dataset files, the benchmark harness checkout; never anything under work/). A match counts only if at least one
 of its 80-byte windows, normalised, is not found in that public text, normalised. Without `--public`, every match counts.
 
+M3h withhold rule (`--withhold WORK`): a match in a model-written file of the work dir (the agent's task tree under
+work/seed<k>/<repo>/harness/<n>/, and the harness's report logs work/seed<k>/<repo>/reports/<n>.txt) removes that
+file before the upload instead of failing, and is recorded as data in `--withheld-csv` (id, seed, file, skill,
+match count, longest match: never the text) and in results.csv (`--annotate`: skill_text_copied, its skills). The
+whole remaining set is then scanned again; a match anywhere else (CSV, table, step summary, problems file, ledger)
+or left after withholding fails as before. Scoring has already happened, so a withheld file changes no result.
+
 Output names the file, the form (raw or normalised), the byte offset, which secret (skill name or INDEX line number)
 and the match length, never the matched text. Exit 1 on any leak, 0 if none, 2 on a usage error.
 
@@ -152,11 +159,96 @@ def scan(pack, paths, public=None):
     return leaks
 
 
+# Model-written files of a sweep's work dir (the M3h withhold rule): the task tree the agent edits
+# (work/seed<k>/<repo>/harness/<n>/..., which holds rtl/, rundir/agent_out/, rundir/agent_tb/ and
+# agent_changes.patch) and the harness's per-problem report logs (work/seed<k>/<repo>/reports/<n>.txt).
+def model_file(path, work):
+    """(problem id, seed) if `path` is a model-written file under the work dir `work`, else None."""
+    rel = os.path.relpath(os.path.abspath(path), os.path.abspath(work))
+    parts = rel.split(os.sep)
+    if len(parts) < 4 or not re.fullmatch(r"seed\d+", parts[0]):
+        return None
+    seed, repo = parts[0][4:], parts[1]
+    if parts[2] == "harness" and len(parts) >= 5 and parts[3].isdigit():
+        n = parts[3]
+    elif parts[2] == "reports" and len(parts) == 4 and re.fullmatch(r"\d+\.txt", parts[3]):
+        n = parts[3][:-4]
+    else:
+        return None
+    return f"{repo}_{int(n):04d}", seed
+
+
+def withhold(leaks, work):
+    """Remove each matching model-written file; return (withheld rows, leaks in any other file)."""
+    per, other = {}, []
+    for f, form, off, lab, length in leaks:
+        key = model_file(f, work)
+        if key is None:
+            other.append((f, form, off, lab, length))
+            continue
+        e = per.setdefault((f, lab), {"id": key[0], "seed": key[1], "matches": 0, "longest": 0})
+        e["matches"] += 1
+        e["longest"] = max(e["longest"], length)
+    rows = []
+    for (f, lab), e in sorted(per.items()):
+        if os.path.exists(f):
+            os.remove(f)
+        rows.append({"id": e["id"], "seed": e["seed"], "file": os.path.relpath(f, work), "skill": lab,
+                     "matches": e["matches"], "longest_bytes": e["longest"]})
+    return rows, other
+
+
+def write_withheld(rows, path):
+    import csv
+
+    with open(path, "w", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=["id", "seed", "file", "skill", "matches", "longest_bytes"])
+        w.writeheader()
+        w.writerows(rows)
+
+
+def annotate(results, rows):
+    """Fill results.csv's skill_text_copied (0/1) and skill_text_copied_skills (";") from the withheld rows."""
+    import csv
+
+    if not os.path.isfile(results):
+        return
+    by = {}
+    for r in rows:
+        by.setdefault((r["id"], str(r["seed"])), set()).add(r["skill"])
+    with open(results, newline="") as fh:
+        rd = csv.DictReader(fh)
+        fields, data = list(rd.fieldnames or []), list(rd)
+    for k in ("skill_text_copied", "skill_text_copied_skills"):
+        if k not in fields:
+            fields.append(k)
+    for r in data:
+        got = sorted(by.get((r["id"], str(r.get("seed", ""))), ()))
+        r["skill_text_copied"] = int(bool(got))
+        r["skill_text_copied_skills"] = ";".join(got)
+    with open(results, "w", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=fields)
+        w.writeheader()
+        w.writerows(data)
+
+
+def report(leaks, n, pub):
+    for f, form, off, lab, length in leaks[:200]:
+        print(f"LEAK {f}: {form} offset {off}: {length} bytes of {lab}")
+    print(f"leak_guard.py: {len(leaks)} match(es) of pack text in {len({x[0] for x in leaks})} file(s) of {n} "
+          f"scanned: nothing may be uploaded", file=sys.stderr)
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="M3h leak guard")
     ap.add_argument("--pack", required=True, help="the pack's generic/ directory")
     ap.add_argument("--public", action="append", default=[],
                     help="public text the job holds (dataset files, harness checkout); repeatable")
+    ap.add_argument("--withhold", metavar="WORK",
+                    help="M3h: a match in a model-written file under this work dir removes that file from the upload "
+                         "(recorded in --withheld-csv) instead of failing; any other match still fails")
+    ap.add_argument("--withheld-csv", help="where to write the withheld files (id, seed, file, skill, counts)")
+    ap.add_argument("--annotate", help="a results.csv to fill skill_text_copied(_skills) in, from the withheld rows")
     ap.add_argument("paths", nargs="+")
     a = ap.parse_args(argv)
     if not os.path.isdir(a.pack):
@@ -164,12 +256,23 @@ def main(argv=None):
         return 2
     pub = Public(a.public)
     leaks = scan(a.pack, a.paths, pub)
+    rows = []
+    if a.withhold:
+        rows, other = withhold(leaks, a.withhold)
+        if a.withheld_csv:
+            write_withheld(rows, a.withheld_csv)
+        if a.annotate:
+            annotate(a.annotate, rows)
+        if rows:
+            print(f"leak guard: withheld {len(rows)} model-written file/skill pair(s) in "
+                  f"{len({(r['id'], r['seed']) for r in rows})} problem-run(s) from the upload")
+        if other:
+            report(other, sum(1 for _ in files(a.paths)), pub)
+            return 1
+        leaks = scan(a.pack, a.paths, pub)  # the whole remaining set again, the withheld list and the CSV included
     n = sum(1 for _ in files(a.paths))
-    for f, form, off, lab, length in leaks[:200]:
-        print(f"LEAK {f}: {form} offset {off}: {length} bytes of {lab}")
     if leaks:
-        print(f"leak_guard.py: {len(leaks)} match(es) of pack text in {len({x[0] for x in leaks})} file(s) of {n} "
-              f"scanned: nothing may be uploaded", file=sys.stderr)
+        report(leaks, n, pub)
         return 1
     print(f"leak guard: {n} file(s) scanned, no {WINDOW}-byte window of the pack's private text in any of them "
           f"(public text allowed: {pub.bytes} bytes)")

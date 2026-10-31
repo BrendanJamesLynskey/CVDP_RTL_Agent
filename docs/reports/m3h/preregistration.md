@@ -11,6 +11,34 @@ kept to measure the unprompted load rate, as a descriptive figure. The old condi
 version of this file is in commit `4cd735c`. Nothing else changed: the mechanism, the sets, the rate-limit rule, the
 statistics and the decision rule are as written there.
 
+**Second amendment, 2026-10-31, after the first two scored sweeps and before any pack-arm result was read.**
+
+- A1 (run 41188919982) ran from `9bcbe93`.
+- S1c1 (run 41191246494) failed at the leak guard and uploaded nothing. Its one match was 80 bytes of a skill in
+  the model's own RTL answer. No result of it was ever available, so it is rerun.
+
+The planner then changed the leak guard, within the owner's rule that the public repository, logs and artifacts
+never contain private skill text:
+
+1. **The public copy of `v1.0` is allowed.** `v1.0`'s text is already public in this repository
+   (`agent/cvdp_agent/skills/rtl_pack/`, byte-identical), so for a `v1.0` arm it counts as public text.
+2. **Model files are withheld, not failed.**
+   - A match in a model-written file (the agent's task tree under `work/seed<k>/<repo>/harness/<n>/`, or the
+     harness's report log) no longer fails the job. That file is removed from the upload set, and the whole
+     remaining set is scanned again.
+   - A match anywhere else (CSV, table, step summary, problems file), or anything left after withholding, fails
+     the job as before.
+   - Scoring happens before the upload, so withholding changes no result.
+3. **Matches are recorded as data, never text.**
+   - Each sweep publishes `withheld.csv`: id, seed, file, skill, match count, longest match.
+   - Two CSV columns record whether a problem-run's own files reproduced pack text, and which skills:
+     `skill_text_copied` (0/1) and `skill_text_copied_skills`.
+   - "Problem-runs whose answer reproduces skill text, per arm and per skill" is added as a **descriptive**
+     secondary. It is not a test.
+
+The change touches only the workflow's guard step and the guard tool. The agent image (`be5c24f`) and the run path
+are unchanged. The other 9 held-out sweeps (S1c1 rerun, S2c1 … S2) run from the new head. A1 is kept, not rerun.
+
 ## The question
 
 M3g put pack v1 into luna's prompts and found no effect, but it could not show that luna acted on the pack. Claude

@@ -49,9 +49,10 @@ FIELDS = ["label", "id", "seed", "cid", "difficulty", "pass", "tests", "tests_pa
 # one keeps exactly the columns above. M3g's skills_loaded column holds every Skill call in order (";"), bundled
 # skills' names included; skills_listed: pack skills in Claude Code's own init list; skills_n: distinct pack skills
 # loaded; skill_first_turn: the assistant turn of the first pack load. skills_loaded is M3g's column (blank without
-# M3g's pack), reused rather than added twice.
+# M3g's pack), reused rather than added twice. skill_text_copied(_skills): filled by the leak guard (blank here)
+# when the problem's own files held pack text and were withheld from the upload.
 M3H_FIELDS = ["skill_pack", "skill_pack_sha", "skill_hint", "skills_installed", "skills_listed", "skills_n",
-              "skill_first_turn", "rate_limit"]
+              "skill_first_turn", "rate_limit", "skill_text_copied", "skill_text_copied_skills"]
 M3C_GATE = ("gate_runs", "gate_failures", "mutants_generated", "mutants_compiled", "mutants_killed",
             "mutants_unfinished", "gate_wall_s")
 M3C_IFACE = ("interface_runs", "interface_mismatch_runs", "interface_blocks")
