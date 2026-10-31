@@ -404,7 +404,11 @@ the repo, e.g. `docs/reports/m3b/lessons/lessons_<hash>.json`, mounted read-only
 `mutation_gate` and `interface_check` (M3c, both default false, LangGraph only), `verify_submit` and
 `spec_vectors` (M3d, both default false, LangGraph only, not with `mutation_gate`) and
 `provider_order` (blank: OpenRouter
-routes each call; the provider that served it is in the trace, and its price can differ from the list price).
+routes each call; the provider that served it is in the trace, and its price can differ from the list price),
+`deny_data_collection` (default false: sends `provider: {data_collection: "deny"}` so OpenRouter routes only to
+providers that collect no data; not with `claudecode`) and `claude_endpoint` (`plan`, the default, or `openrouter`:
+with `harness=claudecode`, Claude Code runs any OpenRouter model through OpenRouter's Anthropic-compatible endpoint,
+billed to the key, with each call's cost looked up on the generation endpoint, so the cost is provider-reported).
 Tables and `results.csv` label each row with the model and its reasoning setting, e.g.
 `deepseek/deepseek-v4.1-flash-1017 (reasoning off)`.
 

@@ -12,6 +12,14 @@ pip, uv, npm). The container still has a network (Claude Code needs it), so ever
 audited afterwards: `network_flags` lists any that names a host, URL or fetch tool, so a run that reached for the
 public dataset (which holds the hidden tests) can be found and excluded.
 
+Endpoint (F1B): with `CVDP_PROVIDER=claude_openrouter`, Claude Code talks to OpenRouter's Anthropic-compatible
+endpoint (`ANTHROPIC_BASE_URL=https://openrouter.ai/api`, the OpenRouter key as `ANTHROPIC_AUTH_TOKEN`, an empty
+`ANTHROPIC_API_KEY`) and runs any OpenRouter model given as `CVDP_MODEL`, including for its background calls. The
+plan's token is not passed. Cost is then provider-reported: each distinct message id in the stream is looked up on
+OpenRouter's generation endpoint and its `total_cost` summed into `cost_usd`; an id with no cost found counts in
+`cost_unreported_calls`. Claude Code's own figure stays in `plan_cost_estimate_usd` (an estimate at Anthropic's
+prices, never a cost). The whole-run spend guard (ledger) is checked before Claude Code starts.
+
 Caps: the same 480 s wall time as the LangGraph agent (the harness kills at 600 s), and `--max-turns`
 (`CVDP_MAX_ROUNDS`, here a cap on Claude Code's own turns, default 60)."""
 import json
@@ -21,8 +29,11 @@ import subprocess
 import tempfile
 import time
 
-from .graph import write_ledger
+from .graph import run_budget_exhausted, write_ledger
 from .trace import redact
+
+OPENROUTER_ANTHROPIC = "https://openrouter.ai/api"
+OPENROUTER_GENERATION = "https://openrouter.ai/api/v1/generation"
 
 ALLOWED = ["Read", "Edit", "Write", "Glob", "Grep", "Bash"]
 DENIED = ["WebFetch", "WebSearch", "Task", "NotebookEdit",
@@ -44,7 +55,7 @@ PROMPT = """You are solving one hardware-design task. The task tree is the curre
 
 
 def _summary_base(cfg):
-    return {"provider": "claude_plan", "requested_model": cfg.model or None, "model": cfg.model or None,
+    return {"provider": "claude_openrouter" if cfg.provider == "claude_openrouter" else "claude_plan", "requested_model": cfg.model or None, "model": cfg.model or None,
             "harness": "claudecode", "seed": cfg.seed or None, "switches": cfg.switches(),
             "cost_usd": None, "cost_unreported_calls": 0, "plan_cost_estimate_usd": None,
             "prompt_tokens": 0, "completion_tokens": 0, "llm_calls": 0, "tool_calls": 0, "turns": 0,
@@ -58,6 +69,64 @@ def _write(cfg, summary):
         json.dump(summary, f, indent=1)
     write_ledger(cfg, summary)
     return summary
+
+
+def message_ids(lines):
+    """The distinct assistant message ids in the stream, in order (one per model call; a message split over several
+    stream events keeps its id)."""
+    ids = []
+    for line in lines:
+        try:
+            ev = json.loads(line)
+        except (ValueError, TypeError):
+            continue
+        if ev.get("type") == "assistant":
+            mid = (ev.get("message") or {}).get("id")
+            if mid and mid not in ids:
+                ids.append(mid)
+    return ids
+
+
+def generation_costs(ids, key, get=None, waits=(1, 2, 4), deadline=None):
+    """{id: total_cost or None} from OpenRouter's generation endpoint (which can lag a call by a few seconds). Past
+    `deadline` (a time.time() value) no more lookups are made: those ids stay None (unreported)."""
+    if get is None:
+        import httpx
+
+        def get(gid):
+            r = httpx.get(OPENROUTER_GENERATION, params={"id": gid}, timeout=10.0,
+                          headers={"Authorization": f"Bearer {key}"})
+            return r.status_code, (r.json() if r.status_code == 200 else {})
+    out = {}
+    for gid in ids:
+        out[gid] = None
+        for wait in (0, *waits):
+            if deadline is not None and time.time() + wait > deadline:
+                break
+            if wait:
+                time.sleep(wait)
+            try:
+                code, body = get(gid)
+            except Exception:
+                continue
+            cost = ((body or {}).get("data") or {}).get("total_cost") if code == 200 else None
+            if cost is not None:
+                out[gid] = float(cost)
+                break
+            if code not in (200, 404, 429) and code < 500:
+                break  # not a lag: the id is not a generation id
+    return out
+
+
+def openrouter_env(env, model, key):
+    """Claude Code pointed at OpenRouter's Anthropic-compatible endpoint, every model slot set to `model`."""
+    env = dict(env)
+    env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
+    env.update(ANTHROPIC_BASE_URL=OPENROUTER_ANTHROPIC, ANTHROPIC_AUTH_TOKEN=key, ANTHROPIC_API_KEY="",
+               ANTHROPIC_MODEL=model, ANTHROPIC_SMALL_FAST_MODEL=model, ANTHROPIC_DEFAULT_HAIKU_MODEL=model,
+               ANTHROPIC_DEFAULT_SONNET_MODEL=model, ANTHROPIC_DEFAULT_OPUS_MODEL=model,
+               CLAUDE_CODE_SUBAGENT_MODEL=model, CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC="1")
+    return env
 
 
 def parse_stream(lines):
@@ -100,9 +169,21 @@ def stop_reason(result, timed_out):
 def run(cfg):
     summary = _summary_base(cfg)
     t0 = time.time()
-    if not os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"):
+    via_openrouter = cfg.provider == "claude_openrouter"
+    key = os.environ.get("OPENROUTER_API_KEY", "") if via_openrouter else ""
+    if via_openrouter and not key:
+        summary.update(stop_reason="error", error="OPENROUTER_API_KEY is not set", wall_time_s=0)
+        return _write(cfg, summary)
+    if not via_openrouter and not os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"):
         summary.update(stop_reason="error", error="CLAUDE_CODE_OAUTH_TOKEN is not set", wall_time_s=0)
         return _write(cfg, summary)
+    if via_openrouter:
+        from .trace import Tracer
+
+        summary["cost_usd"] = 0.0
+        if run_budget_exhausted(cfg, Tracer(None)):
+            summary.update(stop_reason="run_budget_exhausted", wall_time_s=0)
+            return _write(cfg, summary)
     try:
         with open(os.path.join(cfg.root, "prompt.json")) as f:
             task = json.load(f).get("prompt", "")
@@ -122,6 +203,8 @@ def run(cfg):
     home = env.get("HOME", "")
     if not home or not os.access(home, os.W_OK):
         env["HOME"] = tempfile.mkdtemp(prefix="claude_home_")
+    if via_openrouter:
+        env = openrouter_env(env, cfg.model, key)
     timed_out = False
     try:
         p = subprocess.run(cmd, cwd=cfg.root, capture_output=True, text=True, timeout=cfg.wall_s,
@@ -157,6 +240,13 @@ def run(cfg):
         stop_reason=stop_reason(result, timed_out),
         wall_time_s=round(time.time() - t0, 1),
     )
+    if via_openrouter:  # provider-reported cost per call; Claude Code's own figure stays an estimate
+        costs = generation_costs(message_ids(lines), key, deadline=t0 + cfg.wall_s + 90)
+        summary["generation_ids"] = len(costs)
+        summary["cost_usd"] = round(sum(c for c in costs.values() if c is not None), 8)
+        summary["cost_unreported_calls"] = sum(1 for c in costs.values() if c is None)
+        if not costs and summary["turns"]:
+            summary["cost_unreported_calls"] = summary["turns"]  # calls made but no id to look up
     if summary["stop_reason"] in ("error", "llm_error"):
         summary["error"] = ((err or "") + "\n" + str((result or {}).get("result", "")))[-2000:]
         tok = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "")  # its shape only, never its value: for a 401

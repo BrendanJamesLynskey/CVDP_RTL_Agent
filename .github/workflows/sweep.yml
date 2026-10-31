@@ -63,7 +63,7 @@ on:
         type: string
         default: "0"
       harness:
-        description: "Agent harness: langgraph (M1-M3), deepagents (M3b) or claudecode (Claude Code on the plan; model = a Claude model id)"
+        description: "Agent harness: langgraph (M1-M3), deepagents (M3b) or claudecode (Claude Code; model = a Claude model id on the plan, or an OpenRouter id with claude_endpoint=openrouter)"
         type: choice
         options: [langgraph, deepagents, claudecode]
         default: langgraph
@@ -95,6 +95,15 @@ on:
         description: "M3g: knowledge pack directory in the repo, e.g. agent/cvdp_agent/skills/rtl_pack (blank = none; langgraph only)"
         type: string
         default: ""
+      deny_data_collection:
+        description: "F1B: send provider data_collection=deny, so OpenRouter routes only to providers that collect no data (langgraph, deepagents)"
+        type: boolean
+        default: false
+      claude_endpoint:
+        description: "F1B, claudecode only: plan (Claude models on the owner's plan) or openrouter (any OpenRouter model via its Anthropic-compatible endpoint, billed to the key)"
+        type: choice
+        options: [plan, openrouter]
+        default: plan
   pull_request:
 
 permissions:
@@ -124,6 +133,8 @@ env:
   HARNESS: ${{ github.event_name == 'pull_request' && 'langgraph' || inputs.harness }}
   MEMORY: ${{ github.event_name == 'pull_request' && '' || inputs.memory }}
   SKILLS: ${{ github.event_name == 'pull_request' && '' || inputs.skills }}
+  DATA_COLLECTION: ${{ (github.event_name == 'workflow_dispatch' && inputs.deny_data_collection) && 'deny' || '' }}
+  CLAUDE_ENDPOINT: ${{ github.event_name == 'pull_request' && 'plan' || inputs.claude_endpoint }}
   # M3g's held-out problems come from the non-agentic file at the same dataset revision, checked by its hash
   NONAGENTIC_SHA256: cbcd81295561ebb16e4d857e096f4d9908d042c33aff3b58abf236e868411857
   MUTATION_GATE: ${{ (github.event_name == 'workflow_dispatch' && inputs.mutation_gate) && '1' || '0' }}
@@ -220,7 +231,7 @@ jobs:
         timeout-minutes: 320
         env:
           OPENROUTER_API_KEY: ${{ env.REAL_MODEL == 'true' && secrets.OPENROUTER_API_KEY || '' }}
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ env.HARNESS == 'claudecode' && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ (env.HARNESS == 'claudecode' && env.CLAUDE_ENDPOINT == 'plan') && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
           AGENT_IMAGE: ${{ steps.agent.outputs.image }}
           IDS: ${{ github.event_name == 'pull_request' && env.SMOKE_IDS || inputs.ids }}
           # The Run step's 320 min, less a margin: a seed starts only if its worst case fits in what is left.
@@ -263,7 +274,7 @@ jobs:
         if: always()
         env:
           OPENROUTER_API_KEY: ${{ env.REAL_MODEL == 'true' && secrets.OPENROUTER_API_KEY || '' }}
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ env.HARNESS == 'claudecode' && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ (env.HARNESS == 'claudecode' && env.CLAUDE_ENDPOINT == 'plan') && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
         run: |
           if grep -rl -e 'sk-ant-' work work.* 2>/dev/null; then echo "::error::token-shaped string in work dir"; exit 1; fi
           if [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ] && grep -rlF -e "$CLAUDE_CODE_OAUTH_TOKEN" work work.* 2>/dev/null; then
