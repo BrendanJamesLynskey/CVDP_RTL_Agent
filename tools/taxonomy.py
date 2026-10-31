@@ -4,7 +4,8 @@ logs, the agent's trace.jsonl and its summary.json. Deterministic rules only: no
 Primary labels, in the order the rules are tried (the first that holds is the primary; every other one that
 holds becomes a flag):
 
-  llm_error                      the problem stopped on a provider error, a missed call deadline or unreported cost
+  llm_error                      the problem stopped on a provider error, a missed call deadline, unreported cost
+                                 or the Claude plan's limit (`rate_limited`, which ablate.py leaves out as not run)
   agent_error                    the agent crashed (stop_reason "error"; finalize still ran), or found no task
                                  to read (stop_reason "no_task")
   killed                         no final summary: the harness killed the agent (or it never ran)
@@ -216,7 +217,7 @@ def label(r):
     rtl = _i(r.get("rtl_changed"))
     started = stop not in ("no_task", "run_budget_exhausted")  # the agent got as far as editing
     holds = {
-        "llm_error": stop in ("llm_error", "cost_unreported"),
+        "llm_error": stop in ("llm_error", "cost_unreported", "rate_limited"),
         "agent_error": stop in ("error", "no_task"),
         "killed": stop in ("killed", "no_summary", "not_run"),
         "no_edit": rtl == 0 and started,

@@ -1,5 +1,8 @@
 # Sweep: the agent on a split or a list of problems, scored by the CVDP harness.
 #   workflow_dispatch  a real run with an OpenRouter model (the key reaches the agent only through CVDP_AGENT_ENV)
+#   (M3h)              skill_pack = a tag of the PRIVATE knowledge pack, installed as Claude Code skills (claudecode
+#                      only). Its text must never reach a log, the step summary or an artifact: the raw transcript is
+#                      not kept, and a leak guard scans everything before any of it is published.
 #   pull_request       a smoke run with the scripted `fake` provider on 2 problems: no secret, proves the image, the
 #                      harness interface and the collection end to end. Its pass rate is not the point.
 name: Sweep
@@ -95,6 +98,14 @@ on:
         description: "M3g: knowledge pack directory in the repo, e.g. agent/cvdp_agent/skills/rtl_pack (blank = none; langgraph only)"
         type: string
         default: ""
+      skill_pack:
+        description: "M3h: private pack tag (v1.0 or v2.0) as Claude Code skills (blank = none; claudecode only)"
+        type: string
+        default: ""
+      skill_hint:
+        description: "M3h S2c: add a one-line user CLAUDE.md saying RTL design skills are installed (needs skill_pack)"
+        type: boolean
+        default: false
   pull_request:
 
 permissions:
@@ -124,6 +135,9 @@ env:
   HARNESS: ${{ github.event_name == 'pull_request' && 'langgraph' || inputs.harness }}
   MEMORY: ${{ github.event_name == 'pull_request' && '' || inputs.memory }}
   SKILLS: ${{ github.event_name == 'pull_request' && '' || inputs.skills }}
+  SKILL_PACK: ${{ github.event_name == 'pull_request' && '' || inputs.skill_pack }}
+  SKILL_HINT: ${{ (github.event_name == 'workflow_dispatch' && inputs.skill_hint) && '1' || '0' }}
+  SKILL_PACK_DIR: _pack
   # M3g's held-out problems come from the non-agentic file at the same dataset revision, checked by its hash
   NONAGENTIC_SHA256: cbcd81295561ebb16e4d857e096f4d9908d042c33aff3b58abf236e868411857
   MUTATION_GATE: ${{ (github.event_name == 'workflow_dispatch' && inputs.mutation_gate) && '1' || '0' }}
@@ -146,6 +160,31 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
+      # M3h: the private pack, only for a skill_pack arm, outside work/. A missing deploy key (a fork, say) fails
+      # here, before any model call; the default arm never reads the secret.
+      - name: Private skill pack, deploy key present
+        if: env.SKILL_PACK != ''
+        env:
+          HAS_KEY: ${{ secrets.RTL_PACK_DEPLOY_KEY != '' }}
+        run: |
+          if [ "$HAS_KEY" != true ]; then echo "::error::skill_pack=$SKILL_PACK needs the RTL_PACK_DEPLOY_KEY secret"; exit 1; fi
+          [[ "$SKILL_PACK" =~ ^v[0-9]+\.[0-9]+$ ]] || { echo "::error::skill_pack must be a tag such as v2.0"; exit 1; }
+
+      - name: Private skill pack, checkout at its tag
+        if: env.SKILL_PACK != ''
+        uses: actions/checkout@v4
+        with:
+          repository: BrendanJamesLynskey/RTL_Knowledge_Pack
+          ref: refs/tags/${{ env.SKILL_PACK }}
+          ssh-key: ${{ secrets.RTL_PACK_DEPLOY_KEY }}
+          path: _pack
+          persist-credentials: false
+
+      - name: Private skill pack, pinned commit and manifest
+        if: env.SKILL_PACK != ''
+        # names, counts and hashes only; never the files
+        run: python3 tools/skill_pack.py verify "$SKILL_PACK_DIR" "$SKILL_PACK"
 
       - uses: docker/login-action@v3
         with:
@@ -229,8 +268,21 @@ jobs:
 
       - name: Collect and tabulate
         if: always() && steps.agent.outcome == 'success'
+        run: bash tools/sweep.sh collect > /dev/null
+
+      # M3h: before anything from the work dir is published (step summary, log, artifact), fail the job if any
+      # 80-byte window of the pack's private text is in it. Public text (the dataset, the harness) is allowed.
+      - name: Leak guard (skill pack text)
+        id: leak
+        if: always() && env.SKILL_PACK != ''
         run: |
-          bash tools/sweep.sh collect
+          python3 tools/leak_guard.py --pack "$SKILL_PACK_DIR/generic" --public data --public cvdp \
+            work work.* "$(dirname "$GITHUB_STEP_SUMMARY")"
+
+      - name: Publish the table
+        if: always() && steps.agent.outcome == 'success' && steps.leak.outcome != 'failure'
+        run: |
+          cat work/table.md
           cat work/table.md >> "$GITHUB_STEP_SUMMARY"
           # The per-problem rows in the log too (no secrets in them: ids, counts, provider-reported cost)
           [ ! -f work/results.csv ] || cat work/results.csv
@@ -278,7 +330,7 @@ jobs:
           echo "no key in work dir"
 
       - uses: actions/upload-artifact@v4
-        if: always() && steps.scan.outcome == 'success'
+        if: always() && steps.scan.outcome == 'success' && steps.leak.outcome != 'failure'
         with:
           name: sweep-${{ github.event_name == 'pull_request' && 'smoke' || inputs.split }}-${{ github.run_id }}
           path: |

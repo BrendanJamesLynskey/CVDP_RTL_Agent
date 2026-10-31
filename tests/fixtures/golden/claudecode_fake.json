@@ -1,0 +1,88 @@
+{
+ "files": {
+  "claude_stream.jsonl": "{\"type\": \"system\", \"subtype\": \"init\", \"tools\": [\"Bash\", \"Skill\"], \"skills\": [\"debug\"]}\n{\"type\": \"assistant\", \"message\": {\"id\": \"m1\", \"model\": \"claude-haiku-5-5\", \"content\": [{\"type\": \"tool_use\", \"name\": \"Skill\", \"input\": {\"skill\": \"debug\"}}]}}\n{\"type\": \"user\", \"message\": {\"content\": [{\"type\": \"text\", \"text\": \"skill body\"}]}}\n{\"type\": \"assistant\", \"message\": {\"id\": \"m2\", \"model\": \"claude-haiku-5-5\", \"content\": [{\"type\": \"tool_use\", \"name\": \"Bash\", \"input\": {\"command\": \"iverilog -g2012 rtl/top.sv\"}}, {\"type\": \"tool_use\", \"name\": \"Write\", \"input\": {\"file_path\": \"rtl/top.sv\"}}]}}\n{\"type\": \"rate_limit_event\", \"rate_limit_info\": {\"status\": \"allowed\", \"rateLimitType\": \"five_hour\"}}\n{\"type\": \"result\", \"subtype\": \"success\", \"result\": \"done\", \"num_turns\": 3, \"total_cost_usd\": 0.02, \"usage\": {\"input_tokens\": 10, \"cache_read_input_tokens\": 900, \"cache_creation_input_tokens\": 90, \"output_tokens\": 50}}\n",
+  "summary.json": "{\n \"provider\": \"claude_plan\",\n \"requested_model\": \"claude-haiku-5-5\",\n \"model\": \"claude-haiku-5-5\",\n \"harness\": \"claudecode\",\n \"seed\": \"1\",\n \"switches\": {\n  \"self_check\": true,\n  \"lint\": true,\n  \"max_turns\": 10,\n  \"budget_usd\": 0.1,\n  \"wall_s\": 480.0,\n  \"reasoning\": \"default\",\n  \"provider_order\": \"\",\n  \"harness\": \"claudecode\",\n  \"max_rounds\": 60\n },\n \"cost_usd\": null,\n \"cost_unreported_calls\": 0,\n \"plan_cost_estimate_usd\": 0.02,\n \"prompt_tokens\": 1000,\n \"completion_tokens\": 50,\n \"llm_calls\": 3,\n \"tool_calls\": 3,\n \"turns\": 3,\n \"kept\": \"\",\n \"network_flags\": [],\n \"visible_top_level\": [\n  \"docs\",\n  \"prompt.json\",\n  \"rtl\"\n ],\n \"cache_read_tokens\": 900,\n \"stop_reason\": \"submit\"\n}"
+ },
+ "record": {
+  "argv": [
+   "-p",
+   "You are solving one hardware-design task. The task tree is the current directory (/code).\n\n# Task\nWrite module top.\n\n# Rules\n- Change files only under rtl/, verif/ and docs/. You may write your own testbench under rundir/agent_tb/.\n- Icarus Verilog (iverilog, vvp), Verilator, Yosys and cocotb are installed: compile and test your design with them.\n- Do not use the network: no downloads, no package installs, no web lookups. Everything you need is in /code.\n- When the design is done and your checks pass, stop with a one-line summary.",
+   "--output-format",
+   "stream-json",
+   "--verbose",
+   "--max-turns",
+   "60",
+   "--permission-mode",
+   "acceptEdits",
+   "--allowedTools",
+   "Read",
+   "Edit",
+   "Write",
+   "Glob",
+   "Grep",
+   "Bash",
+   "--disallowedTools",
+   "WebFetch",
+   "WebSearch",
+   "Task",
+   "NotebookEdit",
+   "Bash(curl:*)",
+   "Bash(wget:*)",
+   "Bash(git:*)",
+   "Bash(pip:*)",
+   "Bash(pip3:*)",
+   "Bash(uv:*)",
+   "Bash(npm:*)",
+   "Bash(npx:*)",
+   "Bash(ssh:*)",
+   "Bash(nc:*)",
+   "--model",
+   "claude-haiku-5-5"
+  ],
+  "env_names": [
+   "CLAUDE_CODE_OAUTH_TOKEN",
+   "CVDP_HARNESS",
+   "CVDP_MODEL",
+   "CVDP_OUT_DIR",
+   "CVDP_PROVIDER",
+   "CVDP_ROOT",
+   "CVDP_SEED"
+  ],
+  "home_has_claude_dir": false
+ },
+ "summary": {
+  "cache_read_tokens": 900,
+  "completion_tokens": 50,
+  "cost_unreported_calls": 0,
+  "cost_usd": null,
+  "harness": "claudecode",
+  "kept": "",
+  "llm_calls": 3,
+  "model": "claude-haiku-5-5",
+  "network_flags": [],
+  "plan_cost_estimate_usd": 0.02,
+  "prompt_tokens": 1000,
+  "provider": "claude_plan",
+  "requested_model": "claude-haiku-5-5",
+  "seed": "1",
+  "stop_reason": "submit",
+  "switches": {
+   "budget_usd": 0.1,
+   "harness": "claudecode",
+   "lint": true,
+   "max_rounds": 60,
+   "max_turns": 10,
+   "provider_order": "",
+   "reasoning": "default",
+   "self_check": true,
+   "wall_s": 480.0
+  },
+  "tool_calls": 3,
+  "turns": 3,
+  "visible_top_level": [
+   "docs",
+   "prompt.json",
+   "rtl"
+  ]
+ }
+}
