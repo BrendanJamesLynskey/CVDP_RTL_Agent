@@ -3,6 +3,14 @@
 Written on 2026-10-31, on the branch `m3h-cc-skills`, before any scored dispatch. Nothing here may change after the
 first scored dispatch. Anything learned later goes in the report, marked as such.
 
+**Amended on 2026-10-31, after the smoke runs and before any scored dispatch, with the owner's approval.** In the
+smoke runs Haiku loaded a pack skill in 0 of 12 problem-runs without the hint, and in 3 of 3 with it. So the arms
+without the hint would mostly measure "the pack is not used". The owner's question is what the pack does when it is
+used. So the scored pack arms now all carry the one-line hint (S1c, S2c). One unhinted S2 run on the held-out set is
+kept to measure the unprompted load rate, as a descriptive figure. The old conditional S2c rule is removed. The first
+version of this file is in commit `4cd735c`. Nothing else changed: the mechanism, the sets, the rate-limit rule, the
+statistics and the decision rule are as written there.
+
 ## The question
 
 M3g put pack v1 into luna's prompts and found no effect, but it could not show that luna acted on the pack. Claude
@@ -82,17 +90,18 @@ Settings common to all arms:
 The ladder's other sweep inputs are kept as they were: `reasoning=low`, `budget_usd=0.10`, `max_turns=10`. All
 three are labels only for this harness.
 
-| Arm | Sweep inputs beyond the common ones | Skills installed |
-|---|---|---|
-| A | none | none (Claude Code's bundled skills only, as in every arm) |
-| S1 | `skill_pack=v1.0` | the 15 of `v1.0` |
-| S2 | `skill_pack=v2.0` | the 25 of `v2.0` |
-| S2c (conditional) | `skill_pack=v2.0`, `skill_hint=true` | the 25 of `v2.0`, plus a user `CLAUDE.md` with the one line "RTL design skills are installed; check them before you start." |
+| Arm | Sweep inputs beyond the common ones | Skills installed | Runs |
+|---|---|---|---|
+| A | none | none (Claude Code's bundled skills only, as in every arm) | 3 held-out, 3 on the 86 |
+| S1c | `skill_pack=v1.0`, `skill_hint=true` | the 15 of `v1.0`, plus the hint | 3 held-out, 3 on the 86 |
+| S2c | `skill_pack=v2.0`, `skill_hint=true` | the 25 of `v2.0`, plus the hint | 3 held-out, 3 on the 86 |
+| S2 | `skill_pack=v2.0` | the 25 of `v2.0`, no hint | 1 held-out (descriptive: the unprompted load rate) |
 
-**The S2c condition.** S2c runs only if S2 loads at least one pack skill (`skills_n ≥ 1`) in **under 25%** of its
-valid problem-runs. That rate is pooled over both sets and all of S2's runs, and leaves out rate-limited rows. If S2c
-runs, it runs like S2 (both sets, 3 runs each). It is reported as a conditional secondary: S2c − A, and S2c − S2.
-The primary comparison stays S2 − A.
+**The hint** is a user-level `CLAUDE.md`, in the same private HOME, with the one line "RTL design skills are
+installed; check them before you start." **Caveat:** a hinted pack arm differs from A by the pack *and* this one
+line. A has no hint, because with no skills installed the line would be false. So S1c − A and S2c − A measure "the
+pack plus a nudge to use it", not the pack alone. S2c − S1c holds the hint fixed, and so isolates `v2.0`'s ten new
+skills (and its new index).
 
 ## The problem sets and runs
 
@@ -103,8 +112,11 @@ The primary comparison stays S2 − A.
   - The scores come from the benchmark's hidden tests, run outside the agent's container.
 - **Development set:** M3b's 86 evaluation problems (`split=agentic`, `tools/m3b_eval_ids.txt`). The 79-problem
   view leaves out `tools/benchmark_limited_ids.txt`.
-- **Runs:** 3 per arm per set, dispatched one sweep at a time from one commit of `m3h-cc-skills`, with `seeds=1`
-  and `seed_offset` 0, 1 and 2. That makes 18 sweeps for A, S1 and S2, and 6 more if S2c runs.
+- **Runs:** as in the table above, dispatched one sweep at a time from one commit of `m3h-cc-skills`, with `seeds=1`
+  and `seed_offset` 0, 1 and 2 (S2: `seed_offset` 0). That makes 10 held-out sweeps and 9 on the 86.
+- **Order.** The held-out phase runs first, interleaved to spread drift over time: A1, S1c1, S2c1, A2, S1c2, S2c2,
+  A3, S1c3, S2c3, then S2. The phase on the 86 runs after the weekly plan reset on 2026-11-02, in the same
+  interleaved order without S2.
 - Arm A is a fresh rerun on both sets. The ladder's one Haiku run on the 86 (2026-10-26) is shown for reference only.
 
 ## Rate limits
@@ -122,8 +134,8 @@ hand. Now it ends as **`rate_limited`**, and the rule is:
 
 ## The comparisons
 
-**Primary: S2 − A on the held-out set.** The test is paired over the 100 problems, computed with
-`python3 tools/ablate.py --base A --ids tools/m3g_heldout_ids.txt --arm A=... --arm S2=...`:
+**Primary: S2c − A on the held-out set.** The test is paired over the 100 problems, computed with
+`python3 tools/ablate.py --base A --ids tools/m3g_heldout_ids.txt --arm A=... --arm S2c=...`:
 
 - each problem's pass rate over its 3 runs per arm, and the mean difference;
 - a paired bootstrap 95% interval over problems (2,000 resamples);
@@ -136,7 +148,7 @@ The outcome is read as follows:
 - otherwise → **no detectable effect**: report the interval and the size of effect it rules out.
 
 **Decision rule (as M3g).** A held-out gain counts as a **finding** only if the development set agrees with it:
-S2 − A must be positive on the 86 too, whatever its interval. A held-out gain with a development-set effect at or
+S2c − A must be positive on the 86 too, whatever its interval. A held-out gain with a development-set effect at or
 below zero is reported as a held-out result that the development set does not support. A development-set gain on
 its own is not a finding.
 
@@ -153,10 +165,10 @@ from 50% narrows the interval. The report gives the realised half-width.
 
 **Secondary comparisons (descriptive unless stated):**
 
-- S1 − A on the held-out set, and S2 − S1 on the held-out set, with the same tool and interval.
+- S1c − A on the held-out set, and S2c − S1c on the held-out set, with the same tool and interval.
 - The same three comparisons on the 86, labelled **development set**, with the 79-problem view beside them (never
   in place of them). The ladder's Haiku run is shown for reference only.
-- **Skill-load rates** per arm and set:
+- **Skill-load rates** per arm and set, including the single unhinted S2 run (the unprompted rate):
   - the share of problem-runs that load any pack skill;
   - each skill's load count;
   - the distribution of `skill_first_turn`;
@@ -186,4 +198,4 @@ See [`smoke.md`](smoke.md). In short, the 8 smoke runs showed the following:
 - With S2c's one-line hint, it loaded pack skills at turn 1 in 3 of 3.
 - The leak guard passed on every run.
 
-The S2c condition above was fixed before these runs and is not changed by them.
+These results are the reason for the amendment at the top of this file.

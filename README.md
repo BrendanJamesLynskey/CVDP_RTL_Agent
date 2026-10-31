@@ -127,8 +127,9 @@ fresh HOME outside the task tree, and records every `Skill` call (`skills_loaded
 without the text. The raw transcript is not kept in a pack arm, and
 [`tools/leak_guard.py`](tools/leak_guard.py) fails a job before anything is published if any 80-byte window of the
 pack's private text is in it. A problem cut off by the plan's limit is recorded as `rate_limited` and rerun
-([`tools/m3h_merge.py`](tools/m3h_merge.py)), never scored as a failure. Arms A, S1 and S2 on M3g's held-out 100 and
-the 86, 3 runs each; scored sweeps not yet run.
+([`tools/m3h_merge.py`](tools/m3h_merge.py)), never scored as a failure. Arms A, S1c and S2c (the pack plus a one-line hint
+to use it; amended after the smoke runs, where Haiku loaded no skill unprompted) on M3g's held-out 100 and the 86, 3
+runs each, plus one unhinted S2 run on the held-out set.
 
 **M2a** (merged, [`docs/reports/M2a_report.md`](docs/reports/M2a_report.md)): reasoning limits, a retry on empty
 replies and unreadable decisions, and seeds. On the same 10 problems on Arm64, DeepSeek at `reasoning=off` passed
