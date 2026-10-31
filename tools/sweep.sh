@@ -41,6 +41,8 @@ MUTATION_GATE=${MUTATION_GATE:-0}    # M3c: 1 = mutation-score gate before submi
 INTERFACE_CHECK=${INTERFACE_CHECK:-0} # M3c: 1 = interface diff by elaboration after each edit (langgraph only)
 VERIFY_SUBMIT=${VERIFY_SUBMIT:-0}    # M3d: 1 = a submit is refused until the design passed a simulation (langgraph)
 SPEC_VECTORS=${SPEC_VECTORS:-0}      # M3d: 1 = VERIFY_SUBMIT plus blind reference cases from the spec (langgraph)
+DATA_COLLECTION=${DATA_COLLECTION:-} # F1B: deny = OpenRouter routes only to providers that collect no data; blank = as before
+CLAUDE_ENDPOINT=${CLAUDE_ENDPOINT:-plan} # F1B, claudecode only: plan (the owner's plan) | openrouter (any OpenRouter model)
 SKILLS=${SKILLS:-}                   # M3g: a knowledge pack directory in the repo (MANIFEST.sha256); blank = none
 STEP_BUDGET_S=${STEP_BUDGET_S:-}
 SEED_PROBLEM_WORST_S=${SEED_PROBLEM_WORST_S:-660}
@@ -86,6 +88,12 @@ if [ -n "$MEMORY" ]; then
   [[ "$MEMORY" =~ ^[A-Za-z0-9._/-]+\.json$ ]] || die "MEMORY must be a path to a .json snapshot, got '$MEMORY'"
   [ -f "$MEMORY" ] || die "MEMORY: no such file '$MEMORY'"
 fi
+case "$DATA_COLLECTION" in ""|deny) ;; *) die "DATA_COLLECTION must be blank or deny, got '$DATA_COLLECTION'" ;; esac
+case "$CLAUDE_ENDPOINT" in plan|openrouter) ;; *) die "CLAUDE_ENDPOINT must be plan or openrouter, got '$CLAUDE_ENDPOINT'" ;; esac
+if [ "$CLAUDE_ENDPOINT" = openrouter ] && [ "$HARNESS" != claudecode ]; then die "CLAUDE_ENDPOINT=openrouter needs HARNESS=claudecode"; fi
+if [ -n "$DATA_COLLECTION" ] && [ "$HARNESS" = claudecode ]; then
+  die "DATA_COLLECTION is a request field of our client; Claude Code makes its own requests"
+fi
 [[ "$MODEL" =~ ^[A-Za-z0-9._:/-]+$ ]] || die "MODEL has unexpected characters: '$MODEL'"
 case "$PHASE" in all|run|collect) ;; *) die "phase must be all, run or collect" ;; esac
 
@@ -124,7 +132,7 @@ run_phase() {
   printf '{"problems": %s, "seeds": %s, "seed_offset": %s, "run_budget_usd": %s, "model": "%s", "reasoning": "%s", "provider_order": "%s"}\n' \
     "$n" "$SEEDS" "$SEED_OFFSET" "$guard" "$MODEL" "$REASONING" "$PROVIDER_ORDER" > "$work.run.json"
   python3 - "$work.run.json" "$HARNESS" "$MEMORY" "$MUTATION_GATE" "$INTERFACE_CHECK" "$VERIFY_SUBMIT" \
-    "$SPEC_VECTORS" "$SKILLS" "$SPLIT" <<'EOF'
+    "$SPEC_VECTORS" "$SKILLS" "$SPLIT" "$DATA_COLLECTION" "$CLAUDE_ENDPOINT" <<'EOF'
 import json, sys
 run = json.load(open(sys.argv[1]))
 run.update(harness=sys.argv[2], memory=sys.argv[3])
@@ -136,10 +144,16 @@ if sys.argv[8]:  # M3g, likewise
     run.update(skills=sys.argv[8])
 if sys.argv[9].startswith("m3g_"):
     run.update(split=sys.argv[9])
+if sys.argv[10]:  # F1B, likewise
+    run.update(data_collection=sys.argv[10])
+if sys.argv[11] != "plan":
+    run.update(claude_endpoint=sys.argv[11])
 json.dump(run, open(sys.argv[1], "w"))
 EOF
 
-  if [ "$MODEL" = fake ]; then export CVDP_PROVIDER=fake; elif [ "$HARNESS" = claudecode ]; then export CVDP_PROVIDER=claude_plan
+  if [ "$MODEL" = fake ]; then export CVDP_PROVIDER=fake; elif [ "$HARNESS" = claudecode ] && [ "$CLAUDE_ENDPOINT" = openrouter ]; then
+    export CVDP_PROVIDER=claude_openrouter
+  elif [ "$HARNESS" = claudecode ]; then export CVDP_PROVIDER=claude_plan
   else export CVDP_PROVIDER=openrouter; fi
   export CVDP_MODEL="$MODEL" CVDP_BUDGET_USD="$BUDGET_USD" CVDP_MAX_TURNS="$MAX_TURNS" CVDP_SELF_CHECK="$SELF_CHECK" \
     CVDP_LINT="$LINT" CVDP_LEDGER_DIR=/ledger CVDP_RUN_BUDGET_USD="$guard" CVDP_REASONING="$REASONING" \
@@ -156,7 +170,10 @@ EOF
     export CVDP_AGENT_MOUNTS="$CVDP_AGENT_MOUNTS;$(cd "$SKILLS" && pwd):$CVDP_SKILLS:ro"
     export CVDP_AGENT_ENV="$CVDP_AGENT_ENV,CVDP_SKILLS"
   fi
-  if [ "$CVDP_PROVIDER" = openrouter ]; then
+  if [ -n "$DATA_COLLECTION" ]; then  # F1B: named only when set
+    export CVDP_DATA_COLLECTION="$DATA_COLLECTION" CVDP_AGENT_ENV="$CVDP_AGENT_ENV,CVDP_DATA_COLLECTION"
+  fi
+  if [ "$CVDP_PROVIDER" = openrouter ] || [ "$CVDP_PROVIDER" = claude_openrouter ]; then
     test -n "${OPENROUTER_API_KEY:-}" || die "OPENROUTER_API_KEY is not set"
     export CVDP_AGENT_ENV="OPENROUTER_API_KEY,$CVDP_AGENT_ENV"
   fi

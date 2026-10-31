@@ -133,9 +133,11 @@ def default(node):
 class OpenRouterLLM:
     """OpenRouter's chat completions endpoint through the `openai` client, called directly (not through langchain)
     so the whole response is kept: the `provider` that served the call, `usage.cost` and the reasoning-token
-    count. `provider_order` pins OpenRouter's routing (`provider: {order, allow_fallbacks: false}`)."""
+    count. `provider_order` pins OpenRouter's routing (`provider: {order, allow_fallbacks: false}`).
+    `data_collection="deny"` (F1B) routes only to providers that do not collect prompts (`provider: {data_collection:
+    "deny"}`); left blank, the request is unchanged."""
 
-    def __init__(self, model, timeout_s=120.0, http_client=None, provider_order=None):
+    def __init__(self, model, timeout_s=120.0, http_client=None, provider_order=None, data_collection=""):
         import openai  # imported here so tests need no network client
 
         if not model:
@@ -146,6 +148,7 @@ class OpenRouterLLM:
         self.model = model
         self._key = key
         self.provider_order = [p for p in (provider_order or []) if p]
+        self.data_collection = data_collection or ""
         extra = {"http_client": http_client} if http_client is not None else {}
         self._client = openai.OpenAI(api_key=key, base_url=OPENROUTER_BASE, timeout=timeout_s, max_retries=1,
                                      **extra)
@@ -158,6 +161,8 @@ class OpenRouterLLM:
             body["reasoning"] = rb
         if self.provider_order:
             body["provider"] = {"order": self.provider_order, "allow_fallbacks": False}
+        if self.data_collection:
+            body.setdefault("provider", {})["data_collection"] = self.data_collection
         return body
 
     def invoke(self, node, messages, max_tokens=None, timeout=None, reasoning="default", max_retries=None,
@@ -239,5 +244,5 @@ def make(cfg, clock=None):
     if cfg.provider == "fake":
         return FakeLLM.from_spec(cfg.fake_script)
     if cfg.provider == "openrouter":
-        return OpenRouterLLM(cfg.model, provider_order=cfg.provider_order)
+        return OpenRouterLLM(cfg.model, provider_order=cfg.provider_order, data_collection=cfg.data_collection)
     raise ValueError(f"unknown CVDP_PROVIDER {cfg.provider!r}")
