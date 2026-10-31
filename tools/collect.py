@@ -47,10 +47,11 @@ FIELDS = ["label", "id", "seed", "cid", "difficulty", "pass", "tests", "tests_pa
           "skills_truncated"]
 # M3h: Claude Code's native skills, appended only for a sweep with a skill pack (`--skill-pack`), so a CSV without
 # one keeps exactly the columns above. M3g's skills_loaded column holds every Skill call in order (";"), bundled
-# skills' names included; skills_n: distinct pack skills loaded; skill_first_turn: the assistant turn of the first pack load.
-# skills_loaded is M3g's column (blank without M3g's pack), reused rather than added twice.
-M3H_FIELDS = ["skill_pack", "skill_pack_sha", "skill_hint", "skills_installed", "skills_n", "skill_first_turn",
-              "rate_limit"]
+# skills' names included; skills_listed: pack skills in Claude Code's own init list; skills_n: distinct pack skills
+# loaded; skill_first_turn: the assistant turn of the first pack load. skills_loaded is M3g's column (blank without
+# M3g's pack), reused rather than added twice.
+M3H_FIELDS = ["skill_pack", "skill_pack_sha", "skill_hint", "skills_installed", "skills_listed", "skills_n",
+              "skill_first_turn", "rate_limit"]
 M3C_GATE = ("gate_runs", "gate_failures", "mutants_generated", "mutants_compiled", "mutants_killed",
             "mutants_unfinished", "gate_wall_s")
 M3C_IFACE = ("interface_runs", "interface_mismatch_runs", "interface_blocks")
@@ -141,6 +142,7 @@ def m3h_columns(s):
         out["skill_pack_sha"] = s.get("skill_pack_sha") or ""
         out["skill_hint"] = int(bool((s.get("switches") or {}).get("skill_hint")))
         out["skills_installed"] = s.get("skills_installed", 0)
+        out["skills_listed"] = "" if s.get("skills_listed") is None else s["skills_listed"]
         out["skills_loaded"] = ";".join(str(x) for x in (s.get("skills_loaded") or []))
         out["skills_n"] = s.get("skills_n", 0)
         out["skill_first_turn"] = "" if s.get("skill_first_turn") is None else s["skill_first_turn"]

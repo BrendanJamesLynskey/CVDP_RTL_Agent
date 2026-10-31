@@ -121,6 +121,18 @@ def skill_calls(lines):
     return calls
 
 
+def listed(lines):
+    """The skill names Claude Code's `init` event says the model was offered (bundled ones included), or None."""
+    for line in lines:
+        try:
+            ev = json.loads(line)
+        except (ValueError, TypeError):
+            continue
+        if isinstance(ev, dict) and ev.get("type") == "system" and ev.get("subtype") == "init":
+            return [str(x)[:80] for x in ev.get("skills") or []]
+    return None
+
+
 def tool_skeleton(lines):
     """What the pack arms keep of the transcript: per tool call, its turn and tool name (and a Skill call's skill
     name), no text, no inputs, no results. The raw stream holds the loaded skill bodies, so it is never written."""

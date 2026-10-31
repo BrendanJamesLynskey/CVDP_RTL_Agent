@@ -117,6 +117,19 @@ held-out set nobody had inspected: 100 of CVDP's non-agentic (copilot) problems,
 +57% prompt tokens on the held-out set, and did not reduce interface mismatches. 9 scored sweeps, $3.84 ($3.89 with
 smoke).
 
+**M3h** (in progress; pre-registered in [`docs/reports/m3h/preregistration.md`](docs/reports/m3h/preregistration.md),
+report [`docs/reports/M3h_report.md`](docs/reports/M3h_report.md), smoke runs
+[`docs/reports/m3h/smoke.md`](docs/reports/m3h/smoke.md)): does Claude Code with Haiku 5.5 use the knowledge pack when
+it is installed as Claude Code's own skills, and does it help? Sweep input `skill_pack` (`v1.0` or `v2.0` of a private
+pack repository, checked against hashes pinned in
+[`agent/cvdp_agent/native_skills.py`](agent/cvdp_agent/native_skills.py)) installs each skill as a `SKILL.md` in a
+fresh HOME outside the task tree, and records every `Skill` call (`skills_loaded`, `skills_n`, `skill_first_turn`)
+without the text. The raw transcript is not kept in a pack arm, and
+[`tools/leak_guard.py`](tools/leak_guard.py) fails a job before anything is published if any 80-byte window of the
+pack's private text is in it. A problem cut off by the plan's limit is recorded as `rate_limited` and rerun
+([`tools/m3h_merge.py`](tools/m3h_merge.py)), never scored as a failure. Arms A, S1 and S2 on M3g's held-out 100 and
+the 86, 3 runs each; scored sweeps not yet run.
+
 **M2a** (merged, [`docs/reports/M2a_report.md`](docs/reports/M2a_report.md)): reasoning limits, a retry on empty
 replies and unreadable decisions, and seeds. On the same 10 problems on Arm64, DeepSeek at `reasoning=off` passed
 6/10 for $0.0867 with no empty replies; at `low` it passed 7/10 for $0.3546 with 14 empty replies.
@@ -474,6 +487,7 @@ empty (an old ledger and the harness's reuse of `raw_result.json` would make the
 | M3d | Verify before submit: a refused submit until a testbench passes on the current design, and blind spec cases |
 | M3e | Harness or model: the LangGraph agent with Claude models, against Claude Code and against luna |
 | M3g | A frozen knowledge pack loaded as skills, tested on a held-out set of non-agentic problems frozen before any run |
+| M3h | The knowledge pack as Claude Code's own skills, with Haiku 5.5: is it used, and does it help |
 | M4 | Write-up, logs packed for the Si2 LBC-bench leaderboard |
 | M5 | Open AMBA verification track: test plan, cocotb testbench with coverage, SVA with SymbiYosys; scored by seeded-bug kill rate and false alarms |
 

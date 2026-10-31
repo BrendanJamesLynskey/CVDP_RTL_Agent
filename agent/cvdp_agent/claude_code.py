@@ -201,8 +201,10 @@ def run(cfg):
         calls = native_skills.skill_calls(lines)
         known = set(pack_names)
         pack_calls = [(t, n) for t, n in calls if n in known]
+        offered = native_skills.listed(lines)  # Claude Code's own list: evidence the install was read
         summary.update(skills_loaded=[n for _, n in calls], skills_n=len({n for _, n in pack_calls}),
-                       skill_first_turn=pack_calls[0][0] if pack_calls else None)
+                       skill_first_turn=pack_calls[0][0] if pack_calls else None,
+                       skills_listed=None if offered is None else len(known & set(offered)))
     result, tools, bash, models = parse_stream(lines)
     usage = (result or {}).get("usage") or {}
     summary.update(

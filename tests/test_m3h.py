@@ -239,7 +239,7 @@ def test_pack_is_installed_outside_the_tree_and_loads_are_recorded(tmp_path, mon
     assert s["skill_pack_sha"] == native_skills.PINNED["v9.9"]["manifest_sha256"]
     # every Skill call in order, the bundled one included; distinct pack skills; turn of the first pack load
     assert s["skills_loaded"] == ["debug", "beta-skill", "alpha-skill", "beta-skill"]
-    assert s["skills_n"] == 2 and s["skill_first_turn"] == 2
+    assert s["skills_n"] == 2 and s["skill_first_turn"] == 2 and s["skills_listed"] == 2
     assert s["switches"]["skill_pack"] == "v9.9" and "skill_hint" not in s["switches"]
     out = root / "rundir" / "agent_out"
     assert sorted(os.listdir(out)) == ["claude_tools.jsonl", "summary.json"]  # no raw stream
@@ -301,6 +301,7 @@ def test_collect_writes_the_m3h_columns_with_skill_pack(tmp_path, monkeypatch):
     r = collect.rows(str(work), skill_pack=True)[0]
     assert (r["skill_pack"], r["skills_n"], r["skill_first_turn"]) == ("v9.9", 2, 2)
     assert r["skills_loaded"] == "debug;beta-skill;alpha-skill;beta-skill" and r["skills_installed"] == 2
+    assert r["skills_listed"] == 2
     assert "skill_pack" not in collect.rows(str(work))[0]
 
 
@@ -442,3 +443,19 @@ def test_guard_fails_without_a_pack(tmp_path):
     r = subprocess.run(["python3", os.path.join(ROOT, "tools", "leak_guard.py"), "--pack", str(tmp_path / "none"),
                         str(tmp_path)], capture_output=True, text=True)
     assert r.returncode == 2
+
+
+# ---------- reruns of rate-limited problems ----------
+
+def test_merge_replaces_only_rate_limited_rows(tmp_path):
+    import m3h_merge
+
+    a, b = tmp_path / "a.csv", tmp_path / "b.csv"
+    a.write_text("id,seed,pass,stop_reason\nx,1,0,rate_limited\ny,1,0,submit\nz,1,0,rate_limited\n")
+    b.write_text("id,seed,pass,stop_reason\nx,1,1,submit\ny,1,1,submit\nz,1,0,rate_limited\n")
+    header, rows = m3h_merge.merge([str(a), str(b)])
+    got = {(r["id"], r["pass"], r["stop_reason"]) for r in rows}
+    assert got == {("x", "1", "submit"), ("y", "0", "submit"), ("z", "0", "rate_limited")}  # a fail is kept
+    (tmp_path / "c.csv").write_text("id,pass\nx,1\n")
+    with pytest.raises(SystemExit):
+        m3h_merge.merge([str(a), str(tmp_path / "c.csv")])
