@@ -179,4 +179,11 @@ one at a time. The planner dispatches the scored sweeps only after the owner agr
 
 ## Smoke runs (not scored, before this file was final)
 
-See [`smoke.md`](smoke.md).
+See [`smoke.md`](smoke.md). In short, the 8 smoke runs showed the following:
+
+- Claude Code offered every pack skill to the model in every pack problem-run.
+- Haiku loaded none of them in any of the 12 S1 and S2 problem-runs.
+- With S2c's one-line hint, it loaded pack skills at turn 1 in 3 of 3.
+- The leak guard passed on every run.
+
+The S2c condition above was fixed before these runs and is not changed by them.
