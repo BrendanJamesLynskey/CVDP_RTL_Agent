@@ -1,0 +1,1 @@
+12 valid rows -> docs/reports/fable_wallcap/runs/fable_1500s_merged.csv; still without a valid row: 5: cvdp_agentic_nmea_gps_0008, cvdp_agentic_sigma_delta_audio_0001, cvdp_agentic_sorter_0009, cvdp_agentic_spi_complex_mult_0002, cvdp_agentic_sync_serial_communication_0001

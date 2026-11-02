@@ -134,3 +134,21 @@ def test_analyze_substitutes_the_rerun_rows_and_counts(tmp_path):
         assert "missing ['p3']" in str(e)
     else:
         raise AssertionError("accepted a rerun missing a problem")
+
+
+def test_merge_keeps_the_first_valid_row_per_problem(tmp_path):
+    fields = ["id", "pass", "stop_reason", "wall_time_s"]
+    _csv(tmp_path / "d1.csv", [{"id": "p1", "pass": "1", "stop_reason": "submit", "wall_time_s": "300"},
+                               {"id": "p2", "pass": "1", "stop_reason": "llm_error", "wall_time_s": "700"},
+                               {"id": "p3", "pass": "0", "stop_reason": "llm_error", "wall_time_s": "1"},
+                               {"id": "p4", "pass": "0", "stop_reason": "wall_time", "wall_time_s": "1500.0"}], fields)
+    _csv(tmp_path / "d2.csv", [{"id": "p2", "pass": "0", "stop_reason": "submit", "wall_time_s": "900"},
+                               {"id": "p3", "pass": "0", "stop_reason": "rate_limited", "wall_time_s": "2"},
+                               {"id": "p1", "pass": "0", "stop_reason": "submit", "wall_time_s": "10"}], fields)
+    rows, left = fable_wallcap.merge([str(tmp_path / "d1.csv"), str(tmp_path / "d2.csv")], str(tmp_path / "m.csv"))
+    # p1 from d1 (the first valid row wins, a later row never replaces it); p2's limit-stopped pass is not an attempt,
+    # d2's failure is the row; p3 has no valid row yet; p4's wall-cap stop is a valid attempt
+    assert [(r["id"], r["pass"], r["dispatch"]) for r in rows] == [("p1", "1", "d1"), ("p2", "0", "d2"), ("p4", "0", "d1")]
+    assert left == ["p3"]
+    got = list(csv.DictReader(open(tmp_path / "m.csv")))
+    assert [r["dispatch"] for r in got] == ["d1", "d2", "d1"] and list(got[0]) == fields + ["dispatch"]

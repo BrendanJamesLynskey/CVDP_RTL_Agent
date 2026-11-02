@@ -69,6 +69,11 @@ problems, paired against M3c's arm A (LangGraph + `gpt-6-luna`). Opus 5.5 73.3% 
 Sonnet 5.5 69.8% (+8.1 [−0.4, +17.4]), Fable 5.1 67.4% (+5.8, 17 problems stopped on the 480 s wall cap), Haiku 5.5
 66.3% (+4.7). Both model and harness differ from the base.
 
+**Fable wall-cap rerun** (exploratory and incomplete, [`docs/reports/fable_wallcap.md`](docs/reports/fable_wallcap.md)):
+the 17 problems Fable 5.1 stopped on the 480 s cap in the ladder, rerun with a 1,500 s cap. 12 of 17 measured (7 passed,
+5 failed), 5 not measured because the plan's 5-hour limit cut both dispatches; no score is recomputed (bounds 58 to 63
+of 86).
+
 **Unsolved-problem analysis** ([`docs/reports/unsolved_analysis.md`](docs/reports/unsolved_analysis.md)): why the 12
 evaluation problems no Claude model solved fail, from the hidden tests, all 84 attempts rerun locally, and
 counterfactual reruns. 7 are benchmark-limited with strong evidence (listed in `tools/benchmark_limited_ids.txt`), 2

@@ -7,7 +7,13 @@ wall-time distribution under the new cap, and Fable's 86-problem score with the 
 ladder's. It also writes that substituted 86-row CSV, so ablate.py can pair it against the base. The substituted score
 is exploratory: one run, a different Claude Code version, and a longer cap than any other ladder arm had.
 
+`merge` does what the ladder did when the plan's limits cut a sweep short: from the dispatches' CSVs, in order, it keeps
+each problem's first valid row (a row whose stop was not `llm_error`, `error`, `rate_limited` or `no_task`; a problem
+the plan limit stopped never counts as an attempt, a failure is never rerun) and writes the one-row-per-problem CSV
+with a `dispatch` column naming the run it came from.
+
 Usage: python3 tools/fable_wallcap.py ids <ladder.csv> <ids.txt>
+       python3 tools/fable_wallcap.py merge <out.csv> <dispatch1.csv> [<dispatch2.csv> ...]
        python3 tools/fable_wallcap.py analyze <ladder.csv> <rerun.csv> --ids <ids.txt> [--substituted OUT.csv]
            [--cap 1500] > tables.md
 """
@@ -46,6 +52,31 @@ def write_ids(rows, src, out):
         for i in ids:
             f.write(i + "\n")
     return ids
+
+
+INVALID = ("error", "llm_error", "rate_limited", "no_task")
+
+
+def merge(paths, out):
+    """One valid row per problem, from the dispatches in order; returns (kept rows, ids with no valid row yet)."""
+    kept, invalid = {}, {}
+    for path in paths:
+        name = os.path.splitext(os.path.basename(path))[0]
+        for r in read_rows(path):
+            if r["id"] in kept:
+                continue
+            if r.get("stop_reason") in INVALID:
+                invalid[r["id"]] = invalid.get(r["id"], 0) + 1
+            else:
+                kept[r["id"]] = dict(r, dispatch=name)
+    rows = [kept[i] for i in sorted(kept)]
+    if rows:
+        fields = [k for k in rows[0] if k != "dispatch"] + ["dispatch"]
+        with open(out, "w", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=fields)
+            w.writeheader()
+            w.writerows(rows)
+    return rows, sorted(i for i in invalid if i not in kept)
 
 
 def _f(x):
@@ -152,6 +183,9 @@ def main(argv=None):
     a = sub.add_parser("ids")
     a.add_argument("ladder")
     a.add_argument("out")
+    m = sub.add_parser("merge")
+    m.add_argument("out")
+    m.add_argument("dispatches", nargs="+")
     b = sub.add_parser("analyze")
     b.add_argument("ladder")
     b.add_argument("rerun")
@@ -162,6 +196,10 @@ def main(argv=None):
     if args.cmd == "ids":
         ids = write_ids(read_rows(args.ladder), args.ladder, args.out)
         print(f"{len(ids)} ids -> {args.out}")
+    elif args.cmd == "merge":
+        rows, left = merge(args.dispatches, args.out)
+        print(f"{len(rows)} valid rows -> {args.out}; still without a valid row: {len(left)}"
+              + (": " + ", ".join(left) if left else ""))
     else:
         analyze(read_rows(args.ladder), read_rows(args.rerun), read_ids(args.ids), args.cap, args.substituted)
 
