@@ -637,6 +637,67 @@ m3g = {
 m3g["ptok_x"] = {s: round(100 * (m3g["ptok"][s + "K"] / m3g["ptok"][s + "A"] - 1)) for s in "hd"}
 m3g["money_x"] = round(100 * (g_arms["hK"]["cost"] / g_arms["hA"]["cost"] - 1))
 
+# ---- M3h (the pack as Claude Code's own skills) and M3i (Claude Code stripped to our prompt and four tools) ----
+# docs/reports/M3h_report.md, m3h/ and M3i_report.md, m3i/. Prefixes h_ and i_. Names and counts only: no skill text, and
+# no held-out id, text or test, reaches the page or the data block. Both ran on the Max plan: nothing is billed per call.
+M3H = os.path.join(REP, "m3h")
+M3I = os.path.join(REP, "m3i")
+def hi_load(base, stem):
+    out = []
+    for f in sorted(glob.glob(os.path.join(base, "runs", stem + "*.csv"))):
+        tag, run_id = os.path.basename(f)[:-4].rsplit("_", 1)
+        out.append((tag.split("_")[1], run_id, rows(f)))
+    return out
+H_RUNS = {"hA": hi_load(M3H, "heldout_A"), "hS1": hi_load(M3H, "heldout_S1c"), "hS2": hi_load(M3H, "heldout_S2c"),
+          "hS2n": hi_load(M3H, "heldout_S2_"), "hP": hi_load(M3I, "heldout_P"),
+          "dA": restrict(hi_load(M3H, "dev86_A_"), EVAL), "dS1": restrict(hi_load(M3H, "dev86_S1c_"), EVAL),
+          "dS2": restrict(hi_load(M3H, "dev86_S2c_"), EVAL), "dP": restrict(hi_load(M3I, "dev86_P_"), EVAL)}
+h_arms = {k: pool(v) for k, v in H_RUNS.items()}
+h_rows = {k: [x for _, _, r in v for x in r] for k, v in H_RUNS.items()}
+def h_eff(path, key):
+    return parse_sections(path)[key]
+h_effects = {
+    "ho": h_eff(os.path.join(M3H, "heldout_paired.md"), "S2c-A"), "ho_s1": h_eff(os.path.join(M3H, "heldout_paired.md"), "S1c-A"),
+    "ho_s2s1": h_eff(os.path.join(M3H, "heldout_paired_S2c_S1c.md"), "S2c-S1c"),
+    "d86": h_eff(os.path.join(M3H, "dev86_paired.md"), "S2c-A"), "d86_s1": h_eff(os.path.join(M3H, "dev86_paired.md"), "S1c-A"),
+    "d86_s2s1": h_eff(os.path.join(M3H, "dev86_paired_S2c_S1c.md"), "S2c-S1c"),
+    "d79": h_eff(os.path.join(M3H, "dev79_paired.md"), "S2c-A"), "d79_s1": h_eff(os.path.join(M3H, "dev79_paired.md"), "S1c-A"),
+}
+h_chk = {"ho": paired_ids(h_arms["hS2"], h_arms["hA"], G_HO), "ho_s1": paired_ids(h_arms["hS1"], h_arms["hA"], G_HO),
+         "ho_s2s1": paired_ids(h_arms["hS2"], h_arms["hS1"], G_HO),
+         "d86": paired_ids(h_arms["dS2"], h_arms["dA"], EVAL), "d86_s1": paired_ids(h_arms["dS1"], h_arms["dA"], EVAL),
+         "d86_s2s1": paired_ids(h_arms["dS2"], h_arms["dS1"], EVAL),
+         "d79": paired_ids(h_arms["dS2"], h_arms["dA"], EVAL79), "d79_s1": paired_ids(h_arms["dS1"], h_arms["dA"], EVAL79)}
+i_effects = {"ho": h_eff(os.path.join(M3I, "heldout_paired.md"), "P-D"), "d86": h_eff(os.path.join(M3I, "dev86_paired.md"), "P-D"),
+             "d79": h_eff(os.path.join(M3I, "dev79_paired.md"), "P-D")}
+i_chk = {"ho": paired_ids(h_arms["hP"], h_arms["hA"], G_HO), "d86": paired_ids(h_arms["dP"], h_arms["dA"], EVAL),
+         "d79": paired_ids(h_arms["dP"], h_arms["dA"], EVAL79)}
+def h_med(k, col):
+    return statistics.median(float(x[col]) for x in h_rows[k])
+def h_mean(k, col):
+    return sum(float(x[col] or 0) for x in h_rows[k]) / len(h_rows[k])
+def h_ptok(k):
+    return h_mean(k, "prompt_tokens")
+def h_loaded(k):
+    return sum(1 for x in h_rows[k] if int(x.get("skills_n") or 0) > 0)
+m3h = {
+    "effects": h_effects, "n_ho": len(G_HO), "n": len(EVAL), "n79": len(EVAL79),
+    "arms": {k: {"k": v["k"], "n": v["n"], "rate": v["rate"]} for k, v in h_arms.items()},
+    "loaded": {k: h_loaded(k) for k in ("hS1", "hS2", "hS2n", "dS1", "dS2")},
+    "turns_med": {k: h_med(k, "turns") for k in ("hA", "hS1", "hS2", "dA", "dS1", "dS2")},
+    "ptok": {k: round(h_ptok(k)) for k in ("hA", "hS1", "hS2", "dA", "dS1", "dS2")},
+    "pack_s2": 25, "pack_s1": 15,
+}
+m3i = {
+    "effects": i_effects, "n_ho": len(G_HO), "n": len(EVAL), "n79": len(EVAL79),
+    "arms": {k: {"k": h_arms[k]["k"], "n": h_arms[k]["n"], "rate": h_arms[k]["rate"]} for k in ("hA", "hP", "dA", "dP")},
+    "turns_med": {k: h_med(k, "turns") for k in ("hA", "hP", "dA", "dP")},
+    "ptok": {k: round(h_ptok(k)) for k in ("hA", "hP", "dA", "dP")},
+    "wall_med": {k: round(h_med(k, "wall_time_s")) for k in ("hA", "hP", "dA", "dP")},
+    "tools": sorted({x["cc_tools"] for k in ("hP", "dP") for x in h_rows[k]}),
+    "skills_mcp": sorted({(x["cc_skills_n"], x["cc_mcp_n"]) for k in ("hP", "dP") for x in h_rows[k]}),
+}
+
 spend_all = round(spend_all + conf_cost + m3c_scored + m3c_smoke + m3d_scored + m3d_smoke + e_scored + e_smoke + e_finish + g_scored + g_smoke, 2)  # + confirming run, M3c, M3d, M3e (with brief 14b's two) and M3g scored sweeps and smoke runs
 
 # Prose numbers in story.html: <span data-d="key">value</span>; --inject rewrites the value from here.
@@ -822,6 +883,37 @@ g_new["g_ho_hi"] = sg(G["effects"]["ho"]["hi"]); g_new["g_unrep"] = str(sum(g_ar
 g_new["g_wall_hA"] = str(g_arms["hA"]["wall_med"]); g_new["g_wall_hK"] = str(g_arms["hK"]["wall_med"])
 g_clash = sorted(set(g_new) & g_before)
 prose.update(g_new)
+
+# M3h and M3i (prefixes h_ and i_)
+hi_before = set(prose)
+hi_new = {}
+for k, e in m3h["effects"].items():
+    hi_new[f"h_{k}_e"] = sg(e["eff"]); hi_new[f"h_{k}_ci"] = ci(e); hi_new[f"h_{k}_p"] = p2(e["p"])
+    hi_new[f"h_{k}_bws"] = f"{e['better']} / {e['worse']} / {e['same']}"
+for k, e in m3i["effects"].items():
+    hi_new[f"i_{k}_e"] = sg(e["eff"]); hi_new[f"i_{k}_ci"] = ci(e); hi_new[f"i_{k}_p"] = p2(e["p"])
+    hi_new[f"i_{k}_bws"] = f"{e['better']} / {e['worse']} / {e['same']}"
+for k, v in h_arms.items():
+    hi_new[f"h_rate_{k}"] = f"{v['rate']:.1f}"; hi_new[f"h_k_{k}"] = str(v["k"]); hi_new[f"h_n_{k}"] = str(v["n"])
+hi_new["h_ho_n"] = str(m3h["n_ho"]); hi_new["h_d86_n"] = str(m3h["n"]); hi_new["h_d79_n"] = str(m3h["n79"])
+hi_new["h_hi_up"] = sg(m3h["effects"]["ho"]["hi"])
+for k in ("hS1", "hS2", "hS2n", "dS1", "dS2"):
+    hi_new[f"h_load_{k}"] = str(m3h["loaded"][k])
+for k in ("hA", "hS1", "hS2", "dA", "dS1", "dS2"):
+    hi_new[f"h_turns_{k}"] = f"{m3h['turns_med'][k]:g}"; hi_new[f"h_ptok_{k}"] = f"{m3h['ptok'][k]:,}"
+hi_new["h_ptok_s1x"] = f"+{round(100 * (m3h['ptok']['hS1'] / m3h['ptok']['hA'] - 1))}"
+hi_new["h_ptok_s2x"] = f"+{round(100 * (m3h['ptok']['hS2'] / m3h['ptok']['hA'] - 1))}"
+hi_new["h_pack_v2"] = str(m3h["pack_s2"]); hi_new["h_pack_v1"] = str(m3h["pack_s1"])
+hi_new["h_copied_hS2"] = str(sum(1 for x in h_rows["hS2"] if x.get("skill_text_copied") == "1"))
+hi_new["h_runs_ho"] = str(len(H_RUNS["hA"])); hi_new["h_runs_d86"] = str(len(H_RUNS["dA"]))
+for k in ("hA", "hP", "dA", "dP"):
+    hi_new[f"i_rate_{k}"] = f"{m3i['arms'][k]['rate']:.1f}"; hi_new[f"i_k_{k}"] = str(m3i["arms"][k]["k"]); hi_new[f"i_n_{k}"] = str(m3i["arms"][k]["n"])
+    hi_new[f"i_turns_{k}"] = f"{m3i['turns_med'][k]:g}"; hi_new[f"i_ptok_{k}"] = f"{m3i['ptok'][k]:,}"; hi_new[f"i_wall_{k}"] = str(m3i["wall_med"][k])
+hi_new["i_ptok_hx"] = f"{round(100 * m3i['ptok']['hP'] / m3i['ptok']['hA'])}"
+hi_new["i_ptok_dx"] = f"{round(100 * m3i['ptok']['dP'] / m3i['ptok']['dA'])}"
+hi_new["i_tools_n"] = str(len(m3i["tools"][0].split(";")))
+hi_clash = sorted(set(hi_new) & hi_before)
+prose.update(hi_new)
 m3b["prose"] = prose
 
 data = {
@@ -841,7 +933,7 @@ data = {
     "external": ext,
     "m3b": m3b,
     "m3b_confirm": m3b_conf, "m3c": m3c, "ladder": claude_ladder,
-    "unsolved": unsolved, "m3d": m3d, "m3e": m3e, "m3g": m3g,
+    "unsolved": unsolved, "m3d": m3d, "m3e": m3e, "m3g": m3g, "m3h": m3h, "m3i": m3i,
 }
 
 # ---- checks against the reports ----
@@ -1137,6 +1229,54 @@ check(f"| interface mismatch (`compile_fail_hidden` + `signal_missing_hidden`) |
 check(abs(g_scored - 3.8428) < 0.0002 and g_smoke == 0.0437 and "smoke $0.0437, scored $3.8428, **M3g total $3.8865**" in rep3g
       and f"M3g cost **${prose['g_scored']}** for the 9 scored sweeps, **${prose['g_spend']}** with the smoke" in rep3g, f"M3g spend {g_scored} {g_smoke}")
 check(prose["g_unrep"] == "6" and "so the 6 unreported calls cost about nothing" in rep3g, f"M3g unreported {prose['g_unrep']}")
+# M3h and M3i (docs/reports/M3h_report.md, M3i_report.md and the ablate.py / m3h_tables.py outputs beside them)
+rep3h = open(os.path.join(REP, "M3h_report.md")).read()
+rep3i = open(os.path.join(REP, "M3i_report.md")).read()
+check(not hi_clash, f"M3h/M3i prose keys clash with existing ones: {hi_clash}")
+check(all(sorted(x["id"] for x in r) == sorted(G_HO) for k in ("hA", "hS1", "hS2", "hP") for _, _, r in H_RUNS[k])
+      and [len(H_RUNS[k]) for k in ("hA", "hS1", "hS2", "hS2n", "hP")] == [3, 3, 3, 1, 3], "M3h/M3i held-out runs cover the 100 ids")
+check(all(sorted(x["id"] for x in r) == sorted(EVAL) for k in ("dA", "dS1", "dS2", "dP") for _, _, r in H_RUNS[k])
+      and [len(H_RUNS[k]) for k in ("dA", "dS1", "dS2", "dP")] == [1, 1, 1, 1], "M3h/M3i 86 runs cover the 86 ids, one run each")
+check(all(x["stop_reason"] != "rate_limited" for k in h_rows for x in h_rows[k]), "M3h/M3i: no rate-limited rows")
+for k, e in h_effects.items():
+    check((e["eff"], e["better"], e["worse"], e["same"]) == h_chk[k], f"M3h {k} effect {e} vs recomputed {h_chk[k]}")
+for k, e in i_effects.items():
+    check((e["eff"], e["better"], e["worse"], e["same"]) == i_chk[k], f"M3i {k} effect {e} vs recomputed {i_chk[k]}")
+check("- **Primary: S2c − A = −2.0 points [−6.3, +1.7]** (9 better, 12 worse, 79 same; sign test p = 0.66)" in rep3h
+      and (prose["h_ho_e"], prose["h_ho_ci"], prose["h_ho_bws"], prose["h_ho_p"]) == ("−2.0", "[−6.3, +1.7]", "9 / 12 / 79", "0.66"), "M3h held-out primary in report")
+check("- **S1c − A = +1.3 [−2.7, +5.7]** (13 / 9 / 78, p = 0.52)" in rep3h and "**S2c − S1c = −3.3 [−7.0, −0.0]** (3 / 11 / 86, p = 0.057)" in rep3h
+      and (prose["h_ho_s1_e"], prose["h_ho_s2s1_e"]) == ("+1.3", "−3.3"), "M3h held-out secondaries in report")
+check("**S2c − A = +3.5 [−2.3, +9.3]** (5 / 2 / 79); **S1c − A = −1.2 [−7.0, +4.7]** (3 / 4 / 79)" in rep3h
+      and "S2c − S1c = +4.7 [−2.3, +11.6] (7 / 3 / 76)" in rep3h and (prose["h_d86_e"], prose["h_d86_s1_e"], prose["h_d86_s2s1_e"]) == ("+3.5", "−1.2", "+4.7"), "M3h 86 effects in report")
+check("(S2c − A +3.8 [−2.5, +10.1]; S1c − A −1.3 [−7.6, +5.1])" in rep3h and (prose["h_d79_e"], prose["h_d79_s1_e"]) == ("+3.8", "−1.3"), "M3h 79 view in report")
+check("S2c (`v2.0` plus the one-line hint) passed 56.3% and A 58.3%" in rep3h
+      and (prose["h_rate_hS2"], prose["h_rate_hA"]) == ("56.3", "58.3"), "M3h held-out pass rates in report")
+check("Pass counts: A 58/86 (67.4%), S1c 57/86 (66.3%), S2c 61/86 (70.9%)" in rep3h
+      and [prose[f"h_k_{k}"] for k in ("dA", "dS1", "dS2")] == ["58", "57", "61"], "M3h 86 pass counts in report")
+check("S1c loaded a pack skill in 300 of 300 problem-runs, and S2c in 299 of 300" in rep3h and "the single S2 run loaded one in 3 of 100" in rep3h
+      and (m3h["loaded"]["hS1"], m3h["loaded"]["hS2"], m3h["loaded"]["hS2n"]) == (300, 299, 3)
+      and (m3h["loaded"]["dS1"], m3h["loaded"]["dS2"]) == (86, 86) and "| S1c | 86 of 86 |" in rep3h, "M3h skill load counts in report")
+check("Median turns went from 6 (A) to 12 (S1c) and 11 (S2c)" in rep3h and [m3h["turns_med"][k] for k in ("hA", "hS1", "hS2")] == [6, 12, 11]
+      and "| A | – | – | 11 (12.5) | 89 | 2 | 431,567 |" in rep3h and "| S2c | 86 of 86 | 2.72 | 18 (19.1) | 109 | 1 | 487,439 |" in rep3h
+      and [m3h["turns_med"][k] for k in ("dA", "dS1", "dS2")] == [11, 17.5, 18], "M3h turns in report")
+check("prompt tokens rose by about 46–51% per problem-run" in rep3h and (prose["h_ptok_s2x"], prose["h_ptok_s1x"]) == ("+46", "+51")
+      and "| A | 6 (6.9) | 32 | 0 | 167,423 |" in rep3h, "M3h prompt-token rise in report")
+check("One S2c problem-run out of 300 held 80 bytes" in rep3h and prose["h_copied_hS2"] == "1", "M3h copied-text count in report")
+check("**Status: DONE (2026-11-02). Decision: null.**" in rep3h and "cut to **1 run per arm**" in rep3h, "M3h status and deviation in report")
+check("**Primary: P − D = −0.3 points [−4.0, +3.3]** (9 better, 11 worse, 80 same; sign test p = 0.82)" in rep3i
+      and (prose["i_ho_e"], prose["i_ho_ci"], prose["i_ho_bws"], prose["i_ho_p"]) == ("−0.3", "[−4.0, +3.3]", "9 / 11 / 80", "0.82"), "M3i held-out primary in report")
+check("**P − D = +3.5 [−3.5, +10.5]** (7 better, 4 worse, 75 same; sign test p = 0.55" in rep3i.replace("Development set (86), descriptive: ", "")
+      or "P − D = +3.5 [−3.5, +10.5]** (7 better, 4 worse, 75 same; sign test p = 0.55" in rep3i, "M3i 86 effect in report")
+check("+2.5 [−5.1, +10.1], 6 / 4 / 69" in rep3i and (prose["i_d79_e"], prose["i_d79_ci"]) == ("+2.5", "[−5.1, +10.1]"), "M3i 79 view in report")
+check("| pass@1, 100 problems × 3 runs | 175/300 = 58.3% | 174/300 = 58.0% |" in rep3i and (prose["i_k_hA"], prose["i_k_hP"]) == ("175", "174")
+      and "| 86 problems | 58/86 = 67.4% | 61/86 = 70.9% |" in rep3i and (prose["i_k_dA"], prose["i_k_dP"]) == ("58", "61"), "M3i pass counts in report")
+check("P uses 37% of D's prompt tokens" in rep3i and "mean prompt tokens per problem-run D 167,423, P 61,805" in rep3i
+      and (prose["i_ptok_hA"], prose["i_ptok_hP"], prose["i_ptok_hx"]) == ("167,423", "61,805", "37")
+      and "431,567 and 157,887 (P uses 37% of D's again)" in rep3i and prose["i_ptok_dx"] == "37", "M3i prompt tokens in report")
+check("median turns D 6, P 5; median wall time D 32 s, P 25 s" in rep3i and (prose["i_turns_hA"], prose["i_turns_hP"], prose["i_wall_hA"], prose["i_wall_hP"]) == ("6", "5", "32", "25")
+      and "median turns D 11, P 8; median wall time 89 s and 44 s" in rep3i and (prose["i_turns_dA"], prose["i_turns_dP"]) == ("11", "8"), "M3i effort in report")
+check(m3i["tools"] == ["Bash;Edit;Read;Write"] and m3i["skills_mcp"] == [("0", "0")] and "`cc_tools` = `Bash;Edit;Read;Write`" in rep3i, f"M3i profile took effect {m3i['tools']} {m3i['skills_mcp']}")
+check("**Status: DONE (2026-11-02). Decision: null.**" in rep3i, "M3i status in report")
 check(78.5 < spend_all < 79.5, f"spend M1 to M3g {spend_all}")
 check(prose["proc_null"] == prose["proc_n"] == "11" and prose["proc_det"] == "0", f"process changes null {prose['proc_null']} of {prose['proc_n']}")
 
