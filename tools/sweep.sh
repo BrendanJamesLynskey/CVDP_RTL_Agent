@@ -44,6 +44,9 @@ SPEC_VECTORS=${SPEC_VECTORS:-0}      # M3d: 1 = VERIFY_SUBMIT plus blind referen
 DATA_COLLECTION=${DATA_COLLECTION:-} # F1B: deny = OpenRouter routes only to providers that collect no data; blank = as before
 CLAUDE_ENDPOINT=${CLAUDE_ENDPOINT:-plan} # F1B, claudecode only: plan (the owner's plan) | openrouter (any OpenRouter model)
 SKILLS=${SKILLS:-}                   # M3g: a knowledge pack directory in the repo (MANIFEST.sha256); blank = none
+SKILL_PACK=${SKILL_PACK:-}           # M3h: a tag of the private pack (v1.0 | v2.0), as Claude Code skills; blank = none
+SKILL_PACK_DIR=${SKILL_PACK_DIR:-_pack} # M3h: the pack's checkout (outside the work dir), verified before any run
+SKILL_HINT=${SKILL_HINT:-0}          # M3h S2c: 1 = a one-line user CLAUDE.md saying the skills are installed
 STEP_BUDGET_S=${STEP_BUDGET_S:-}
 SEED_PROBLEM_WORST_S=${SEED_PROBLEM_WORST_S:-660}
 T0=$(date +%s)
@@ -83,6 +86,19 @@ if [ -n "$SKILLS" ]; then
   [[ "$SKILLS" =~ ^[A-Za-z0-9._/-]+$ ]] || die "SKILLS must be a path to a pack directory, got '$SKILLS'"
   [ -f "$SKILLS/MANIFEST.sha256" ] || die "SKILLS: no MANIFEST.sha256 in '$SKILLS'"
   [ "$HARNESS" = langgraph ] || die "SKILLS is a step of the LangGraph graph: use HARNESS=langgraph"
+fi
+bit SKILL_HINT "$SKILL_HINT"
+SKILL_PACK_SHA=""
+if [ -n "$SKILL_PACK" ]; then
+  [[ "$SKILL_PACK" =~ ^v[0-9]+\.[0-9]+$ ]] || die "SKILL_PACK must be a pack tag such as v2.0, got '$SKILL_PACK'"
+  [ "$HARNESS" = claudecode ] || die "SKILL_PACK installs Claude Code skills: use HARNESS=claudecode"
+  [ -z "$SKILLS" ] || die "SKILL_PACK and SKILLS are separate arms"
+  [[ "$SKILL_PACK_DIR" =~ ^[A-Za-z0-9._/-]+$ ]] || die "SKILL_PACK_DIR has unexpected characters: '$SKILL_PACK_DIR'"
+  # the pinned commit, every file against the manifest, the manifest's own hash: before any model call
+  python3 "$(dirname "$0")/skill_pack.py" verify "$SKILL_PACK_DIR" "$SKILL_PACK" >&2 || die "SKILL_PACK: the pack was refused"
+  SKILL_PACK_SHA=$(sha256sum "$SKILL_PACK_DIR/generic/MANIFEST.sha256" | cut -d' ' -f1)
+elif [ "$SKILL_HINT" = 1 ]; then
+  die "SKILL_HINT needs SKILL_PACK"
 fi
 if [ -n "$MEMORY" ]; then
   [[ "$MEMORY" =~ ^[A-Za-z0-9._/-]+\.json$ ]] || die "MEMORY must be a path to a .json snapshot, got '$MEMORY'"
@@ -132,7 +148,7 @@ run_phase() {
   printf '{"problems": %s, "seeds": %s, "seed_offset": %s, "run_budget_usd": %s, "model": "%s", "reasoning": "%s", "provider_order": "%s"}\n' \
     "$n" "$SEEDS" "$SEED_OFFSET" "$guard" "$MODEL" "$REASONING" "$PROVIDER_ORDER" > "$work.run.json"
   python3 - "$work.run.json" "$HARNESS" "$MEMORY" "$MUTATION_GATE" "$INTERFACE_CHECK" "$VERIFY_SUBMIT" \
-    "$SPEC_VECTORS" "$SKILLS" "$SPLIT" "$DATA_COLLECTION" "$CLAUDE_ENDPOINT" <<'EOF'
+    "$SPEC_VECTORS" "$SKILLS" "$SPLIT" "$SKILL_PACK" "$SKILL_PACK_SHA" "$SKILL_HINT" "$DATA_COLLECTION" "$CLAUDE_ENDPOINT" <<'EOF'
 import json, sys
 run = json.load(open(sys.argv[1]))
 run.update(harness=sys.argv[2], memory=sys.argv[3])
@@ -144,10 +160,12 @@ if sys.argv[8]:  # M3g, likewise
     run.update(skills=sys.argv[8])
 if sys.argv[9].startswith("m3g_"):
     run.update(split=sys.argv[9])
-if sys.argv[10]:  # F1B, likewise
-    run.update(data_collection=sys.argv[10])
-if sys.argv[11] != "plan":
-    run.update(claude_endpoint=sys.argv[11])
+if sys.argv[10]:  # M3h, likewise
+    run.update(skill_pack=sys.argv[10], skill_pack_sha=sys.argv[11], skill_hint=sys.argv[12] == "1")
+if sys.argv[13]:  # F1B, likewise
+    run.update(data_collection=sys.argv[13])
+if sys.argv[14] != "plan":
+    run.update(claude_endpoint=sys.argv[14])
 json.dump(run, open(sys.argv[1], "w"))
 EOF
 
@@ -169,6 +187,11 @@ EOF
     export CVDP_SKILLS="/skills/$(basename "$SKILLS")"
     export CVDP_AGENT_MOUNTS="$CVDP_AGENT_MOUNTS;$(cd "$SKILLS" && pwd):$CVDP_SKILLS:ro"
     export CVDP_AGENT_ENV="$CVDP_AGENT_ENV,CVDP_SKILLS"
+  fi
+  if [ -n "$SKILL_PACK" ]; then  # M3h: the verified generic/ dir, read-only, at /skill_pack; named only when set
+    export CVDP_SKILL_PACK="$SKILL_PACK" CVDP_SKILL_PACK_DIR=/skill_pack CVDP_SKILL_HINT="$SKILL_HINT"
+    export CVDP_AGENT_MOUNTS="$CVDP_AGENT_MOUNTS;$(cd "$SKILL_PACK_DIR/generic" && pwd):/skill_pack:ro"
+    export CVDP_AGENT_ENV="$CVDP_AGENT_ENV,CVDP_SKILL_PACK,CVDP_SKILL_PACK_DIR,CVDP_SKILL_HINT"
   fi
   if [ -n "$DATA_COLLECTION" ]; then  # F1B: named only when set
     export CVDP_DATA_COLLECTION="$DATA_COLLECTION" CVDP_AGENT_ENV="$CVDP_AGENT_ENV,CVDP_DATA_COLLECTION"
@@ -220,7 +243,7 @@ collect_phase() {
     seed=${d##*/seed}
     if [ -f "$d/raw_result.json" ]; then
       python3 "$repo/tools/collect.py" "$d" --dataset "$work.problems.jsonl" --runner "${RUNNER:-local}" \
-        --model "$MODEL" --seed "$seed" --reasoning "$REASONING" $hdr >> "$work/results.csv"
+        --model "$MODEL" --seed "$seed" --reasoning "$REASONING" $hdr ${SKILL_PACK:+--skill-pack} >> "$work/results.csv"
       hdr=--no-header
       collected=$((collected + 1))
     else
