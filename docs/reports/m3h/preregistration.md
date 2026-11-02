@@ -39,6 +39,12 @@ never contain private skill text:
 The change touches only the workflow's guard step and the guard tool. The agent image (`be5c24f`) and the run path
 are unchanged. The other 9 held-out sweeps (S1c1 rerun, S2c1 … S2) run from the new head. A1 is kept, not rerun.
 
+**Third amendment (deviation), 2026-11-02, after the held-out phase and its primary result (S2c − A −2.0
+[−6.3, +1.7], null), before any run on the 86.** The 86 phase is cut from 3 runs per arm to **1 run per arm** (A,
+S1c, S2c). The reason is the weekly plan usage budget: the planner decided this once the held-out primary was known
+to be null, so the cut cannot favour a result. The 86 numbers are therefore descriptive (no repeat-to-repeat
+spread). The decision rule is unchanged, and with a null held-out primary no result on the 86 can make a finding.
+
 ## The question
 
 M3g put pack v1 into luna's prompts and found no effect, but it could not show that luna acted on the pack. Claude

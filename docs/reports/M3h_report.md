@@ -1,7 +1,8 @@
 # M3h report: the knowledge pack as Claude Code's own skills, with Haiku 5.5
 
-**Status: INTERIM (2026-10-31). The held-out phase is done; the phase on the 86 is pending** (it waits for the
-weekly plan reset on 2026-11-02). So the pre-registered decision, which needs the 86, is not made yet.
+**Status: DONE (2026-11-02). Decision: null.** The held-out phase ran on 2026-10-31 and the phase on the 86 on
+2026-11-02, once per arm (see the deviation under "The 86"). Neither shows an effect of the pack, so the
+pre-registered rule is not met and the pack is not adopted as a Claude Code feature.
 
 - **Pre-registration:** [`m3h/preregistration.md`](m3h/preregistration.md). It was amended twice before any
   pack-arm result was read, and both amendments are in the file:
@@ -18,7 +19,9 @@ unreported" cells in `ablate.py`'s tables mean only that.
 
 The pack is private. This report names it only by tag and manifest hash. It names the skills but never quotes them.
 
-## In short (held-out set only)
+## In short
+
+**Held-out set (the primary):**
 
 - **Primary: S2c − A = −2.0 points [−6.3, +1.7]** (9 better, 12 worse, 79 same; sign test p = 0.66). That is no
   detectable effect. S2c (`v2.0` plus the one-line hint) passed 56.3% and A 58.3%. The interval rules out a gain of
@@ -37,6 +40,14 @@ The pack is private. This report names it only by tag and manifest hash. It name
 - **The answers seldom reproduce skill text.** One S2c problem-run out of 300 held 80 bytes of
   `valid-ready-handshake` in its own RTL, and the guard withheld that file. No other pack-arm problem-run did, and
   neither did any A problem-run (the control).
+
+**The 86 (development set, one run per arm, descriptive):**
+
+- **S2c − A = +3.5 [−2.3, +9.3]** (5 / 2 / 79); **S1c − A = −1.2 [−7.0, +4.7]** (3 / 4 / 79). Both are no detectable
+  effect. S2c − S1c = +4.7 [−2.3, +11.6] (7 / 3 / 76), the opposite sign to the held-out secondary, and also null.
+  The 79 view agrees (S2c − A +3.8 [−2.5, +10.1]; S1c − A −1.3 [−7.6, +5.1]).
+- Skills were loaded in 86 of 86 problem-runs in both pack arms. Effort rose again (median turns 11 to 17.5 and 18).
+- **Decision: null.** The held-out primary is −2.0 [−6.3, +1.7]. The 86 cannot turn that into a finding.
 
 ## Setup
 
@@ -83,6 +94,7 @@ pre-registered (A1, S1c1, S2c1, A2, …, S2c3, then S2), on 2026-10-31.
   - I downloaded every artifact and scanned it again locally. I did the same for the public job logs of the
     `v2.0` sweeps and for every CSV committed here: none holds a window of `v2.0`'s private text.
 - **Plan `/usage`** (week, all models): 68% before A1, 80% after S2.
+- **Status of this section:** the 86 phase's runs are listed under "The 86" below.
 
 The run CSVs are in [`m3h/runs/`](m3h/runs/), with each pack sweep's `withheld_*.csv`. The tables are made by
 [`m3h/analyze.sh`](m3h/analyze.sh) from the committed tools.
@@ -113,9 +125,9 @@ and its sign test is not significant. The 86 will show whether it holds.
 
 ### Decision
 
-**Pending.** The pre-registered rule needs the 86 to agree with a held-out gain. On the held-out set the primary
-shows no gain, so even a positive result on the 86 could not make this a finding. The 86 phase still runs, as
-pre-registered, for the development-set view.
+**Null.** The pre-registered rule needs the 86 to agree with a held-out gain. On the held-out set the primary
+shows no gain (−2.0 [−6.3, +1.7]), so even a positive result on the 86 could not make this a finding. The 86 phase
+ran for the development-set view (below). It shows no detectable effect either, so the decision stands.
 
 ### Skill use ([`m3h/tables_heldout.md`](m3h/tables_heldout.md))
 
@@ -171,10 +183,61 @@ problem.
 The mix of failures barely moves. In particular, interface mismatches did not fall, although `spec-reading` was
 loaded on nearly every problem-run.
 
-## The 86 (development set): pending
+## The 86 (development set)
 
-S2c − A, S1c − A and S2c − S1c on the 86, with the 79 view beside them and the ladder's Haiku run (57/86) for
-reference only, will be added after the phase on the 86.
+**Deviation from the pre-registration (recorded in its amendments section too).** The pre-registration asked for 3
+runs per arm on the 86. The phase was cut to **1 run per arm**. The reason was the weekly plan usage budget. The
+planner made the decision after the held-out primary was known to be null (so it cannot have been chosen to favour a
+result). One run per arm means the 86 numbers below are descriptive: they carry no repeat-to-repeat spread, and the
+intervals cover only the sampling of problems.
+
+Setup as for the held-out sweeps (Claude Code 2.1.310, `claude-haiku-5-5`, arm runner, 4 threads, `split=agentic`,
+seed offset 0), run from `789145f` on 2026-11-02. The 86 are `tools/m3b_eval_ids.txt`. Each run covers 92 rows (6
+more ids); the tables use the 86 only.
+
+| Arm | Run | Passed (of 86) | Rate-limited | Leak guard | Files withheld |
+|---|---|---|---|---|---|
+| A | [41507899046](https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent/actions/runs/41507899046) | 58 | 0 | (no pack) | — |
+| S1c | [41522822846](https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent/actions/runs/41522822846) | 57 | 0 | passed | 0 |
+| S2c | [41532901632](https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent/actions/runs/41532901632) | 61 | 0 | passed | 12 (7 problem-runs) |
+
+The run CSVs and withheld lists are in [`m3h/runs/`](m3h/runs/) (`dev86_*`, `withheld_dev86_*`). The tables are made by
+[`m3h/analyze.sh`](m3h/analyze.sh).
+
+### Paired effects ([`m3h/dev86_paired.md`](m3h/dev86_paired.md), [`79`](m3h/dev79_paired.md), [`S2c − S1c`](m3h/dev86_paired_S2c_S1c.md))
+
+| Comparison | 86 problems | better / worse / same | 79 view (7 benchmark-limited left out) | better / worse / same |
+|---|---|---|---|---|
+| S2c − A | +3.5 [−2.3, +9.3] | 5 / 2 / 79 | +3.8 [−2.5, +10.1] | 5 / 2 / 72 |
+| S1c − A | −1.2 [−7.0, +4.7] | 3 / 4 / 79 | −1.3 [−7.6, +5.1] | 3 / 4 / 72 |
+| S2c − S1c | +4.7 [−2.3, +11.6] | 7 / 3 / 76 | | |
+
+Pass counts: A 58/86 (67.4%), S1c 57/86 (66.3%), S2c 61/86 (70.9%); on the 79, 58, 57 and 61 of 79. No interval
+excludes 0 and no sign test is below 0.45. **The old ladder's Haiku run** (Claude Code with no pack, 57/86) is for reference only. Against A it reads −1.2
+[−8.1, +5.8] (4 / 5 / 77; [`m3h/dev86_vs_ladder.md`](m3h/dev86_vs_ladder.md)): two plain runs of the same setup differ
+by one problem, which is the run-to-run noise to keep in mind when reading the arms above.
+The sign of S2c − S1c is opposite to the held-out secondary (−3.3), which is what chance alone would give with both
+nulls.
+
+### Skill use and effort on the 86 ([`m3h/tables_dev86.md`](m3h/tables_dev86.md))
+
+| Arm | Problem-runs loading any pack skill | Distinct pack skills per run | Turns: median (mean) | Median wall s | Wall-cap stops | Prompt tokens per run (mean) |
+|---|---|---|---|---|---|---|
+| A | – | – | 11 (12.5) | 89 | 2 | 431,567 |
+| S1c | 86 of 86 | 2.60 | 17.5 (17.5) | 100 | 4 | 456,353 |
+| S2c | 86 of 86 | 2.72 | 18 (19.1) | 109 | 1 | 487,439 |
+
+- `spec-reading` was loaded in 98.8% (S1c) and 79.1% (S2c) of problem-runs. S2c's new `working-in-existing-code`
+  (24), `module-integration` (18) and `minimal-change-modification` (16) were used on the 86's modification-style
+  tasks. Their pass rates when loaded (71%, 67%, 63%) are descriptive and not better than when not loaded.
+- No arm loaded Claude Code's bundled skills.
+- **Answers reproducing skill text** (the CSV column): A 0 and S1c 0 of 86; S2c 5 of 86 (6 of 92 rows), and the guard
+  withheld 12 files (7 problem-runs, counting the 6 extra ids). The skills involved were `fifo-design` (3),
+  `block-ciphers-in-hardware`, `bus-and-register-interfaces`, `fsm-design` and `self-check-and-cocotb` (1 each).
+  The 86 are development tasks, and a copy of idioms from a skill is not a gain: it did not lift the pass rate.
+- **Failures** ([`m3h/taxonomy_dev86.md`](m3h/taxonomy_dev86.md); `taxonomy.py` has no id filter, so it covers all
+  92 rows per arm, the 6 extra ids included): A 34, S1c 35 and S2c 31 failed rows of 92. The mix is as in the
+  held-out set; `tests_failed_no_selfcheck` is 22, 19 and 18.
 
 ## Caveats
 
@@ -184,5 +247,6 @@ reference only, will be added after the phase on the 86.
   image and the same run path. A1 is kept.
 - **One model and one harness:** Haiku 5.5 on Claude Code 2.1.310.
 - **The plan is not a stable meter.** The held-out phase used about 12 points of the weekly limit for 10 sweeps.
+- **One run per arm on the 86** (the deviation above), so the 86 view is descriptive.
 - **The taxonomy is coarse here.** `tools/taxonomy.py` cannot see Claude Code's own self-checks, so every test
   failure is labelled "no own testbench".

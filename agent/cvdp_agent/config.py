@@ -20,7 +20,7 @@ def _num(name, default, cast):
 @dataclass
 class Config:
     root: str = "/code"                 # the mounted task tree
-    provider: str = "openrouter"        # fake | openrouter
+    provider: str = "openrouter"        # fake | openrouter | claude_plan | claude_openrouter (claudecode harness)
     model: str = ""                     # OpenRouter model ID
     max_turns: int = 10                 # edit -> check -> reflect cycles
     budget_usd: float = 0.10            # per problem, provider-reported cost
@@ -30,6 +30,7 @@ class Config:
     reasoning: str = "default"          # default | low | medium | high | off (OpenRouter's reasoning effort)
     seed: str = ""                      # repeat number from the sweep; a label only (sampling is not seeded)
     provider_order: list = field(default_factory=list)  # OpenRouter providers to use, in order, no fallbacks
+    data_collection: str = ""           # F1B: "deny" = OpenRouter routes only to providers that collect no data
     harness: str = "langgraph"          # langgraph (the M1-M3 agent) | deepagents (LangGraph's Deep Agents, M3b)
                                         # | claudecode (Claude Code headless on the owner's plan, a comparison)
     max_rounds: int = 22                # deepagents: model calls (tool-call rounds); M2's worst case for 10 turns
@@ -90,6 +91,8 @@ class Config:
             **({"skill_hint": True} if self.skill_hint else {}),
             # M3i, likewise only when set
             **({"cc_profile": self.cc_profile} if self.cc_profile != "default" else {}),
+            # F1B, likewise only when set
+            **({"data_collection": self.data_collection} if self.data_collection else {}),
         }
 
     def __post_init__(self):
@@ -125,6 +128,13 @@ def _harness(name):
     return v
 
 
+def _data_collection(name):
+    v = (os.environ.get(name) or "").strip().lower()
+    if v not in ("", "deny"):
+        raise ValueError(f"{name} must be blank or deny, got {v!r}")
+    return v
+
+
 def from_env():
     rb = os.environ.get("CVDP_RUN_BUDGET_USD", "").strip()
     return Config(
@@ -139,6 +149,7 @@ def from_env():
         reasoning=_reasoning("CVDP_REASONING"),
         seed=os.environ.get("CVDP_SEED", "").strip(),
         provider_order=[p.strip() for p in os.environ.get("CVDP_PROVIDER_ORDER", "").split(",") if p.strip()],
+        data_collection=_data_collection("CVDP_DATA_COLLECTION"),
         harness=_harness("CVDP_HARNESS"),
         max_rounds=_num("CVDP_MAX_ROUNDS", 60 if _harness("CVDP_HARNESS") == "claudecode" else 22, int),
         memory=os.environ.get("CVDP_MEMORY", "").strip(),
