@@ -1,18 +1,17 @@
 # M3i report: how much of Claude Code is the harness?
 
-**Status: held-out phase DONE (2026-11-02).** The primary result is in. The one descriptive run on the 86 has not
-run yet (it waits for usage budget); its rows stay TODO.
+**Status: DONE (2026-11-02). Decision: null.** The held-out primary and the one descriptive run on the 86 are both in.
 
 - **Pre-registration:** [`m3i/preregistration.md`](m3i/preregistration.md).
 - **Smoke runs:** [`m3i/smoke.md`](m3i/smoke.md).
 - Arms: D = M3h's arm A (reused), P = the plain profile (Claude Code with our system prompt, Read/Write/Edit/Bash
   only, no settings, skills or MCP). Model `claude-haiku-5-5`, Claude Code 2.1.310.
 
-## In short (held-out set only)
+## In short
 
 - **Primary: P − D = −0.3 points [−4.0, +3.3]** (9 better, 11 worse, 80 same; sign test p = 0.82): no detectable effect.
-- **Development set (86), descriptive: P − D = TODO** (one run per arm).
-- **Decision:** not a finding. The held-out interval includes zero, so the 86 cannot change that.
+- **Development set (86), descriptive: P − D = +3.5 [−3.5, +10.5]** (7 better, 4 worse, 75 same; sign test p = 0.55; one run per arm): no detectable effect. P passed 61/86 and D 58/86. The 79 view (7 benchmark-limited left out): +2.5 [−5.1, +10.1], 6 / 4 / 69.
+- **Decision: null.** The held-out interval includes zero, and the 86 (also null) cannot change that. Claude Code stripped to our prompt and four tools is as good as shipped Claude Code at this model, at about a third of the prompt tokens.
 - **Effort:** median turns D 6, P 5; median wall time D 32 s, P 25 s; mean prompt tokens per problem-run D 167,423, P 61,805
   (P uses 37% of D's prompt tokens, all tokens 20.7 M against 53.3 M over 300 problem-runs).
 
@@ -31,7 +30,9 @@ run yet (it waits for usage budget); its rows stay TODO.
 | P | 1 | 41455576891 | 61 | 0 / 0 |
 | P | 2 | 41460460754 | 58 | 0 / 0 |
 | P | 3 | 41465352710 | 55 | 0 / 0 |
-| P (the 86) | 1 | TODO | TODO | TODO |
+| P (the 86) | 1 | [41516641826](https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent/actions/runs/41516641826) | 61 of 86 | 0 / 0 |
+
+D on the 86 is M3h's arm A run [41507899046](https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent/actions/runs/41507899046) (58 of 86), as pre-registered. Both 86 runs used `split=agentic`, seed offset 0, 4 threads, Claude Code 2.1.310, `claude-haiku-5-5`. Each has 92 rows (6 more ids); the tables use the 86.
 
 Plan `/usage` (week, all models): 13% before P1, 16% after P3 (the plan is shared with other work, so this is an upper
 bound on M3i's use).
@@ -49,7 +50,18 @@ from Claude Code's own prompt, tools and defaults on this set.
 
 ### Secondary
 
-- The 86: TODO (one P run, descriptive only).
+- **The 86** ([`m3i/dev86_paired.md`](m3i/dev86_paired.md), [`79`](m3i/dev79_paired.md); one run per arm, descriptive):
+
+  | | D | P | P − D [95% CI] | better / worse / same |
+  |---|---|---|---|---|
+  | 86 problems | 58/86 = 67.4% | 61/86 = 70.9% | +3.5 [−3.5, +10.5] | 7 / 4 / 75 |
+  | 79 problems | 58/79 = 73.4% | 61/79 = 77.2% | +2.5 [−5.1, +10.1] | 6 / 4 / 69 |
+
+  The sign matches nothing in the held-out result (−0.3), which is what two nulls look like. Effort on the 86
+  ([`m3i/dev86_effort.md`](m3i/dev86_effort.md)): median turns D 11, P 8; median wall time 89 s and 44 s; prompt
+  tokens incl. cache per run 431,567 and 157,887 (P uses 37% of D's again); wall-cap stops 2 and 0. Failures
+  ([`m3i/taxonomy_dev86.md`](m3i/taxonomy_dev86.md), over all 92 rows per arm): D 34, P 31.
+  The P rows again all show `Bash;Edit;Read;Write`, 0 skills and 0 MCP servers.
 - Stop reasons, P: submit 297, wall_time 3; no rate-limited or profile-error rows.
 - Median tool calls per problem-run: D 5, P 4.
 - Tokens: P's prompts are much shorter (no Claude Code system prompt, 4 tool schemas instead of 22, no skill list),
@@ -58,7 +70,7 @@ from Claude Code's own prompt, tools and defaults on this set.
 
 ### Did the profile take effect?
 
-Yes. All 300 P problem-runs have `cc_tools` = `Bash;Edit;Read;Write`, `cc_skills_n` = 0, `cc_mcp_n` = 0,
+Yes. All 300 held-out and all 92 development-set P problem-runs have `cc_tools` = `Bash;Edit;Read;Write`, `cc_skills_n` = 0, `cc_mcp_n` = 0,
 `cc_model` = `claude-haiku-5-5` and `cc_prompt_sha256` = `e45ea1e3…`; 0 `profile_error` rows.
 
 ## Reading
