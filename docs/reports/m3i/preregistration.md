@@ -16,7 +16,7 @@ Both arms: `harness=claudecode`, model `claude-haiku-5-5`, Claude Code **2.1.310
 
 | Arm | What | Sweep input |
 |---|---|---|
-| D (default) | M3h's arm A, as it ran: Claude Code's own system prompt and 24 tools, the user's usual settings loading, 19 bundled skills offered. **Not rerun.** The three held-out arm-A CSVs of M3h are reused (`m3h/runs/heldout_A{1,2,3}_*.csv`). | `cc_profile=default` |
+| D (default) | M3h's arm A, as it ran: Claude Code's own system prompt and 22 tools, the user's usual settings loading, 19 bundled skills offered. **Not rerun.** The three held-out arm-A CSVs of M3h are reused (`m3h/runs/heldout_A{1,2,3}_*.csv`). | `cc_profile=default` |
 | P (plain) | `claude -p` with **our LangGraph agent's system prompt** in place of Claude Code's, only Read, Write, Edit and Bash, no settings, CLAUDE.md, skills, MCP or hooks. The user message is D's, unchanged. | `cc_profile=plain` |
 
 The user message is the same text in both arms (`claude_code.PROMPT`: the task and the rules about where files may
@@ -57,7 +57,7 @@ removed. The working directory is the task tree, as in D. The token reaches Clau
 | Flag | What it does (2.1.310 help text) | Checked |
 |---|---|---|
 | `--system-prompt` | Replaces Claude Code's system prompt. (`--append-system-prompt` would add to it, so it is not used.) | Request body: the system blocks are two fixed lines plus our text. |
-| `--tools Read,Write,Edit,Bash` | Limits the tool set itself ("specify the list of available tools from the built-in set"). | `init` event: exactly those four, against 24 in D. |
+| `--tools Read,Write,Edit,Bash` | Limits the tool set itself ("specify the list of available tools from the built-in set"). | `init` event: exactly those four, against 22 in the default-profile smoke run on the plan (24 in a local run with a placeholder token). |
 | `--allowedTools`, `--disallowedTools` | Permissions. The Bash patterns are D's network rules, kept so both arms deny the same commands. D's other denials (WebFetch, WebSearch, Task, NotebookEdit) are not needed: those tools are not offered. | Same lists as D, minus the tools P does not have. |
 | `--setting-sources ""` | Loads no user, project or local settings. | Accepted (empty string). |
 | `--strict-mcp-config` + empty `--mcp-config` | No MCP server from any source. | `init`: `mcp_servers` is empty. |
