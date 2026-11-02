@@ -217,7 +217,7 @@ def label(r):
     rtl = _i(r.get("rtl_changed"))
     started = stop not in ("no_task", "run_budget_exhausted")  # the agent got as far as editing
     holds = {
-        "llm_error": stop in ("llm_error", "cost_unreported", "rate_limited"),
+        "llm_error": stop in ("llm_error", "cost_unreported", "rate_limited", "profile_error"),
         "agent_error": stop in ("error", "no_task"),
         "killed": stop in ("killed", "no_summary", "not_run"),
         "no_edit": rtl == 0 and started,

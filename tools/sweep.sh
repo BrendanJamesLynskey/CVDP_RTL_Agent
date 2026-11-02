@@ -45,6 +45,7 @@ SKILLS=${SKILLS:-}                   # M3g: a knowledge pack directory in the re
 SKILL_PACK=${SKILL_PACK:-}           # M3h: a tag of the private pack (v1.0 | v2.0), as Claude Code skills; blank = none
 SKILL_PACK_DIR=${SKILL_PACK_DIR:-_pack} # M3h: the pack's checkout (outside the work dir), verified before any run
 SKILL_HINT=${SKILL_HINT:-0}          # M3h S2c: 1 = a one-line user CLAUDE.md saying the skills are installed
+CC_PROFILE=${CC_PROFILE:-default}    # M3i: default (Claude Code as it ships) | plain (our system prompt, four tools; claudecode)
 STEP_BUDGET_S=${STEP_BUDGET_S:-}
 SEED_PROBLEM_WORST_S=${SEED_PROBLEM_WORST_S:-660}
 T0=$(date +%s)
@@ -98,6 +99,12 @@ if [ -n "$SKILL_PACK" ]; then
 elif [ "$SKILL_HINT" = 1 ]; then
   die "SKILL_HINT needs SKILL_PACK"
 fi
+case "$CC_PROFILE" in default|plain) ;; *) die "CC_PROFILE must be default or plain, got '$CC_PROFILE'" ;; esac
+if [ "$CC_PROFILE" = plain ]; then
+  [ "$HARNESS" = claudecode ] || die "CC_PROFILE=plain is a Claude Code profile: use HARNESS=claudecode"
+  [ -z "$SKILL_PACK" ] || die "CC_PROFILE=plain has no skills: it cannot take SKILL_PACK"
+fi
+CC_PROFILE_FLAG=""; [ "$CC_PROFILE" = default ] || CC_PROFILE_FLAG=1   # collect.py appends the profile columns
 if [ -n "$MEMORY" ]; then
   [[ "$MEMORY" =~ ^[A-Za-z0-9._/-]+\.json$ ]] || die "MEMORY must be a path to a .json snapshot, got '$MEMORY'"
   [ -f "$MEMORY" ] || die "MEMORY: no such file '$MEMORY'"
@@ -140,7 +147,7 @@ run_phase() {
   printf '{"problems": %s, "seeds": %s, "seed_offset": %s, "run_budget_usd": %s, "model": "%s", "reasoning": "%s", "provider_order": "%s"}\n' \
     "$n" "$SEEDS" "$SEED_OFFSET" "$guard" "$MODEL" "$REASONING" "$PROVIDER_ORDER" > "$work.run.json"
   python3 - "$work.run.json" "$HARNESS" "$MEMORY" "$MUTATION_GATE" "$INTERFACE_CHECK" "$VERIFY_SUBMIT" \
-    "$SPEC_VECTORS" "$SKILLS" "$SPLIT" "$SKILL_PACK" "$SKILL_PACK_SHA" "$SKILL_HINT" <<'EOF'
+    "$SPEC_VECTORS" "$SKILLS" "$SPLIT" "$SKILL_PACK" "$SKILL_PACK_SHA" "$SKILL_HINT" "$CC_PROFILE" <<'EOF'
 import json, sys
 run = json.load(open(sys.argv[1]))
 run.update(harness=sys.argv[2], memory=sys.argv[3])
@@ -154,6 +161,8 @@ if sys.argv[9].startswith("m3g_"):
     run.update(split=sys.argv[9])
 if sys.argv[10]:  # M3h, likewise
     run.update(skill_pack=sys.argv[10], skill_pack_sha=sys.argv[11], skill_hint=sys.argv[12] == "1")
+if sys.argv[13] != "default":  # M3i, likewise
+    run.update(cc_profile=sys.argv[13])
 json.dump(run, open(sys.argv[1], "w"))
 EOF
 
@@ -178,6 +187,10 @@ EOF
     export CVDP_SKILL_PACK="$SKILL_PACK" CVDP_SKILL_PACK_DIR=/skill_pack CVDP_SKILL_HINT="$SKILL_HINT"
     export CVDP_AGENT_MOUNTS="$CVDP_AGENT_MOUNTS;$(cd "$SKILL_PACK_DIR/generic" && pwd):/skill_pack:ro"
     export CVDP_AGENT_ENV="$CVDP_AGENT_ENV,CVDP_SKILL_PACK,CVDP_SKILL_PACK_DIR,CVDP_SKILL_HINT"
+  fi
+  if [ "$CC_PROFILE" != default ]; then  # M3i: named only when set
+    export CVDP_CC_PROFILE="$CC_PROFILE"
+    export CVDP_AGENT_ENV="$CVDP_AGENT_ENV,CVDP_CC_PROFILE"
   fi
   if [ "$CVDP_PROVIDER" = openrouter ]; then
     test -n "${OPENROUTER_API_KEY:-}" || die "OPENROUTER_API_KEY is not set"
@@ -226,7 +239,8 @@ collect_phase() {
     seed=${d##*/seed}
     if [ -f "$d/raw_result.json" ]; then
       python3 "$repo/tools/collect.py" "$d" --dataset "$work.problems.jsonl" --runner "${RUNNER:-local}" \
-        --model "$MODEL" --seed "$seed" --reasoning "$REASONING" $hdr ${SKILL_PACK:+--skill-pack} >> "$work/results.csv"
+        --model "$MODEL" --seed "$seed" --reasoning "$REASONING" $hdr ${SKILL_PACK:+--skill-pack} \
+        ${CC_PROFILE_FLAG:+--cc-profile} >> "$work/results.csv"
       hdr=--no-header
       collected=$((collected + 1))
     else
