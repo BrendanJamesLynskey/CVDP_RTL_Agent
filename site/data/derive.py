@@ -910,6 +910,7 @@ for k in ("hA", "hP", "dA", "dP"):
     hi_new[f"i_rate_{k}"] = f"{m3i['arms'][k]['rate']:.1f}"; hi_new[f"i_k_{k}"] = str(m3i["arms"][k]["k"]); hi_new[f"i_n_{k}"] = str(m3i["arms"][k]["n"])
     hi_new[f"i_turns_{k}"] = f"{m3i['turns_med'][k]:g}"; hi_new[f"i_ptok_{k}"] = f"{m3i['ptok'][k]:,}"; hi_new[f"i_wall_{k}"] = str(m3i["wall_med"][k])
 hi_new["i_ptok_hx"] = f"{round(100 * m3i['ptok']['hP'] / m3i['ptok']['hA'])}"
+hi_new["i_ptok_save"] = str(100 - int(hi_new["i_ptok_hx"]))  # input-token saving of P against D, held-out, %
 hi_new["i_ptok_dx"] = f"{round(100 * m3i['ptok']['dP'] / m3i['ptok']['dA'])}"
 hi_new["i_tools_n"] = str(len(m3i["tools"][0].split(";")))
 hi_clash = sorted(set(hi_new) & hi_before)
