@@ -383,7 +383,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
 </svg>
 
 <main id="main">
-<nav class="crumb" aria-label="Where you are"><a href="./">&larr; Front page</a><span><b>Part 3 of 5</b> &middot; Results, M3c to M3j</span><span>On this page: <a href="#m3c">M3c</a> &middot; <a href="#ladder">Claude Code ladder</a> &middot; <a href="#m3d">M3d</a> &middot; <a href="#m3e">M3e</a> &middot; <a href="#m3g">M3g</a> &middot; <a href="#m3h">M3h</a> &middot; <a href="#m3i">M3i</a> &middot; <a href="#m3j">M3j</a></span></nav>
+<nav class="crumb" aria-label="Where you are"><a href="./">&larr; Front page</a><span><b>Part 3 of 6</b> &middot; Results, M3c to M3j</span><span>On this page: <a href="#m3c">M3c</a> &middot; <a href="#ladder">Claude Code ladder</a> &middot; <a href="#m3d">M3d</a> &middot; <a href="#m3e">M3e</a> &middot; <a href="#m3g">M3g</a> &middot; <a href="#m3h">M3h</a> &middot; <a href="#m3i">M3i</a> &middot; <a href="#m3j">M3j</a></span></nav>
 
 <!-- ================================================================== M3C -->
 <section class="sec" id="m3c" data-page="results-m3c-m3e" data-sig="results.m3c" data-val="2 CHECKS">
@@ -649,7 +649,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
       <li><strong>The same pass rate for <span data-d="i_ptok_save">63</span>% fewer input tokens.</strong> Input (prompt) tokens including cache a problem-run: D <span data-d="i_ptok_hA">167,423</span>, P <span data-d="i_ptok_hP">61,805</span> held-out; <span data-d="i_ptok_dA">431,567</span> and <span data-d="i_ptok_dP">157,887</span> on the 86 (<span data-d="i_ptok_dx">37</span>% again).</li>
       <li><strong>Quicker.</strong> Median turns <span data-d="i_turns_hA">6</span> against <span data-d="i_turns_hP">5</span> held-out (<span data-d="i_turns_dA">11</span> against <span data-d="i_turns_dP">8</span> on the 86), and median wall time <span data-d="i_wall_hA">32</span> s against <span data-d="i_wall_hP">25</span> s.</li>
       <li><strong>It agrees with M3e.</strong> At a fixed model, neither Claude Code&rsquo;s agent loop (M3e) nor its prompt, tool set and defaults (here) add a measurable pass rate over a plain loop.</li>
-      <li><strong>Cost:</strong> the plan, nothing billed per call. <strong>Confounds:</strong> D ran on 31 October and P on 2 November, with the same version and image; both keep Claude Code&rsquo;s fixed request lines and tool schemas, so P is Claude Code stripped down, not a bare API call (<a href="./#cc-api">what still differs, and why <code>--bare</code> was not used</a>). One model.</li>
+      <li><strong>Cost:</strong> the plan, nothing billed per call. <strong>Confounds:</strong> D ran on 31 October and P on 2 November, with the same version and image; both keep Claude Code&rsquo;s fixed request lines and tool schemas, so P is Claude Code stripped down, not a bare API call (<a href="claude-code.html#cc-api">what still differs, and why <code>--bare</code> was not used</a>). One model.</li>
     </ul>
     <p class="small">The full report, with the profile check and every caveat: <a href="https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent/blob/main/docs/reports/M3i_report.md">docs/reports/M3i_report.md</a>.</p>
   </div>
@@ -666,7 +666,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
       <p>A plain loop of our own on the Anthropic Messages API, with our prompt and four one-line tools, passed exactly as often as lean Claude Code (<span data-d="j_ho_e">+0.0</span> points, within noise) on <span data-d="j_ptok_rpa">70</span>% of its input tokens. Both arms: Anthropic Claude Haiku 5.5, billed to an Anthropic API key.</p>
     </div>
     <!-- src: docs/reports/m3j/preregistration.md "Arms", "What each arm sends"; docs/reports/M3j_report.md "Runs" -->
-    <p>M3i&rsquo;s lean Claude Code still sends Claude Code&rsquo;s fixed system blocks, an environment message, its own tool schemas and a hidden placeholder tool in every request (<a href="./#cc-api">the list</a>). <code>--bare</code> strips more, but it needs an API key, and M3i ran on the plan. With the Max plan&rsquo;s monthly API credit, M3j runs four arms, all on Anthropic Claude Haiku 5.5 (<code>claude-haiku-5-5</code>):</p>
+    <p>M3i&rsquo;s lean Claude Code still sends Claude Code&rsquo;s fixed system blocks, an environment message, its own tool schemas and a hidden placeholder tool in every request (<a href="claude-code.html#cc-api">the list</a>). <code>--bare</code> strips more, but it needs an API key, and M3i ran on the plan. With the Max plan&rsquo;s monthly API credit, M3j runs four arms, all on Anthropic Claude Haiku 5.5 (<code>claude-haiku-5-5</code>):</p>
     <ul>
       <li><strong>PA:</strong> M3i&rsquo;s lean Claude Code, billed to the API key.</li>
       <li><strong>B:</strong> PA plus <code>--bare</code>. It offers Bash, Edit and Read only, with shorter descriptions, and sends no environment message.</li>
@@ -693,7 +693,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
 <nav class="pnav" aria-label="Pages">
 <a class="pv" href="results-m2-m3b.html"><small>&larr; PREVIOUS</small>Results, M0 to M3b</a>
 <a class="up" href="./#contents"><small>CONTENTS</small>Front page</a>
-<a class="nx" href="analysis.html"><small>NEXT &rarr;</small>Analysis</a>
+<a class="nx" href="claude-code.html"><small>NEXT &rarr;</small>Claude Code, close to an API call</a>
 </nav>
 
 <footer>

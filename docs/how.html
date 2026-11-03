@@ -383,7 +383,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
 </svg>
 
 <main id="main">
-<nav class="crumb" aria-label="Where you are"><a href="./">&larr; Front page</a><span><b>Part 1 of 5</b> &middot; How it works</span><span>On this page: <a href="#intro">One failure, replayed</a> &middot; <a href="#how">How it works</a></span></nav>
+<nav class="crumb" aria-label="Where you are"><a href="./">&larr; Front page</a><span><b>Part 1 of 6</b> &middot; How it works</span><span>On this page: <a href="#intro">One failure, replayed</a> &middot; <a href="#how">How it works</a></span></nav>
 
 <!-- ================================================================== INTRO (moved from the hero) -->
 <section class="sec" id="intro" data-page="how" data-sig="trace.replay" data-val="ONE FAILURE">
@@ -449,7 +449,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
     <p>What each setup can do, and how. Our agent does not call tools at all: its graph reads every file into the prompt, applies the edits the model writes, and runs the checks itself after every edit. Deep Agents and Claude Code give the model tools to call when it chooses. Claude Code has no special RTL tools; it runs the simulators through its shell.</p>
     <div class="scope"><div class="hd"><span><b>Tools</b> · four setups, six capabilities</span><span>M3b, M3e, M3i</span></div>
       <div class="plot" id="c-tools"></div>
-      <div class="ft">Claude Code by default offers 22 tools; this project allows six (Read, Edit, Write, Glob, Grep, Bash) and blocks web access, sub-agents and network commands. The lean set-up of M3i offers only four (<a href="./#cc-api">its flags, and what Claude Code still adds</a>). Every setup has the same free tools installed: Icarus Verilog, Verilator, Yosys and cocotb.</div>
+      <div class="ft">Claude Code by default offers 22 tools; this project allows six (Read, Edit, Write, Glob, Grep, Bash) and blocks web access, sub-agents and network commands. The lean set-up of M3i offers only four (<a href="claude-code.html#cc-api">its flags, and what Claude Code still adds</a>). Every setup has the same free tools installed: Icarus Verilog, Verilator, Yosys and cocotb.</div>
     </div>
 
     <h3>The sweep, as a schematic</h3>
