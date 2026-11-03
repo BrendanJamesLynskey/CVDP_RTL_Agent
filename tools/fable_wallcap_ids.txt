@@ -1,0 +1,21 @@
+# Claude Code ladder, Fable 5.1: the problems its one run stopped on the 480 s wall cap (brief 21 rerun set)
+# source: docs/reports/claude_code/runs/claude-fable-5-1.csv
+# rule: stop_reason == wall_time (tools/fable_wallcap.py ids)
+# count: 17: passed under the cap 7, failed 10
+cvdp_agentic_AES_encryption_decryption_0003
+cvdp_agentic_PCIe_endpoint_0001
+cvdp_agentic_axis_to_uart_0001
+cvdp_agentic_binary_search_tree_algorithms_0001
+cvdp_agentic_binary_search_tree_algorithms_0014
+cvdp_agentic_byte_enable_ram_0002
+cvdp_agentic_dynamic_equalizer_0001
+cvdp_agentic_ethernet_mii_0004
+cvdp_agentic_ethernet_mii_0006
+cvdp_agentic_hdbn_codec_0001
+cvdp_agentic_jpeg_runlength_enc_0001
+cvdp_agentic_nmea_gps_0008
+cvdp_agentic_rgb_color_space_conversion_0001
+cvdp_agentic_sigma_delta_audio_0001
+cvdp_agentic_sorter_0009
+cvdp_agentic_spi_complex_mult_0002
+cvdp_agentic_sync_serial_communication_0001
