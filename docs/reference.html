@@ -383,7 +383,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
 </svg>
 
 <main id="main">
-<nav class="crumb" aria-label="Where you are"><a href="./">&larr; Front page</a><span><b>Part 5 of 5</b> &middot; Reference</span><span>On this page: <a href="#validity">Validity</a> &middot; <a href="#next">What&#x27;s next</a> &middot; <a href="#faq">FAQ</a> &middot; <a href="#glossary">Glossary</a></span></nav>
+<nav class="crumb" aria-label="Where you are"><a href="./">&larr; Front page</a><span><b>Part 6 of 6</b> &middot; Reference</span><span>On this page: <a href="#validity">Validity</a> &middot; <a href="#next">What&#x27;s next</a> &middot; <a href="#faq">FAQ</a> &middot; <a href="#glossary">Glossary</a></span></nav>
 
 <!-- ================================================================== VALIDITY -->
 <section class="sec" id="validity" data-page="reference" data-sig="assert.validity" data-val="LIMITS">
@@ -407,7 +407,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
       <!-- src: docs/reports/M3e_report.md "Caveats" -->
       <li><b>M3e is one run, from three dispatches.</b> The first one's cost guard refused the alphabetical tail of <span data-d="e3_refused">19</span> problems, run a few hours later from the same agent code and image; the Sonnet arm was not run; and the model effect includes the reasoning label (luna at <code>default</code>, Opus at <code>low</code>).</li>
       <!-- src: docs/reports/m3i/preregistration.md "Known differences from a bare API call" -->
-      <li><b>M3i&rsquo;s lean Claude Code is not a bare API call.</b> On a Claude Max plan <code>--bare</code> cannot be used, so two fixed system blocks, an environment message, Claude Code&rsquo;s tool schemas and its loop stay in every request. Both arms carry them, so P &minus; D is fair, but it does not measure Claude Code against a raw API loop. M3j did that on an API key and found no difference, for this model and this loop (<a href="results-m3c-m3e.html#m3j">M3j</a>). <a href="./#cc-api">The full list</a>.</li>
+      <li><b>M3i&rsquo;s lean Claude Code is not a bare API call.</b> On a Claude Max plan <code>--bare</code> cannot be used, so two fixed system blocks, an environment message, Claude Code&rsquo;s tool schemas and its loop stay in every request. Both arms carry them, so P &minus; D is fair, but it does not measure Claude Code against a raw API loop. M3j did that on an API key and found no difference, for this model and this loop (<a href="results-m3c-m3e.html#m3j">M3j</a>). <a href="claude-code.html#cc-api">The full list</a>.</li>
       <li><b>M3c's gate fails open when it cannot mutate.</b> <span data-d="g_skip">61</span> of <span data-d="g_runs">390</span> gate runs were <code>skipped</code> and let the submit through, so M is not a pure "every submit was gated" arm.</li>
       <!-- src: docs/reports/unsolved_analysis.md "In short"; tools/benchmark_limited_ids.txt -->
       <li><b>Some problems are benchmark-limited.</b> <span data-d="u_blim">7</span> of the <span data-d="m3b_n">86</span> evaluation problems need a detail the task never gives (a file name, default parameters, a lookup table), shown by counterfactual reruns. No agent can be expected to pass them, so they cap every score and shrink every effect a little. They are kept in the reported scores, and the <span data-d="u_n79">79</span>-problem figures are shown beside them, never in their place. <code>reachable.py</code>, which built the 86, checked the names the hidden test reads but not the file paths it compiles.</li>
