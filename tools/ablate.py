@@ -58,10 +58,12 @@ def load(path):
     is left out (counted on stderr), never scored as a failure; it is rerun and the rerun's row is used instead."""
     with open(path) as f:
         rows = list(csv.DictReader(f))
-    limited = [r for r in rows if r.get("stop_reason") == "rate_limited"]
+    # M3i: a `profile_error` row (Claude Code's init event was not the profile asked for) was not run either
+    limited = [r for r in rows if r.get("stop_reason") in ("rate_limited", "profile_error")]
     if limited:
-        print(f"ablate.py: {path}: {len(limited)} rate-limited row(s) left out (not run)", file=sys.stderr)
-        rows = [r for r in rows if r.get("stop_reason") != "rate_limited"]
+        print(f"ablate.py: {path}: {len(limited)} rate-limited or profile-error row(s) left out (not run)",
+              file=sys.stderr)
+        rows = [r for r in rows if r.get("stop_reason") not in ("rate_limited", "profile_error")]
     for r in rows:
         r["_run"] = f"{os.path.normpath(path)}#seed{r.get('seed') or '1'}"
     return rows

@@ -53,6 +53,10 @@ FIELDS = ["label", "id", "seed", "cid", "difficulty", "pass", "tests", "tests_pa
 # when the problem's own files held pack text and were withheld from the upload.
 M3H_FIELDS = ["skill_pack", "skill_pack_sha", "skill_hint", "skills_installed", "skills_listed", "skills_n",
               "skill_first_turn", "rate_limit", "skill_text_copied", "skill_text_copied_skills"]
+# M3i: Claude Code's plain profile, appended only for a sweep with `--cc-profile` (so every other CSV keeps its columns):
+# the profile and what Claude Code's own init event said it ran with (tool names, skill and MCP counts, model), and the
+# sha256 of the system prompt taken from the agent code.
+M3I_FIELDS = ["cc_profile", "cc_tools", "cc_skills_n", "cc_mcp_n", "cc_model", "cc_prompt_sha256"]
 M3C_GATE = ("gate_runs", "gate_failures", "mutants_generated", "mutants_compiled", "mutants_killed",
             "mutants_unfinished", "gate_wall_s")
 M3C_IFACE = ("interface_runs", "interface_mismatch_runs", "interface_blocks")
@@ -151,7 +155,12 @@ def m3h_columns(s):
     return out
 
 
-def rows(work, dataset=None, runner="", model="", seed="", reasoning_hint="", skill_pack=False):
+def m3i_columns(s):
+    """M3i's columns from a summary (blank for a problem whose agent left none)."""
+    return {k: ("" if s.get(k) is None else s[k]) for k in M3I_FIELDS}
+
+
+def rows(work, dataset=None, runner="", model="", seed="", reasoning_hint="", skill_pack=False, cc_profile=False):
     """`reasoning_hint` is the sweep's setting, used for a row whose agent left no summary."""
     raw = json.load(open(os.path.join(work, "raw_result.json")))
     meta = {}
@@ -227,6 +236,8 @@ def rows(work, dataset=None, runner="", model="", seed="", reasoning_hint="", sk
         row["memory"] = s.get("memory") or ""
         if skill_pack:
             row.update(m3h_columns(s))
+        if cc_profile:
+            row.update(m3i_columns(s))
     return out
 
 
@@ -240,11 +251,13 @@ def main():
     ap.add_argument("--reasoning", default="", help="the sweep's reasoning setting (labels rows with no summary)")
     ap.add_argument("--no-header", action="store_true", help="rows only, to append another seed's")
     ap.add_argument("--skill-pack", action="store_true", help="M3h: append the skill pack columns")
+    ap.add_argument("--cc-profile", action="store_true", help="M3i: append the Claude Code profile columns")
     a = ap.parse_args()
-    w = csv.DictWriter(sys.stdout, fieldnames=FIELDS + (M3H_FIELDS if a.skill_pack else []))
+    w = csv.DictWriter(sys.stdout, fieldnames=FIELDS + (M3H_FIELDS if a.skill_pack else [])
+                       + (M3I_FIELDS if a.cc_profile else []))
     if not a.no_header:
         w.writeheader()
-    for r in rows(a.work, a.dataset, a.runner, a.model, a.seed, a.reasoning, a.skill_pack):
+    for r in rows(a.work, a.dataset, a.runner, a.model, a.seed, a.reasoning, a.skill_pack, a.cc_profile):
         w.writerow(r)
 
 

@@ -52,6 +52,7 @@ class Config:
     skill_pack: str = ""                # M3h: a tag of the private pack (native_skills.PINNED); blank = none
     skill_pack_dir: str = ""            # M3h: the pack's generic/ directory, mounted read-only (claudecode only)
     skill_hint: bool = False            # M3h S2c: a one-line user CLAUDE.md saying the skills are installed
+    cc_profile: str = "default"         # M3i: "plain" = Claude Code with our system prompt and four tools (claudecode only)
     out_dir: str = ""                   # default <root>/rundir/agent_out
     fake_script: str = ""               # fake provider: a JSON file or inline JSON list of responses
     ledger_dir: str = ""                # whole-run spend guard: shared directory of per-problem costs
@@ -88,6 +89,8 @@ class Config:
             # M3h, likewise only when set
             **({"skill_pack": self.skill_pack} if self.skill_pack else {}),
             **({"skill_hint": True} if self.skill_hint else {}),
+            # M3i, likewise only when set
+            **({"cc_profile": self.cc_profile} if self.cc_profile != "default" else {}),
             # F1B, likewise only when set
             **({"data_collection": self.data_collection} if self.data_collection else {}),
         }
@@ -101,6 +104,12 @@ class Config:
             raise ValueError("CVDP_SKILL_PACK installs Claude Code skills: use CVDP_HARNESS=claudecode")
         if self.skill_hint and not self.skill_pack:
             raise ValueError("CVDP_SKILL_HINT needs CVDP_SKILL_PACK")
+        if self.cc_profile not in ("default", "plain"):
+            raise ValueError(f"CVDP_CC_PROFILE must be default or plain, got {self.cc_profile!r}")
+        if self.cc_profile != "default" and self.harness != "claudecode":
+            raise ValueError("CVDP_CC_PROFILE=plain is a Claude Code profile: use CVDP_HARNESS=claudecode")
+        if self.cc_profile == "plain" and (self.skill_pack or self.skill_hint):
+            raise ValueError("CVDP_CC_PROFILE=plain has no skills: it cannot take a skill pack")
 
 
 def _reasoning(name):
@@ -153,6 +162,7 @@ def from_env():
         skill_pack=os.environ.get("CVDP_SKILL_PACK", "").strip(),
         skill_pack_dir=os.environ.get("CVDP_SKILL_PACK_DIR", "").strip(),
         skill_hint=_flag("CVDP_SKILL_HINT", False),
+        cc_profile=(os.environ.get("CVDP_CC_PROFILE") or "default").strip().lower(),
         out_dir=os.environ.get("CVDP_OUT_DIR", ""),
         fake_script=os.environ.get("CVDP_FAKE_SCRIPT", ""),
         ledger_dir=os.environ.get("CVDP_LEDGER_DIR", ""),

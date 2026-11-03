@@ -35,7 +35,7 @@ def load(spec, ids):
     rows = []
     for f in spec.split(","):
         rows += [r for r in csv.DictReader(open(f)) if (ids is None or r["id"] in ids)
-                 and r.get("stop_reason") != "rate_limited"]
+                 and r.get("stop_reason") not in ("rate_limited", "profile_error")]
     return rows
 
 

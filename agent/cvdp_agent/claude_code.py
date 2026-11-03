@@ -31,18 +31,28 @@ and installed as Claude Code's own user skills in a fresh HOME outside the task 
 stream then holds the bodies of any skill the model loads, so it is not written; agent_out gets `claude_tools.jsonl`
 (turn and tool name per call, a Skill call's skill name) instead. With the pack blank nothing changes.
 
+M3i (`CVDP_CC_PROFILE=plain`): Claude Code with its default system prompt and tool set stripped away, to measure what
+they add. The system prompt is the LangGraph agent's own (`prompts.SYSTEM`, read at run time, its sha256 recorded),
+only Read, Write, Edit and Bash are offered, and user settings, CLAUDE.md, skills, MCP servers and hooks are off
+(see `plain_command`). The user message is the default arm's, unchanged. The `init` event is checked as it arrives:
+a tool, MCP server or skill beyond the profile ends the run at once with stop reason `profile_error` (not scored).
+With the profile `default` nothing here runs and the command line is the one before M3i.
+
 Plan limits: a problem cut off by the plan's session or weekly limit (HTTP 429, `usage_limit_reached`, or a
 `rate_limit_event` whose status is `rejected`) ends with stop reason `rate_limited`, not `llm_error`, so it is
 counted as not run and rerun, never as a failure."""
+import hashlib
 import json
 import os
 import re
 import subprocess
 import tempfile
+import threading
 import time
 
 from . import native_skills
 from .graph import write_ledger
+from .prompts import SYSTEM
 from .trace import redact
 
 OPENROUTER_ANTHROPIC = "https://openrouter.ai/api"
@@ -55,6 +65,10 @@ DENIED = ["WebFetch", "WebSearch", "Task", "NotebookEdit",
 NETWORK = re.compile(r"https?://|huggingface|github\.com|\bcurl\b|\bwget\b|\bnc\b|urllib|requests\.|socket|"
                      r"\bgit\s+(clone|fetch|pull)|\bpip3?\s+install|\buv\s+pip", re.IGNORECASE)
 
+# M3i: the plain profile's four tools, and the Bash patterns still denied (the default arm's network rules)
+PLAIN_TOOLS = ["Read", "Write", "Edit", "Bash"]
+PLAIN_DENIED = [d for d in DENIED if d.startswith("Bash(")]
+
 PROMPT = """You are solving one hardware-design task. The task tree is the current directory (/code).
 
 # Task
@@ -65,6 +79,113 @@ PROMPT = """You are solving one hardware-design task. The task tree is the curre
 - Icarus Verilog (iverilog, vvp), Verilator, Yosys and cocotb are installed: compile and test your design with them.
 - Do not use the network: no downloads, no package installs, no web lookups. Everything you need is in /code.
 - When the design is done and your checks pass, stop with a one-line summary."""
+
+
+def plain_command(prompt, max_turns, model):
+    """M3i: the `plain` profile's command line. Flags checked against `claude --help` of 2.1.310:
+    --system-prompt replaces Claude Code's prompt (--append-system-prompt would add to it); --tools limits the tool
+    set itself; --setting-sources "" loads no user, project or local settings (hooks, CLAUDE.md rules, permissions);
+    --strict-mcp-config with an empty --mcp-config loads no MCP server; --disable-slash-commands drops the 19
+    bundled skills and the slash commands; --safe-mode switches off CLAUDE.md, skills, plugins, hooks, MCP, custom
+    agents and output styles (auth, model and the built-in tools work normally; --bare is not usable, it refuses the
+    plan's OAuth token). Auto-memory is switched off by CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 (plain_env)."""
+    cmd = ["claude", "-p", prompt, "--output-format", "stream-json", "--verbose",
+           "--max-turns", str(max_turns), "--permission-mode", "acceptEdits",
+           "--system-prompt", SYSTEM, "--tools", ",".join(PLAIN_TOOLS),
+           "--allowedTools", *PLAIN_TOOLS, "--disallowedTools", *PLAIN_DENIED,
+           "--setting-sources", "", "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}',
+           "--disable-slash-commands", "--safe-mode"]
+    if model:
+        cmd += ["--model", model]
+    return cmd
+
+
+def plain_env(env):
+    """M3i: the environment of a plain run: an empty HOME (no user settings, skills, memory or CLAUDE.md) and
+    auto-memory off."""
+    env = dict(env)
+    env["HOME"] = tempfile.mkdtemp(prefix="claude_home_")
+    env.pop("CLAUDE_CONFIG_DIR", None)
+    env["CLAUDE_CODE_DISABLE_AUTO_MEMORY"] = "1"
+    return env
+
+
+def init_event(lines):
+    """The first `system`/`init` event of a stream, or None."""
+    for line in lines:
+        try:
+            ev = json.loads(line)
+        except (ValueError, TypeError):
+            continue
+        if isinstance(ev, dict) and ev.get("type") == "system" and ev.get("subtype") == "init":
+            return ev
+    return None
+
+
+def profile_problems(ev):
+    """What in an init event is not the plain profile ([] if it is): a missing event, another tool set, any MCP
+    server or any skill."""
+    if ev is None:
+        return ["no init event: the profile could not be checked"]
+    out = []
+    tools = [str(t) for t in ev.get("tools") or []]
+    if sorted(tools) != sorted(PLAIN_TOOLS):
+        out.append(f"tools {sorted(tools)} are not {sorted(PLAIN_TOOLS)}")
+    if ev.get("mcp_servers"):
+        out.append(f"{len(ev['mcp_servers'])} MCP server(s)")
+    if ev.get("skills"):
+        out.append(f"{len(ev['skills'])} skill(s)")
+    return out
+
+
+def profile_columns(ev, sha):
+    """The summary fields that show the profile took effect (names and counts only)."""
+    ev = ev or {}
+    return {"cc_profile": "plain", "cc_prompt_sha256": sha,
+            "cc_tools": ";".join(str(t) for t in ev.get("tools") or []),
+            "cc_skills_n": len(ev.get("skills") or []), "cc_mcp_n": len(ev.get("mcp_servers") or []),
+            "cc_model": str(ev.get("model") or "")[:80]}
+
+
+def _run_plain(cmd, cfg, env):
+    """Popen, reading stdout as it comes: the init event is checked the moment it arrives, and a run that is not
+    the profile is killed before the model has done anything. (out, err, timed_out, profile problems)."""
+    problems, lines = [], []
+    done = threading.Event()
+    with tempfile.TemporaryFile("w+") as errf:
+        p = subprocess.Popen(cmd, cwd=cfg.root, stdout=subprocess.PIPE, stderr=errf, text=True,
+                             stdin=subprocess.DEVNULL, env=env)
+
+        def reader():
+            for line in p.stdout:
+                lines.append(line)
+                if not problems and not done.is_set():
+                    try:
+                        ev = json.loads(line)
+                    except ValueError:
+                        continue
+                    if isinstance(ev, dict) and ev.get("type") == "system" and ev.get("subtype") == "init":
+                        done.set()
+                        problems.extend(profile_problems(ev))
+                        if problems:
+                            p.kill()
+
+        t = threading.Thread(target=reader, daemon=True)
+        t.start()
+        timed_out = False
+        try:
+            p.wait(timeout=cfg.wall_s)
+        except subprocess.TimeoutExpired:
+            timed_out = True
+            p.kill()
+            p.wait()
+        t.join(10)
+        errf.seek(0)
+        err = errf.read()
+    out = "".join(lines)
+    if not done.is_set() and not timed_out:
+        problems.extend(profile_problems(None))
+    return out, err, timed_out, problems
 
 
 def _summary_base(cfg):
@@ -242,12 +363,18 @@ def run(cfg):
            "--allowedTools", *ALLOWED, "--disallowedTools", *DENIED]
     if cfg.model:
         cmd += ["--model", cfg.model]
+    plain = cfg.cc_profile == "plain"
+    if plain:  # M3i: the same user message, a different system prompt, tool set and settings
+        cmd = plain_command(PROMPT.format(task=task), cfg.max_rounds, cfg.model)
+        summary.update(cc_profile="plain", cc_prompt_sha256=hashlib.sha256(SYSTEM.encode()).hexdigest())
     os.makedirs(cfg.agent_out, exist_ok=True)
     # Claude Code writes its settings under $HOME; the harness's user may have none it can write, so give it one.
     env = dict(os.environ)
     home = env.get("HOME", "")
     if not home or not os.access(home, os.W_OK):
         env["HOME"] = tempfile.mkdtemp(prefix="claude_home_")
+    if plain:
+        env = plain_env(env)
     pack_names = None
     if cfg.skill_pack:  # before any model call: a pack that is not the pinned one stops the problem here
         pack_names = _install_pack(cfg, summary, env)
@@ -256,10 +383,14 @@ def run(cfg):
     if via_openrouter:
         env = openrouter_env(env, cfg.model, key)
     timed_out = False
+    bad_profile = []
     try:
-        p = subprocess.run(cmd, cwd=cfg.root, capture_output=True, text=True, timeout=cfg.wall_s,
-                           stdin=subprocess.DEVNULL, env=env)
-        out, err = p.stdout, p.stderr
+        if plain:
+            out, err, timed_out, bad_profile = _run_plain(cmd, cfg, env)
+        else:
+            p = subprocess.run(cmd, cwd=cfg.root, capture_output=True, text=True, timeout=cfg.wall_s,
+                               stdin=subprocess.DEVNULL, env=env)
+            out, err = p.stdout, p.stderr
     except OSError as e:  # claude missing or not executable
         summary.update(stop_reason="error", error=f"{type(e).__name__}: {e}", wall_time_s=round(time.time() - t0, 1))
         return _write(cfg, summary)
@@ -286,6 +417,8 @@ def run(cfg):
         summary.update(skills_loaded=[n for _, n in calls], skills_n=len({n for _, n in pack_calls}),
                        skill_first_turn=pack_calls[0][0] if pack_calls else None,
                        skills_listed=None if offered is None else len(known & set(offered)))
+    if plain:
+        summary.update(profile_columns(init_event(lines), summary["cc_prompt_sha256"]))
     result, tools, bash, models = parse_stream(lines)
     usage = (result or {}).get("usage") or {}
     summary.update(
@@ -304,6 +437,9 @@ def run(cfg):
     )
     if via_openrouter:  # the key's usage after this problem (other problems in parallel are in it too)
         summary["key_usage_after_usd"] = key_usage(key)
+    if bad_profile:  # M3i: not the profile asked for; the problem is not a result and is rerun
+        summary.update(stop_reason="profile_error", error="plain profile refused: " + "; ".join(bad_profile)[:500])
+        return _write(cfg, summary)
     limit = None if timed_out else rate_limited(lines, result)
     if limit and summary["stop_reason"] in ("llm_error", "error"):
         summary.update(stop_reason="rate_limited", rate_limit=limit)

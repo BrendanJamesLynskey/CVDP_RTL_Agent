@@ -131,6 +131,15 @@ pack's private text is in it. A problem cut off by the plan's limit is recorded 
 to use it; amended after the smoke runs, where Haiku loaded no skill unprompted) on M3g's held-out 100 and the 86, 3
 runs each, plus one unhinted S2 run on the held-out set.
 
+**M3i** (in progress; pre-registered in [`docs/reports/m3i/preregistration.md`](docs/reports/m3i/preregistration.md),
+report [`docs/reports/M3i_report.md`](docs/reports/M3i_report.md), smoke runs
+[`docs/reports/m3i/smoke.md`](docs/reports/m3i/smoke.md)): how much of Claude Code is the harness? Sweep input
+`cc_profile=plain` runs Claude Code 2.1.310 with the LangGraph agent's own system prompt (read from
+[`agent/cvdp_agent/prompts.py`](agent/cvdp_agent/prompts.py), its sha256 in every row), only Read, Write, Edit and Bash,
+and no settings, CLAUDE.md, skills or MCP servers. The `init` event is checked as it arrives and the CSV records
+`cc_tools`, `cc_skills_n`, `cc_mcp_n`, `cc_model`; a run whose init event is not the profile ends as `profile_error` and
+is not scored. The comparison is plain against M3h's arm A (Claude Code as shipped), same model.
+
 **M2a** (merged, [`docs/reports/M2a_report.md`](docs/reports/M2a_report.md)): reasoning limits, a retry on empty
 replies and unreadable decisions, and seeds. On the same 10 problems on Arm64, DeepSeek at `reasoning=off` passed
 6/10 for $0.0867 with no empty replies; at `low` it passed 7/10 for $0.3546 with 14 empty replies.
@@ -495,6 +504,7 @@ empty (an old ledger and the harness's reuse of `raw_result.json` would make the
 | M3e | Harness or model: the LangGraph agent with Claude models, against Claude Code and against luna |
 | M3g | A frozen knowledge pack loaded as skills, tested on a held-out set of non-agentic problems frozen before any run |
 | M3h | The knowledge pack as Claude Code's own skills, with Haiku 5.5: is it used, and does it help |
+| M3i | How much of Claude Code is the harness: a plain profile (our system prompt, four tools) against Claude Code as shipped, same model |
 | M4 | Write-up, logs packed for the Si2 LBC-bench leaderboard |
 | M5 | Open AMBA verification track: test plan, cocotb testbench with coverage, SVA with SymbiYosys; scored by seeded-bug kill rate and false alarms |
 

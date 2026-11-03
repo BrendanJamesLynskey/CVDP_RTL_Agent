@@ -26,7 +26,7 @@ def merge(paths):
                 if key not in best:
                     best[key] = row
                     order.append(key)
-                elif best[key].get("stop_reason") == "rate_limited":
+                elif best[key].get("stop_reason") in ("rate_limited", "profile_error"):  # M3i: not run either
                     best[key] = row
     return header, [best[k] for k in order]
 
