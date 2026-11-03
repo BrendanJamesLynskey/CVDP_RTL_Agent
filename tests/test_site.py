@@ -72,7 +72,7 @@ def test_problems_link_in_hero_and_bar():
 
 def test_every_old_section_id_still_present():
     _, idmap = build.split_story()
-    for sec in SECTIONS + ["m3e", "m3g"]:
+    for sec in SECTIONS + ["m3e", "m3g", "m3h", "m3i"]:
         assert sec in idmap, sec
         f = build.href(idmap[sec])
         f = "index.html" if f == "./" else f
@@ -89,6 +89,7 @@ def test_old_anchors_forward_from_the_front_page():
             assert fwd[i] == build.href(p)
     assert fwd["m3d"] == "results-m3c-m3e.html" and fwd["how"] == "how.html"
     assert fwd["m3g"] == "results-m3c-m3e.html"  # brief 19: M3g lives on the page that kept its M3e file name
+    assert fwd["m3h"] == "results-m3c-m3e.html" and fwd["m3i"] == "results-m3c-m3e.html"  # brief 23: M3h and M3i likewise
     assert any(re.fullmatch(pat, "g-langgraph") and f == "reference.html" for pat, f in pats)
 
 

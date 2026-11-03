@@ -1,0 +1,13 @@
+id,seed,file,skill,matches,longest_bytes
+cvdp_agentic_AES_encryption_decryption_0003,1,seed1/cvdp_agentic_AES_encryption_decryption/harness/3/agent_changes.patch,block-ciphers-in-hardware,1,96
+cvdp_agentic_AES_encryption_decryption_0003,1,seed1/cvdp_agentic_AES_encryption_decryption/harness/3/rtl/aes128_encrypt.sv,block-ciphers-in-hardware,2,99
+cvdp_agentic_AES_encryption_decryption_0003,1,seed1/cvdp_agentic_AES_encryption_decryption/harness/3/rundir/agent_tb/top_new.sv,block-ciphers-in-hardware,2,99
+cvdp_agentic_PCIe_endpoint_0001,1,seed1/cvdp_agentic_PCIe_endpoint/harness/1/rtl/pcie_endpoint.sv,fifo-design,4,81
+cvdp_agentic_cipher_0001,1,seed1/cvdp_agentic_cipher/harness/1/rtl/cipher.sv,fifo-design,1,81
+cvdp_agentic_csr_using_apb_interface_0001,1,seed1/cvdp_agentic_csr_using_apb_interface/harness/1/agent_changes.patch,fsm-design,1,86
+cvdp_agentic_csr_using_apb_interface_0001,1,seed1/cvdp_agentic_csr_using_apb_interface/harness/1/rtl/csr_apb_interface.sv,bus-and-register-interfaces,2,84
+cvdp_agentic_csr_using_apb_interface_0001,1,seed1/cvdp_agentic_csr_using_apb_interface/harness/1/rtl/csr_apb_interface.sv,fsm-design,1,86
+cvdp_agentic_digital_stopwatch_0001,1,seed1/cvdp_agentic_digital_stopwatch/harness/1/agent_changes.patch,counters-timers-and-edges,2,92
+cvdp_agentic_digital_stopwatch_0001,1,seed1/cvdp_agentic_digital_stopwatch/harness/1/rtl/dig_clk_div.sv,counters-timers-and-edges,2,92
+cvdp_agentic_dynamic_equalizer_0001,1,seed1/cvdp_agentic_dynamic_equalizer/harness/1/rtl/dynamic_equalizer.sv,fifo-design,1,81
+cvdp_agentic_dynamic_equalizer_0001,1,seed1/cvdp_agentic_dynamic_equalizer/harness/1/rundir/agent_tb/test_dynamic_equalizer.py,self-check-and-cocotb,8,93
