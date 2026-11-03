@@ -710,7 +710,7 @@ function oval(v, c, r, label, cls, tcls, opts = {}) {
 }
 function loopDraw(host, k) {
   const W = widthOf(host), narrow = W < 560;
-  const Hh = narrow ? 390 : 300;
+  const Hh = narrow ? 420 : 300;
   const v = svgIn(host, W, Hh, "The agent drawn as a graph: oval nodes for its steps, arrows for the moves between them, the current step highlighted");
   const st = LOOP[k];
   const P = narrow
@@ -722,15 +722,15 @@ function loopDraw(host, k) {
     ["reflect", "edit", narrow ? 0.12 : 0.18, "edit_again"], ["reflect", "finalize", narrow ? 0.12 : -0.1, "submit"], ["finalize", "hidden", 0, ""]];
   E.forEach(([a, b, bend, lab]) => {
     const on = st.at === b && prev === a;
-    arc(v, P[a], R, P[b], R, bend, on ? "edgeA" : "edge", { m: on ? "arrA" : "arrG", label: lab, lc: on ? "t-c3" : "t-3", ly: lab === "edit_again" ? (narrow ? 4 : 16) : -6 });
+    arc(v, P[a], R, P[b], R, bend, on ? "edgeA" : "edge", { m: on ? "arrA" : "arrG", label: lab, lc: on ? "t-c3" : "t-3", ly: lab === "edit_again" ? 16 : -6 });
   });
   Object.keys(P).forEach(nm => {
     const on = st.at === nm, isH = nm === "hidden", failNow = isH && on;
     oval(v, P[nm], R, isH ? "hidden tests" : nm, failNow ? "sx" : on ? "s3" : "s1", failNow ? "t-x" : on ? "t-c3" : "t-c1", { sw: on ? 2.2 : 1.2, bold: on, fs: narrow ? 10.5 : 11, dash: isH ? "4 3" : null });
   });
-  s("text", { x: P.hidden[0] + (narrow ? 0 : -R[0] - 8), y: P.hidden[1] + (narrow ? 34 : 4), "font-size": 9.5, "text-anchor": narrow ? "middle" : "end", class: "t-3" }, v, "run by the benchmark, after the agent exits");
+  s("text", { x: narrow ? W / 2 : P.hidden[0] - R[0] - 8, y: P.hidden[1] + (narrow ? 36 : 4), "font-size": 9.5, "text-anchor": narrow ? "middle" : "end", class: "t-3" }, v, "run by the benchmark, after the agent exits");
   // turn counter register
-  const tx = narrow ? W * 0.5 + 30 : 20 + Math.min(260, W * 0.33) + 110, ty = narrow ? Hh - 10 : 262;
+  const tx = narrow ? W * 0.5 + 30 : 20 + Math.min(260, W * 0.33) + 110, ty = narrow ? Hh - 14 : 262;
   s("text", { x: tx, y: ty - 16, "font-size": 10, "text-anchor": "end", class: "t-3" }, v, "turn[3:0]");
   const tv = st.turn;
   s("path", { d: lozPath(tx - 60, tx, ty, 10), class: st.turn === 9 && st.at === "hidden" ? "sx" : "s2" }, v);
@@ -749,62 +749,104 @@ function loopDraw(host, k) {
 // src: agent/cvdp_agent/deep.py module docstring (tools on and off) and its TASK prompt (run_checks; a reply with no tool call submits)
 function deepDraw() {
   const host = document.getElementById("c-deep"); const W = widthOf(host), narrow = W < 560;
-  const Hh = narrow ? 470 : 380;
+  const Hh = narrow ? 520 : 380;
   const v = svgIn(host, W, Hh, "Deep Agents drawn as a graph: the model at the centre, a two-way arrow to each tool it may call, then submit and the hidden tests");
-  const C = [W / 2, narrow ? 200 : 170], Rm = [narrow ? 70 : 78, 26];
-  const tools = [["write_todos", "plan list"], ["ls", "list files"], ["read_file", "read"], ["glob", "find files"], ["grep", "search text"], ["write_file", "write"], ["edit_file", "edit"], ["run_checks", "compile, lint,\nsynth, own testbench"]];
-  const Rt = [narrow ? 50 : 58, 20];
-  const rx = narrow ? W * 0.34 : Math.min(W * 0.38, 330), ry = narrow ? 150 : 130;
-  const ang = [180, 207, 234, 261, 279, 306, 333, 0].map(d => d * Math.PI / 180);
+  const tools = [["write_todos", "plan list"], ["ls", "list files"], ["read_file", "read"], ["glob", "find files"], ["grep", "search text"], ["write_file", "write"], ["edit_file", "edit"], ["run_checks", narrow ? "compile, lint, synth,\nown testbench" : "compile, lint, synth, own testbench"]];
+  let C, Rm, Rt, TP, St, Sb, H, Rb;
+  if (narrow) {
+    C = [W / 2, 190]; Rm = [Math.min(62, W * 0.17), 26]; Rt = [Math.min(50, W * 0.14), 18];
+    const xl = Rt[0] + 8, xr = W - Rt[0] - 8, ys = [78, 148, 232, 302];
+    TP = tools.map((_, q) => (q < 4 ? [xl, ys[q]] : [xr, ys[q - 4]]));
+    Rb = [Math.min(56, W * 0.16), 18]; St = [W / 2, 26]; Sb = [W / 2, 396]; H = [W / 2, 458];
+  } else {
+    C = [W / 2, 170]; Rm = [78, 26]; Rt = [58, 20];
+    const rx = Math.min(W * 0.38, 330), ry = 128;
+    TP = tools.map((_, q) => { const g = Math.PI * (1 + q / 7); return [C[0] + rx * Math.cos(g), C[1] + ry * Math.sin(g)]; });
+    const yb = Hh - 40; Rb = [62, 19]; St = [W * 0.14, yb]; Sb = [W * 0.5, yb]; H = [W * 0.86, yb];
+  }
   tools.forEach(([nm, what], q) => {
-    const T = [C[0] + rx * Math.cos(ang[q]), C[1] + ry * Math.sin(ang[q]) * (q === 0 || q === 7 ? 0 : 1)];
+    const T = TP[q];
     arc(v, C, Rm, T, Rt, 0, "edge", { both: true });
-    oval(v, T, Rt, nm, "s1", "t-c1", { fs: narrow ? 10 : 10.5, bold: true });
-    s("text", { x: T[0], y: T[1] + Rt[1] + 12, "font-size": 9.5, "text-anchor": "middle", class: "t-3" }, v, what.replace("\n", " "));
+    oval(v, T, Rt, nm, "s1", "t-c1", { fs: narrow ? 9.5 : 10.5, bold: true });
+    what.split("\n").forEach((ln, j) => s("text", { x: T[0], y: T[1] + Rt[1] + 12 + j * 11, "font-size": narrow ? 9 : 9.5, "text-anchor": "middle", class: "t-3" }, v, ln));
   });
-  oval(v, C, Rm, "model\n(OpenAI gpt-6-luna)", "s3", "t-c3", { bold: true, sw: 1.8, fs: 11 });
-  const yb = Hh - 40, St = [W * (narrow ? 0.2 : 0.14), yb], Sb = [W * 0.5, yb], H = [W * (narrow ? 0.8 : 0.86), yb], Rb = [narrow ? 52 : 62, 19];
-  oval(v, St, Rb, "task + files", "s2", "t-c2", { bold: true });
-  oval(v, Sb, Rb, "submit", "s2", "t-c2", { bold: true });
-  oval(v, H, Rb, "hidden tests", "s1", "t-c1", { dash: "4 3" });
-  arc(v, St, Rb, C, Rm, -0.15, "edge");
-  arc(v, C, Rm, Sb, Rb, 0, "edge", { label: "reply with no tool call", lx: 62, ly: 4 });
+  oval(v, C, Rm, narrow ? "model\nOpenAI\ngpt-6-luna" : "model\n(OpenAI gpt-6-luna)", "s3", "t-c3", { bold: true, sw: 1.8, fs: narrow ? 10 : 11 });
+  oval(v, St, Rb, "task + files", "s2", "t-c2", { bold: true, fs: narrow ? 10 : 11 });
+  oval(v, Sb, Rb, "submit", "s2", "t-c2", { bold: true, fs: narrow ? 10 : 11 });
+  oval(v, H, Rb, "hidden tests", "s1", "t-c1", { dash: "4 3", fs: narrow ? 10 : 11 });
+  arc(v, St, Rb, C, Rm, narrow ? 0 : -0.15, "edge");
+  arc(v, C, Rm, Sb, Rb, 0, "edge", narrow ? {} : { label: "reply with no tool call", lx: 62, ly: 4 });
   arc(v, Sb, Rb, H, Rb, 0, "edge");
-  s("text", { x: 10, y: 16, "font-size": 10, class: "t-3" }, v, "two-way arrow: the model calls the tool, the result comes back");
-  s("text", { x: 10, y: 30, "font-size": 10, class: "t-3" }, v, "not offered: execute (shell), task (sub-agents)");
+  const notes = ["two-way arrow: the model calls the tool, the result comes back", "not offered: execute (shell), task (sub-agents)"];
+  if (narrow) {
+    s("text", { x: W / 2, y: Sb[1] - Rb[1] - 8, "font-size": 9, "text-anchor": "middle", class: "t-3" }, v, "a reply with no tool call submits");
+    notes.forEach((n, j) => s("text", { x: 4, y: Hh - 26 + j * 13, "font-size": 9, class: "t-3" }, v, j === 0 ? "two-way arrow: call, then result" : n));
+  } else {
+    notes.forEach((n, j) => s("text", { x: 10, y: 16 + j * 14, "font-size": 10, class: "t-3" }, v, n));
+  }
 }
 
 /* ---------------------------------------------------------- tools per setup, as a two-sided graph (static) */
 // src: agent/cvdp_agent/graph.py (edit, check), checks.py CHECKS; deep.py; claude_code.py ALLOWED, DENIED, PLAIN_TOOLS; docs/reports/m3i/preregistration.md (22 tools offered by default)
 function toolsDraw() {
   const host = document.getElementById("c-tools"); const W = widthOf(host), narrow = W < 620;
-  const setups = [["lg", "Our LangGraph agent", "fixed steps"], ["da", "Deep Agents", "8 tools"], ["cd", "Claude Code, default", "22 offered, 6 allowed"], ["cl", "Claude Code, lean (M3i)", "4 tools"]];
-  const caps = [["read", "read and list files"], ["search", "search files"], ["write", "write and edit files"], ["plan", "plan list"], ["checks", "run checks: compile,\nlint, synth, own testbench"], ["shell", "shell: runs the\nsimulators directly"]];
-  const L = [ // [setup, capability, how, fixed step?]
-    ["lg", "read", "all files sent in its prompt", 1], ["lg", "write", "edit step", 1], ["lg", "plan", "plan step", 1], ["lg", "checks", "check step", 1],
-    ["da", "read", "ls, read_file"], ["da", "search", "glob, grep"], ["da", "write", "write_file, edit_file"], ["da", "plan", "write_todos"], ["da", "checks", "run_checks"],
-    ["cd", "read", "Read"], ["cd", "search", "Glob, Grep"], ["cd", "write", "Write, Edit"], ["cd", "shell", "Bash"],
-    ["cl", "read", "Read"], ["cl", "write", "Write, Edit"], ["cl", "shell", "Bash"]];
-  const rowH = narrow ? 70 : 62, Hh = 40 + caps.length * rowH;
-  const v = svgIn(host, W, Hh, "Which tools each setup has: setups on the left, capabilities on the right, an arrow where a setup has that capability");
-  const xl = narrow ? W * 0.2 : W * 0.15, xr = narrow ? W * 0.78 : W * 0.82;
-  const Rs = [narrow ? Math.min(66, W * 0.19) : 88, narrow ? 26 : 22], Rc = [narrow ? Math.min(70, W * 0.21) : 100, 22];
-  const PS = {}, PC = {};
-  const top = 40, span = Hh - top - 20;
-  setups.forEach(([id], q) => { PS[id] = [xl, top + 10 + (q + 0.5) * span / setups.length]; });
-  caps.forEach(([id], q) => { PC[id] = [xr, top + (q + 0.5) * span / caps.length]; });
-  const colour = { lg: "t-c2", da: "t-c1", cd: "t-c3", cl: "t-c3" };
-  L.forEach(([a, b, how, fixed]) => {
-    arc(v, PS[a], Rs, PC[b], Rc, 0, "edge", { dash: fixed ? "4 3" : null });
-    if (!narrow) {
-      const A = PS[a], B = PC[b], t = 0.7;
-      s("text", { x: A[0] + (B[0] - A[0]) * t, y: A[1] + (B[1] - A[1]) * t - 4, "font-size": 9.5, "text-anchor": "middle", class: colour[a] }, v, how);
-    }
+  const setups = [["lg", "Our LangGraph\nagent", "fixed steps"], ["da", "Deep Agents", "8 tools"], ["cd", "Claude Code,\ndefault", "22 offered, 6 allowed"], ["cl", "Claude Code,\nlean (M3i)", "4 tools"]];
+  const caps = [["read", "read and list files"], ["search", "search files"], ["write", "write and edit files"], ["plan", "keep a plan list"], ["checks", "run checks (compile,\nlint, synth, own tests)"], ["shell", "shell (runs the\nsimulators directly)"]];
+  const L = { // setup -> capability -> [tool names, fixed step?]
+    lg: { read: ["files sent\nin prompt", 1], write: ["edit step", 1], plan: ["plan step", 1], checks: ["check step", 1] },
+    da: { read: ["ls\nread_file"], search: ["glob\ngrep"], write: ["write_file\nedit_file"], plan: ["write_todos"], checks: ["run_checks"] },
+    cd: { read: ["Read"], search: ["Glob\nGrep"], write: ["Write\nEdit"], shell: ["Bash"] },
+    cl: { read: ["Read"], write: ["Write\nEdit"], shell: ["Bash"] } };
+  const cls = { lg: ["s2", "t-c2"], da: ["s1", "t-c1"], cd: ["s3", "t-c3"], cl: ["s3", "t-c3"] };
+  const legend = ["oval: a tool the model chooses to call", "dashed oval: a fixed step of our graph, run every time", "blank: that setup cannot do it"];
+  if (narrow) { // phone: one block per setup, the setup oval with an arc to each of its tools
+    const capName = { read: "read, list", search: "search", write: "write, edit", plan: "plan list", checks: "run checks", shell: "shell" };
+    const Rh = [Math.min(54, W * 0.15), 24], xh = Rh[0] + 2, x0 = xh + Rh[0] + 14, cw = (W - x0) / 2, Rc = [cw / 2 - 5, 19], rowH = 54;
+    const blocks = setups.map(([id]) => Object.keys(L[id]).length);
+    let Hh = 10; blocks.forEach(n => { Hh += Math.max(Math.ceil(n / 2) * rowH, 70) + 18; }); Hh += 44;
+    const v = svgIn(host, W, Hh, "Which tools each setup has: each setup oval with an arrow to each of its tools; a dashed oval is a fixed step of our graph");
+    let y0 = 10;
+    setups.forEach(([id, nm, sub], q) => {
+      const items = Object.entries(L[id]), hgt = Math.max(Math.ceil(items.length / 2) * rowH, 70), Hd = [xh, y0 + hgt / 2 - 6];
+      const TP = items.map((_, j) => [x0 + (j % 2) * cw + cw / 2, y0 + Math.floor(j / 2) * rowH + 22]);
+      items.forEach(([, [, fixed]], j) => arc(v, Hd, Rh, TP[j], Rc, 0, "edge", { dash: fixed ? "4 3" : null }));
+      items.forEach(([c, [names, fixed]], j) => {
+        const T = TP[j];
+        oval(v, T, Rc, names, fixed ? "s2" : "s1", fixed ? "t-c2" : "t-c1", { fs: 8.5, dash: fixed ? "4 3" : null });
+        s("text", { x: T[0], y: T[1] + Rc[1] + 10, "font-size": 8.5, "text-anchor": "middle", class: "t-3" }, v, capName[c]);
+      });
+      oval(v, Hd, Rh, nm, cls[id][0], cls[id][1], { bold: true, fs: 9 });
+      s("text", { x: Hd[0], y: Hd[1] + Rh[1] + 12, "font-size": 8.5, "text-anchor": "middle", class: "t-3" }, v, sub);
+      y0 += hgt + 18;
+      if (q < setups.length - 1) s("line", { x1: 0, x2: W, y1: y0 - 9, y2: y0 - 9, class: "fgrid", "stroke-width": 1, opacity: 0.5 }, v);
+    });
+    legend.forEach((n, j) => s("text", { x: 2, y: Hh - 34 + j * 13, "font-size": 9, class: "t-3" }, v, n));
+    return;
+  }
+  const lw = Math.min(230, W * 0.26), cw = (W - lw) / setups.length;
+  const top = narrow ? 92 : 104, rowH = narrow ? 52 : 50, yl = top + caps.length * rowH + 22, Hh = yl + 36;
+  const v = svgIn(host, W, Hh, "Which tools each setup has: one column per setup, one row per kind of action; an oval names the tool, a dashed oval is a fixed step of our graph, a blank means the setup cannot do it");
+  const fs = narrow ? 8.5 : 10.5, Rh = [cw / 2 - (narrow ? 3 : 10), narrow ? 24 : 26], Rc = [cw / 2 - (narrow ? 4 : 18), narrow ? 19 : 18];
+  caps.forEach(([, nm], r) => {
+    const y = top + r * rowH + rowH / 2;
+    s("line", { x1: 0, x2: W, y1: y + rowH / 2, y2: y + rowH / 2, class: "fgrid", "stroke-width": 1, opacity: 0.5 }, v);
+    nm.split("\n").forEach((ln, j, all) => s("text", { x: 2, y: y + 4 + (j - (all.length - 1) / 2) * 12, "font-size": narrow ? 9 : 10.5, class: "t-ink" }, v, ln));
   });
-  setups.forEach(([id, nm, sub]) => { oval(v, PS[id], Rs, narrow ? nm.replace(", ", ",\n").replace(" agent", "\nagent") : nm + "\n" + sub, id === "lg" ? "s2" : id === "da" ? "s1" : "s3", colour[id], { bold: true, fs: narrow ? 9.5 : 10.5 }); });
-  caps.forEach(([id, nm]) => oval(v, PC[id], Rc, nm, "fpanel", "t-ink", { fs: narrow ? 9.5 : 10.5 }));
-  s("text", { x: 10, y: 14, "font-size": 10, class: "t-3" }, v, "solid arrow: a tool the model chooses to call");
-  s("text", { x: 10, y: 28, "font-size": 10, class: "t-3" }, v, "dashed arrow: a fixed step of the graph, run every time");
+  setups.forEach(([id, nm, sub], q) => {
+    const x = lw + q * cw + cw / 2, Hd = [x, 22 + Rh[1]];
+    const filled = caps.map(([c], r) => [c, r]).filter(([c]) => L[id][c]);
+    const last = filled.length ? top + filled[filled.length - 1][1] * rowH + rowH / 2 : Hd[1];
+    s("line", { x1: x, x2: x, y1: Hd[1] + Rh[1], y2: last - Rc[1], class: "edge", "stroke-dasharray": id === "lg" ? "4 3" : null }, v);
+    oval(v, Hd, Rh, nm, cls[id][0], cls[id][1], { bold: true, fs: narrow ? 8.5 : 10.5 });
+    s("text", { x, y: Hd[1] + Rh[1] + 13, "font-size": narrow ? 8 : 9.5, "text-anchor": "middle", class: "t-3" }, v, sub);
+    filled.forEach(([c, r]) => {
+      const [names, fixed] = L[id][c], y = top + r * rowH + rowH / 2;
+      oval(v, [x, y], Rc, names, fixed ? "s2" : "s1", fixed ? "t-c2" : "t-c1", { fs, dash: fixed ? "4 3" : null });
+    });
+  });
+  s("text", { x: 2, y: yl, "font-size": narrow ? 9 : 10, class: "t-3" }, v, "oval: a tool the model chooses to call");
+  s("text", { x: 2, y: yl + 14, "font-size": narrow ? 9 : 10, class: "t-3" }, v, "dashed oval: a fixed step of our graph, run every time");
+  s("text", { x: 2, y: yl + 28, "font-size": narrow ? 9 : 10, class: "t-3" }, v, "blank: that setup cannot do it");
 }
 Player("p-loop", { n: LOOP.length, ms: 520, hold: j => (j >= LOOP.length - 6 ? 2.2 : 1), draw: loopDraw, caption: k => LOOP[k].cap });
 
