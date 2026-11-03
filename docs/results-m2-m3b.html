@@ -392,7 +392,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
     <div class="edge" data-edge></div>
     <h2>Milestones, M0 to M3i</h2>
     <div class="ios"><span class="k">IN ONE SENTENCE</span>
-      <p>Each milestone asked one question and answered it with runs anyone can download: does the harness run (M0), does the agent work (M1), how do models and reasoning settings compare (M2a, M2), do the agent's own checks pay for themselves (M3), does a richer harness or a memory of lessons help (M3b, then a confirming run), do two model-free checks run as fixed steps help (M3c), why do the problems no model solves fail (the unsolved analysis), does making the agent test before it submits help (M3d), is the gap to Claude Code the harness or the model (M3e), does a pack of RTL design know-how help (M3g), does it help as Claude Code skills (M3h), and how much of Claude Code is its own harness (M3i).</p>
+      <p>Each milestone asked one question and answered it with runs anyone can download. The model moved the score; the Deep Agents harness moved it a little; nothing else did.</p>
     </div>
     <div class="bus" id="msbus">
       <!-- src: README.md M0 table -->
@@ -462,15 +462,15 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
     <h3>The measurements at a glance</h3>
     <div class="meas" role="list">
       <!-- src: docs/reports/M2_report.md "Results: all 92 problems" -->
-      <div role="listitem"><div class="k">pass@1, best model</div><div class="v num">52&ndash;56 / 92</div><div class="s">Haiku 5.5 on two runners; gpt-6-luna 52&ndash;53</div></div>
+      <div role="listitem"><div class="k">pass@1, our agent in M2</div><div class="v num">52&ndash;56 / 92</div><div class="s">Anthropic Claude Haiku 5.5 on two runners; OpenAI gpt-6-luna 52&ndash;53. With Claude Opus 5.5 (M3e) it reached <span data-d="e3f_rate_opus">72.1</span>% of the 86.</div></div>
       <!-- src: docs/reports/M2_report.md, $/solved column -->
-      <div role="listitem"><div class="k">cost per solved</div><div class="v num">$0.0105</div><div class="s">gpt-6-luna, x86-64; Haiku $0.0184&ndash;0.0214</div></div>
+      <div role="listitem"><div class="k">cost per solved</div><div class="v num">$0.0105</div><div class="s">OpenAI gpt-6-luna, x86-64; Claude Haiku 5.5 $0.0184&ndash;0.0214</div></div>
       <!-- src: docs/reports/M2_report.md "Run-to-run noise"; site/data/story_data.json m2_flips -->
       <div role="listitem"><div class="k">identical-run flips</div><div class="v x num">10</div><div class="s">problems change result between two runs of Haiku</div></div>
       <!-- src: docs/reports/M3_report.md "Paired results" -->
-      <div role="listitem"><div class="k">ablations with an effect</div><div class="v x num">0 of 6</div><div class="s">every 95% interval includes 0</div></div>
+      <div role="listitem"><div class="k">ablations with an effect</div><div class="v x num">0 of 6</div><div class="s">self-check, lint, turn caps and budget: none moved the score</div></div>
       <!-- src: docs/reports/m3b/confirm_result.md; docs/reports/m3b/confirm_paired_eval86.md (B - A on 6 new runs an arm) -->
-      <div role="listitem"><div class="k">harness effect, confirmed</div><div class="v num"><span data-d="cf_e">+4.7</span> pts</div><div class="s">Deep Agents &minus; LangGraph <span data-d="cf_ci">[+1.0, +8.5]</span>, pre-registered, <span data-d="cf_runs">6</span> new runs an arm; memory, M3c checks, M3d verify step and M3g pack: none detectable</div></div>
+      <div role="listitem"><div class="k">harness effect, confirmed</div><div class="v num"><span data-d="cf_e">+4.7</span> pts</div><div class="s">Deep Agents over our LangGraph graph, both on OpenAI gpt-6-luna, confirmed by a second, fresh test. Memory, M3c checks, M3d verify step and M3g pack: none detectable.</div></div>
       <!-- src: M1 about $0.75 (M3_report.md cost bookkeeping) + M2, M3, M3b, M3b confirming, M3c, M3d, M3e and M3g run CSVs, the M3b snapshot and the smoke runs; summed by site/data/derive.py -->
       <div role="listitem"><div class="k">LLM spend, M1&ndash;M3g</div><div class="v num">&asymp; $<span data-d="spend_all">79.03</span></div><div class="s">provider-reported; the Claude Code ladder, M3h and M3i ran on a plan, not counted</div></div>
     </div>
@@ -484,7 +484,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
     <div class="edge" data-edge></div>
     <h2>M2: three models, 92 problems, two runners</h2>
     <div class="ios"><span class="k">IN ONE SENTENCE</span>
-      <p>Haiku 5.5 and gpt-6-luna solve the same share of the 92 problems, Luna at half the cost per solved problem, DeepSeek V4.1 Flash solves about 10 fewer, and two identical runs of one model differ on about 10 problems, so a gap of a few problems means nothing.</p>
+      <p>In our LangGraph agent, Anthropic Claude Haiku 5.5 and OpenAI gpt-6-luna solve the same share of the 92 problems, Luna at half the cost per solved problem, DeepSeek V4.1 Flash solves about 10 fewer, and two identical runs of one model differ on about 10 problems, so a gap of a few problems means nothing.</p>
     </div>
     <p>Each model ran all 92 problems once on an x86-64 and once on an Arm64 <a class="gl" href="reference.html#g-runners">runner</a>, with the same image and settings, against the <a class="gl" href="reference.html#g-null">null agent</a>'s floor of zero.</p>
     <div class="scope"><div class="hd"><span><b><a class="gl" href="reference.html#g-pass1">pass@1</a></b> with <a class="gl" href="reference.html#g-wilson">Wilson</a> 95% intervals · one run per runner</span><span>CH1 = x86-64 · CH2 = Arm64</span></div>
@@ -524,7 +524,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
     <div class="edge" data-edge></div>
     <h2>M3: six changes to the agent, none detectable</h2>
     <div class="ios"><span class="k">IN ONE SENTENCE</span>
-      <p>Turning the self-check or lint off, capping turns at 5 or 20, or cutting the budget to $0.02 changed the pass rate by less than two identical runs differ, though turning lint off made each solved problem 38 to 59% dearer.</p>
+      <p>With OpenAI gpt-6-luna, turning the self-check or lint off, capping turns at 5 or 20, or cutting the budget to $0.02 changed the pass rate by less than two identical runs differ, though turning lint off made each solved problem 38 to 59% dearer.</p>
     </div>
     <!-- src: docs/reports/M3_report.md "Arms and settings" -->
     <p>Each arm is an <a class="gl" href="reference.html#g-ablation">ablation</a>: one setting changed, everything else held. Every arm uses gpt-6-luna (the cheapest per solved problem in M2), all 92 problems, Arm64 and 4 threads, and runs twice. Each arm is compared with the base (A) problem by problem: a problem's rate in an arm is its passes over the arm's two runs, so 0, &frac12; or 1. The effect is the mean of the differences, with a <a class="gl" href="reference.html#g-boot">paired bootstrap</a> interval and an exact <a class="gl" href="reference.html#g-sign">sign test</a>.</p>
@@ -565,7 +565,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
     <h2>M3b: a richer harness, or a memory of lessons?</h2>
     <div class="ios"><span class="k">IN ONE SENTENCE</span>
       <!-- src: docs/reports/M3b_report.md "In short"; numbers in data-d spans are written by site/data/derive.py -->
-      <p>At a fixed model, a frozen memory of <span data-d="les_n">40</span> lessons did not detectably change the pass rate; the Deep Agents harness added a few points, first as a hypothesis on <span data-d="m3b_runs_arm">3</span> runs an arm, then confirmed by a pre-registered test on <span data-d="cf_runs">6</span> new runs an arm (B &minus; A <span data-d="cf_e">+4.7</span> <span data-d="cf_ci">[+1.0, +8.5]</span>), for this one model on this one benchmark.</p>
+      <p>With OpenAI gpt-6-luna held fixed, a frozen memory of <span data-d="les_n">40</span> lessons did not change the pass rate, and moving our agent from its LangGraph graph to the Deep Agents harness added <span data-d="cf_e">+4.7</span> points, confirmed by a second, fresh test fixed in advance, for this one model on this one benchmark.</p>
       <!-- src: docs/reports/M3b_report.md "In short" (3-run result, unchanged); docs/reports/m3b/confirm_result.md (the confirmation) -->
     </div>
     <!-- src: docs/reports/M3b_report.md "The question", "Arms and settings", "The two problem sets" -->
