@@ -137,6 +137,9 @@ def paired(arm_rows, base_rows):
     better = sum(1 for d in diffs if d > 0)
     worse = sum(1 for d in diffs if d < 0)
     lo, hi = bootstrap_mean(diffs)
+    # M3j: per-problem rates are thirds, so a bound that is exactly 0 can come out as +/-1e-17; round before the
+    # verdict, so a bound of 0 reads as "includes 0" (no detectable effect), as the pre-registered rule says
+    lo, hi = round(lo, 9), round(hi, 9)
     return {"problems": len(common), "effect": statistics.mean(diffs) if diffs else 0.0, "lo": lo, "hi": hi,
             "better": better, "worse": worse, "same": len(common) - better - worse,
             "p_sign": sign_test(better, worse),

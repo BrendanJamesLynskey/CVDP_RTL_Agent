@@ -12,6 +12,13 @@ import csv
 import sys
 
 
+def not_run(row):
+    """Rate-limited (M3h) and profile_error (M3i) rows were not run. M3j: neither was a row the whole-run guard stopped
+    before its first model call (`run_budget_exhausted` with no LLM calls)."""
+    sr = row.get("stop_reason")
+    return sr in ("rate_limited", "profile_error") or (sr == "run_budget_exhausted" and row.get("llm_calls") in ("0", ""))
+
+
 def merge(paths):
     header, best, order = None, {}, []
     for p in paths:
@@ -26,7 +33,7 @@ def merge(paths):
                 if key not in best:
                     best[key] = row
                     order.append(key)
-                elif best[key].get("stop_reason") in ("rate_limited", "profile_error"):  # M3i: not run either
+                elif not_run(best[key]):
                     best[key] = row
     return header, [best[k] for k in order]
 
