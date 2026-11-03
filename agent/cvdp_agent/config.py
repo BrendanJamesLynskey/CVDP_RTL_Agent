@@ -20,7 +20,8 @@ def _num(name, default, cast):
 @dataclass
 class Config:
     root: str = "/code"                 # the mounted task tree
-    provider: str = "openrouter"        # fake | openrouter | claude_plan | claude_openrouter (claudecode harness)
+    provider: str = "openrouter"        # fake | openrouter | claude_plan | claude_openrouter | claude_api (claudecode)
+                                    # | anthropic (apiloop: the Anthropic API, an API key; M3j)
     model: str = ""                     # OpenRouter model ID
     max_turns: int = 10                 # edit -> check -> reflect cycles
     budget_usd: float = 0.10            # per problem, provider-reported cost
@@ -33,6 +34,7 @@ class Config:
     data_collection: str = ""           # F1B: "deny" = OpenRouter routes only to providers that collect no data
     harness: str = "langgraph"          # langgraph (the M1-M3 agent) | deepagents (LangGraph's Deep Agents, M3b)
                                         # | claudecode (Claude Code headless on the owner's plan, a comparison)
+                                    # | apiloop (M3j: a plain Messages API tool loop, no Claude Code)
     max_rounds: int = 22                # deepagents: model calls (tool-call rounds); M2's worst case for 10 turns
     memory: str = ""                    # a lessons snapshot (JSON, tools/learn_lessons.py); blank = no memory
     memory_k: int = 5                   # lessons retrieved into the plan prompt
@@ -53,6 +55,7 @@ class Config:
     skill_pack_dir: str = ""            # M3h: the pack's generic/ directory, mounted read-only (claudecode only)
     skill_hint: bool = False            # M3h S2c: a one-line user CLAUDE.md saying the skills are installed
     cc_profile: str = "default"         # M3i: "plain" = Claude Code with our system prompt and four tools (claudecode only)
+                                    # M3j: "bare" = plain plus --bare (needs an API key: provider claude_api)
     out_dir: str = ""                   # default <root>/rundir/agent_out
     fake_script: str = ""               # fake provider: a JSON file or inline JSON list of responses
     ledger_dir: str = ""                # whole-run spend guard: shared directory of per-problem costs
@@ -104,12 +107,16 @@ class Config:
             raise ValueError("CVDP_SKILL_PACK installs Claude Code skills: use CVDP_HARNESS=claudecode")
         if self.skill_hint and not self.skill_pack:
             raise ValueError("CVDP_SKILL_HINT needs CVDP_SKILL_PACK")
-        if self.cc_profile not in ("default", "plain"):
-            raise ValueError(f"CVDP_CC_PROFILE must be default or plain, got {self.cc_profile!r}")
+        if self.cc_profile not in ("default", "plain", "bare"):
+            raise ValueError(f"CVDP_CC_PROFILE must be default, plain or bare, got {self.cc_profile!r}")
         if self.cc_profile != "default" and self.harness != "claudecode":
-            raise ValueError("CVDP_CC_PROFILE=plain is a Claude Code profile: use CVDP_HARNESS=claudecode")
-        if self.cc_profile == "plain" and (self.skill_pack or self.skill_hint):
-            raise ValueError("CVDP_CC_PROFILE=plain has no skills: it cannot take a skill pack")
+            raise ValueError("CVDP_CC_PROFILE=plain or bare is a Claude Code profile: use CVDP_HARNESS=claudecode")
+        if self.cc_profile in ("plain", "bare") and (self.skill_pack or self.skill_hint):
+            raise ValueError("CVDP_CC_PROFILE=plain or bare has no skills: it cannot take a skill pack")
+        if self.cc_profile == "bare" and self.provider != "claude_api":  # --bare never reads the plan's OAuth token
+            raise ValueError("CVDP_CC_PROFILE=bare needs an API key: use CVDP_PROVIDER=claude_api")
+        if self.harness == "apiloop" and self.provider not in ("anthropic", "fake"):
+            raise ValueError("CVDP_HARNESS=apiloop calls the Anthropic API: use CVDP_PROVIDER=anthropic")
 
 
 def _reasoning(name):
@@ -123,8 +130,8 @@ def _reasoning(name):
 
 def _harness(name):
     v = (os.environ.get(name) or "langgraph").strip().lower()
-    if v not in ("langgraph", "deepagents", "claudecode"):
-        raise ValueError(f"{name} must be langgraph, deepagents or claudecode, got {v!r}")
+    if v not in ("langgraph", "deepagents", "claudecode", "apiloop"):
+        raise ValueError(f"{name} must be langgraph, deepagents, claudecode or apiloop, got {v!r}")
     return v
 
 
@@ -151,7 +158,7 @@ def from_env():
         provider_order=[p.strip() for p in os.environ.get("CVDP_PROVIDER_ORDER", "").split(",") if p.strip()],
         data_collection=_data_collection("CVDP_DATA_COLLECTION"),
         harness=_harness("CVDP_HARNESS"),
-        max_rounds=_num("CVDP_MAX_ROUNDS", 60 if _harness("CVDP_HARNESS") == "claudecode" else 22, int),
+        max_rounds=_num("CVDP_MAX_ROUNDS", 60 if _harness("CVDP_HARNESS") in ("claudecode", "apiloop") else 22, int),
         memory=os.environ.get("CVDP_MEMORY", "").strip(),
         mutation_gate=_flag("CVDP_MUTATION_GATE", False),
         interface_check=_flag("CVDP_INTERFACE_CHECK", False),
