@@ -6,7 +6,7 @@ Verilator and cocotb), and records what every problem cost. Results are reported
 problem** and wall time, by category, against a null agent and against published leaderboard rows.
 
 **The story so far, as an animated site:** [cvdp-rtl-agent.vercel.app](https://cvdp-rtl-agent.vercel.app/) (also on [GitHub Pages](https://brendanjameslynskey.github.io/CVDP_RTL_Agent/)) (source in [`site/`](site/)).
-A short front page (what we found, M3e included) leads to five parts:
+A short front page (what we found, M3e included) leads to six parts:
 [how it works](https://cvdp-rtl-agent.vercel.app/how),
 [results, M0 to M3b](https://cvdp-rtl-agent.vercel.app/results-m2-m3b),
 [results, M3c to M3j](https://cvdp-rtl-agent.vercel.app/results-m3c-m3e),
