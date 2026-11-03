@@ -57,6 +57,10 @@ M3H_FIELDS = ["skill_pack", "skill_pack_sha", "skill_hint", "skills_installed", 
 # the profile and what Claude Code's own init event said it ran with (tool names, skill and MCP counts, model), and the
 # sha256 of the system prompt taken from the agent code.
 M3I_FIELDS = ["cc_profile", "cc_tools", "cc_skills_n", "cc_mcp_n", "cc_model", "cc_prompt_sha256"]
+# M3j: an arm billed to the Anthropic API key, appended only with `--api` (after M3i's): cached prompt tokens, and the
+# estimates (never costs): the apiloop's upper bound, Claude Code's own figure at API rates, and the guard's charge
+M3J_FIELDS = ["cache_read_tokens", "cache_write_tokens", "api_cost_estimate_usd", "plan_cost_estimate_usd",
+              "guard_estimate_usd", "network_flags_n", "cc_api_key_source"]
 M3C_GATE = ("gate_runs", "gate_failures", "mutants_generated", "mutants_compiled", "mutants_killed",
             "mutants_unfinished", "gate_wall_s")
 M3C_IFACE = ("interface_runs", "interface_mismatch_runs", "interface_blocks")
@@ -160,7 +164,14 @@ def m3i_columns(s):
     return {k: ("" if s.get(k) is None else s[k]) for k in M3I_FIELDS}
 
 
-def rows(work, dataset=None, runner="", model="", seed="", reasoning_hint="", skill_pack=False, cc_profile=False):
+def m3j_columns(s):
+    out = {k: ("" if s.get(k) is None else s[k]) for k in M3J_FIELDS if k != "network_flags_n"}
+    out["network_flags_n"] = len(s.get("network_flags") or []) if s else ""
+    return out
+
+
+def rows(work, dataset=None, runner="", model="", seed="", reasoning_hint="", skill_pack=False, cc_profile=False,
+         api=False):
     """`reasoning_hint` is the sweep's setting, used for a row whose agent left no summary."""
     raw = json.load(open(os.path.join(work, "raw_result.json")))
     meta = {}
@@ -238,6 +249,8 @@ def rows(work, dataset=None, runner="", model="", seed="", reasoning_hint="", sk
             row.update(m3h_columns(s))
         if cc_profile:
             row.update(m3i_columns(s))
+        if api:
+            row.update(m3j_columns(s))
     return out
 
 
@@ -252,12 +265,13 @@ def main():
     ap.add_argument("--no-header", action="store_true", help="rows only, to append another seed's")
     ap.add_argument("--skill-pack", action="store_true", help="M3h: append the skill pack columns")
     ap.add_argument("--cc-profile", action="store_true", help="M3i: append the Claude Code profile columns")
+    ap.add_argument("--api", action="store_true", help="M3j: append the API-key arm's token and estimate columns")
     a = ap.parse_args()
     w = csv.DictWriter(sys.stdout, fieldnames=FIELDS + (M3H_FIELDS if a.skill_pack else [])
-                       + (M3I_FIELDS if a.cc_profile else []))
+                       + (M3I_FIELDS if a.cc_profile else []) + (M3J_FIELDS if a.api else []))
     if not a.no_header:
         w.writeheader()
-    for r in rows(a.work, a.dataset, a.runner, a.model, a.seed, a.reasoning, a.skill_pack, a.cc_profile):
+    for r in rows(a.work, a.dataset, a.runner, a.model, a.seed, a.reasoning, a.skill_pack, a.cc_profile, a.api):
         w.writerow(r)
 
 

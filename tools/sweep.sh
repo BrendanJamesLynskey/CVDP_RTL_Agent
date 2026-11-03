@@ -39,6 +39,7 @@ SEEDS=${SEEDS:-1}
 SEED_OFFSET=${SEED_OFFSET:-0}
 PROVIDER_ORDER=${PROVIDER_ORDER:-}   # OpenRouter providers, comma-separated, tried in order with no fallbacks
 HARNESS=${HARNESS:-langgraph}        # langgraph (the M1-M3 agent) | deepagents (M3b) | claudecode (Claude Code, plan)
+                                     # | apiloop (M3j: a plain Anthropic Messages API loop, billed to ANTHROPIC_API_KEY)
 MEMORY=${MEMORY:-}                   # a lessons snapshot in the repo (tools/learn_lessons.py); blank = none
 MUTATION_GATE=${MUTATION_GATE:-0}    # M3c: 1 = mutation-score gate before submit (langgraph only)
 INTERFACE_CHECK=${INTERFACE_CHECK:-0} # M3c: 1 = interface diff by elaboration after each edit (langgraph only)
@@ -46,6 +47,7 @@ VERIFY_SUBMIT=${VERIFY_SUBMIT:-0}    # M3d: 1 = a submit is refused until the de
 SPEC_VECTORS=${SPEC_VECTORS:-0}      # M3d: 1 = VERIFY_SUBMIT plus blind reference cases from the spec (langgraph)
 DATA_COLLECTION=${DATA_COLLECTION:-} # F1B: deny = OpenRouter routes only to providers that collect no data; blank = as before
 CLAUDE_ENDPOINT=${CLAUDE_ENDPOINT:-plan} # F1B, claudecode only: plan (the owner's plan) | openrouter (any OpenRouter model)
+                                     # | api (M3j: Claude models billed to ANTHROPIC_API_KEY, the plan's API credit)
 SKILLS=${SKILLS:-}                   # M3g: a knowledge pack directory in the repo (MANIFEST.sha256); blank = none
 WALL_S=${WALL_S:-}                   # agent wall-time cap per problem, seconds; blank = the agent's default (480) under
                                      # the harness's default agent timeout (600); set, the harness kills at WALL_S+120
@@ -53,6 +55,7 @@ SKILL_PACK=${SKILL_PACK:-}           # M3h: a tag of the private pack (v1.0 | v2
 SKILL_PACK_DIR=${SKILL_PACK_DIR:-_pack} # M3h: the pack's checkout (outside the work dir), verified before any run
 SKILL_HINT=${SKILL_HINT:-0}          # M3h S2c: 1 = a one-line user CLAUDE.md saying the skills are installed
 CC_PROFILE=${CC_PROFILE:-default}    # M3i: default (Claude Code as it ships) | plain (our system prompt, four tools; claudecode)
+                                     # | bare (M3j: plain plus --bare; needs CLAUDE_ENDPOINT=api)
 STEP_BUDGET_S=${STEP_BUDGET_S:-}
 SEED_PROBLEM_WORST_S=${SEED_PROBLEM_WORST_S:-}   # blank = the harness's agent timeout + 60 s for the tests (660 by default)
 T0=$(date +%s)
@@ -82,7 +85,7 @@ HARNESS_AGENT_TIMEOUT_S=$(( ${WALL_S:-480} + 120 ))   # the harness's DOCKER_TIM
 [ -n "$SEED_PROBLEM_WORST_S" ] || SEED_PROBLEM_WORST_S=$(( HARNESS_AGENT_TIMEOUT_S + 60 ))
 int SEED_PROBLEM_WORST_S "$SEED_PROBLEM_WORST_S"
 [[ "$PROVIDER_ORDER" =~ ^[A-Za-z0-9\ ._,/-]*$ ]] || die "PROVIDER_ORDER has unexpected characters: '$PROVIDER_ORDER'"
-case "$HARNESS" in langgraph|deepagents|claudecode) ;; *) die "HARNESS must be langgraph, deepagents or claudecode, got '$HARNESS'" ;; esac
+case "$HARNESS" in langgraph|deepagents|claudecode|apiloop) ;; *) die "HARNESS must be langgraph, deepagents, claudecode or apiloop, got '$HARNESS'" ;; esac
 if [ "$HARNESS" != langgraph ] && { [ "$MUTATION_GATE" = 1 ] || [ "$INTERFACE_CHECK" = 1 ]; }; then
   die "MUTATION_GATE and INTERFACE_CHECK are steps of the LangGraph graph: use HARNESS=langgraph"
 fi
@@ -109,20 +112,25 @@ if [ -n "$SKILL_PACK" ]; then
 elif [ "$SKILL_HINT" = 1 ]; then
   die "SKILL_HINT needs SKILL_PACK"
 fi
-case "$CC_PROFILE" in default|plain) ;; *) die "CC_PROFILE must be default or plain, got '$CC_PROFILE'" ;; esac
-if [ "$CC_PROFILE" = plain ]; then
-  [ "$HARNESS" = claudecode ] || die "CC_PROFILE=plain is a Claude Code profile: use HARNESS=claudecode"
-  [ -z "$SKILL_PACK" ] || die "CC_PROFILE=plain has no skills: it cannot take SKILL_PACK"
+case "$CC_PROFILE" in default|plain|bare) ;; *) die "CC_PROFILE must be default, plain or bare, got '$CC_PROFILE'" ;; esac
+if [ "$CC_PROFILE" != default ]; then
+  [ "$HARNESS" = claudecode ] || die "CC_PROFILE=$CC_PROFILE is a Claude Code profile: use HARNESS=claudecode"
+  [ -z "$SKILL_PACK" ] || die "CC_PROFILE=$CC_PROFILE has no skills: it cannot take SKILL_PACK"
 fi
+if [ "$CC_PROFILE" = bare ] && [ "$CLAUDE_ENDPOINT" != api ]; then die "CC_PROFILE=bare needs an API key: use CLAUDE_ENDPOINT=api"; fi
 CC_PROFILE_FLAG=""; [ "$CC_PROFILE" = default ] || CC_PROFILE_FLAG=1   # collect.py appends the profile columns
+API_FLAG=""   # M3j: an API-key arm; collect.py appends the token and estimate columns (and the profile columns)
+if [ "$HARNESS" = apiloop ] || { [ "$HARNESS" = claudecode ] && [ "$CLAUDE_ENDPOINT" = api ]; }; then
+  API_FLAG=1; CC_PROFILE_FLAG=1
+fi
 if [ -n "$MEMORY" ]; then
   [[ "$MEMORY" =~ ^[A-Za-z0-9._/-]+\.json$ ]] || die "MEMORY must be a path to a .json snapshot, got '$MEMORY'"
   [ -f "$MEMORY" ] || die "MEMORY: no such file '$MEMORY'"
 fi
 case "$DATA_COLLECTION" in ""|deny) ;; *) die "DATA_COLLECTION must be blank or deny, got '$DATA_COLLECTION'" ;; esac
-case "$CLAUDE_ENDPOINT" in plan|openrouter) ;; *) die "CLAUDE_ENDPOINT must be plan or openrouter, got '$CLAUDE_ENDPOINT'" ;; esac
-if [ "$CLAUDE_ENDPOINT" = openrouter ] && [ "$HARNESS" != claudecode ]; then die "CLAUDE_ENDPOINT=openrouter needs HARNESS=claudecode"; fi
-if [ -n "$DATA_COLLECTION" ] && [ "$HARNESS" = claudecode ]; then
+case "$CLAUDE_ENDPOINT" in plan|openrouter|api) ;; *) die "CLAUDE_ENDPOINT must be plan, openrouter or api, got '$CLAUDE_ENDPOINT'" ;; esac
+if [ "$CLAUDE_ENDPOINT" != plan ] && [ "$HARNESS" != claudecode ]; then die "CLAUDE_ENDPOINT=$CLAUDE_ENDPOINT needs HARNESS=claudecode"; fi
+if [ -n "$DATA_COLLECTION" ] && { [ "$HARNESS" = claudecode ] || [ "$HARNESS" = apiloop ]; }; then
   die "DATA_COLLECTION is a request field of our client; Claude Code makes its own requests"
 fi
 [[ "$MODEL" =~ ^[A-Za-z0-9._:/-]+$ ]] || die "MODEL has unexpected characters: '$MODEL'"
@@ -190,7 +198,9 @@ EOF
 
   if [ "$MODEL" = fake ]; then export CVDP_PROVIDER=fake; elif [ "$HARNESS" = claudecode ] && [ "$CLAUDE_ENDPOINT" = openrouter ]; then
     export CVDP_PROVIDER=claude_openrouter
+  elif [ "$HARNESS" = claudecode ] && [ "$CLAUDE_ENDPOINT" = api ]; then export CVDP_PROVIDER=claude_api
   elif [ "$HARNESS" = claudecode ]; then export CVDP_PROVIDER=claude_plan
+  elif [ "$HARNESS" = apiloop ]; then export CVDP_PROVIDER=anthropic
   else export CVDP_PROVIDER=openrouter; fi
   export CVDP_MODEL="$MODEL" CVDP_BUDGET_USD="$BUDGET_USD" CVDP_MAX_TURNS="$MAX_TURNS" CVDP_SELF_CHECK="$SELF_CHECK" \
     CVDP_LINT="$LINT" CVDP_LEDGER_DIR=/ledger CVDP_RUN_BUDGET_USD="$guard" CVDP_REASONING="$REASONING" \
@@ -227,6 +237,10 @@ EOF
   if [ "$CVDP_PROVIDER" = openrouter ] || [ "$CVDP_PROVIDER" = claude_openrouter ]; then
     test -n "${OPENROUTER_API_KEY:-}" || die "OPENROUTER_API_KEY is not set"
     export CVDP_AGENT_ENV="OPENROUTER_API_KEY,$CVDP_AGENT_ENV"
+  fi
+  if [ "$CVDP_PROVIDER" = claude_api ] || [ "$CVDP_PROVIDER" = anthropic ]; then  # M3j: the API key, never the plan's token
+    test -n "${ANTHROPIC_API_KEY:-}" || die "ANTHROPIC_API_KEY is not set"
+    export CVDP_AGENT_ENV="ANTHROPIC_API_KEY,$CVDP_AGENT_ENV"
   fi
   if [ "$CVDP_PROVIDER" = claude_plan ]; then  # Claude Code on the owner's plan: its token, never the OpenRouter key
     test -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" || die "CLAUDE_CODE_OAUTH_TOKEN is not set"
@@ -272,7 +286,7 @@ collect_phase() {
     if [ -f "$d/raw_result.json" ]; then
       python3 "$repo/tools/collect.py" "$d" --dataset "$work.problems.jsonl" --runner "${RUNNER:-local}" \
         --model "$MODEL" --seed "$seed" --reasoning "$REASONING" $hdr ${SKILL_PACK:+--skill-pack} \
-        ${CC_PROFILE_FLAG:+--cc-profile} >> "$work/results.csv"
+        ${CC_PROFILE_FLAG:+--cc-profile} ${API_FLAG:+--api} >> "$work/results.csv"
       hdr=--no-header
       collected=$((collected + 1))
     else

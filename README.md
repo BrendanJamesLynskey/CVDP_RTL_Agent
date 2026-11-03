@@ -145,6 +145,15 @@ and no settings, CLAUDE.md, skills or MCP servers. The `init` event is checked a
 `cc_tools`, `cc_skills_n`, `cc_mcp_n`, `cc_model`; a run whose init event is not the profile ends as `profile_error` and
 is not scored. The comparison is plain against M3h's arm A (Claude Code as shipped), same model.
 
+**M3j** (in progress; pre-registered in [`docs/reports/m3j/preregistration.md`](docs/reports/m3j/preregistration.md),
+request captures in [`docs/reports/m3j/capture/`](docs/reports/m3j/capture), made with
+[`tools/capture_requests.py`](tools/capture_requests.py)): lean Claude Code against a plain API loop, with Haiku 5.5,
+billed to the Anthropic API key (the Max plan's monthly API credit, repository secret `ANTHROPIC_API_KEY`). Sweep inputs
+`claude_endpoint=api` (Claude Code on the key; `cc_profile=plain`, or `cc_profile=bare` for plain plus `--bare`) and
+`harness=apiloop` ([`agent/cvdp_agent/apiloop.py`](agent/cvdp_agent/apiloop.py): the Messages API with our system
+prompt and four tools of our own, no Claude Code). Only those arms are given the key; a plan arm never is. Claude
+Code's `init` event must report `apiKeySource` `ANTHROPIC_API_KEY`, or the run ends as `profile_error`.
+
 **M2a** (merged, [`docs/reports/M2a_report.md`](docs/reports/M2a_report.md)): reasoning limits, a retry on empty
 replies and unreadable decisions, and seeds. On the same 10 problems on Arm64, DeepSeek at `reasoning=off` passed
 6/10 for $0.0867 with no empty replies; at `low` it passed 7/10 for $0.3546 with 14 empty replies.
@@ -512,6 +521,7 @@ empty (an old ledger and the harness's reuse of `raw_result.json` would make the
 | M3g | A frozen knowledge pack loaded as skills, tested on a held-out set of non-agentic problems frozen before any run |
 | M3h | The knowledge pack as Claude Code's own skills, with Haiku 5.5: is it used, and does it help |
 | M3i | How much of Claude Code is the harness: a plain profile (our system prompt, four tools) against Claude Code as shipped, same model |
+| M3j | Lean Claude Code against a plain Messages API loop, and what `--bare` changes, billed to the API key, same model |
 | M4 | Write-up, logs packed for the Si2 LBC-bench leaderboard |
 | M5 | Open AMBA verification track: test plan, cocotb testbench with coverage, SVA with SymbiYosys; scored by seeded-bug kill rate and false alarms |
 

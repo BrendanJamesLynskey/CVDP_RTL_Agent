@@ -1,0 +1,78 @@
+{
+ "requests": 2,
+ "model": "claude-haiku-5-5",
+ "system": [
+  {
+   "chars": 74,
+   "head": "x-anthropic-billing-header: cc_version=2.1.310.688; cc_entrypoint=sdk-"
+  },
+  {
+   "chars": 62,
+   "head": "You are a Claude agent, built on Anthropic's Claude Agent SDK."
+  },
+  {
+   "chars": 481,
+   "head": "You are an RTL design engineer. You write and fix synthesizable System"
+  }
+ ],
+ "tools": [
+  {
+   "name": "Bash",
+   "bytes": 1616
+  },
+  {
+   "name": "Edit",
+   "bytes": 666
+  },
+  {
+   "name": "Read",
+   "bytes": 1200
+  }
+ ],
+ "settings": {
+  "thinking": {
+   "type": "adaptive",
+   "display": "updates"
+  },
+  "context_management": {
+   "edits": [
+    {
+     "type": "clear_thinking_20251015",
+     "keep": "all"
+    }
+   ]
+  },
+  "output_config": {
+   "effort": "medium"
+  },
+  "max_tokens": 128000
+ },
+ "beta": "interleaved-thinking-2025-05-14,thinking-token-count-2026-05-13,context-management-2025-06-27,claude-code-20250219,per-turn-control-2026-07-01,effort-2025-11-24,thinking-display-updates-2026-08-18",
+ "messages": [
+  {
+   "role": "user",
+   "blocks": [
+    {
+     "chars": 552,
+     "head": "You are solving one hardware-design task. The task tree is the current"
+    }
+   ]
+  },
+  {
+   "role": "system",
+   "blocks": []
+  }
+ ],
+ "init": {
+  "tools": [
+   "Bash",
+   "Edit",
+   "Read"
+  ],
+  "apiKeySource": "ANTHROPIC_API_KEY",
+  "claude_code_version": "2.1.310",
+  "skills": 0,
+  "mcp_servers": 0
+ },
+ "profile": "bare"
+}

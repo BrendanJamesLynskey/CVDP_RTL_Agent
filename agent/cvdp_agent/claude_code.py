@@ -40,6 +40,16 @@ only Read, Write, Edit and Bash are offered, and user settings, CLAUDE.md, skill
 a tool, MCP server or skill beyond the profile ends the run at once with stop reason `profile_error` (not scored).
 With the profile `default` nothing here runs and the command line is the one before M3i.
 
+M3j (`CVDP_PROVIDER=claude_api`): Claude Code billed to an Anthropic API key (`ANTHROPIC_API_KEY`, the Console
+organization linked to the owner's plan, whose monthly API credit pays for it) instead of the plan. The plan's token
+is removed from the environment, and on every plan arm the API key is removed, so neither arm can bill the other.
+`CVDP_CC_PROFILE=bare` is the plain profile plus `--bare`, which needs the key: Claude Code 2.1.310 then offers only
+Bash, Edit and Read (no Write), with shorter tool descriptions, and sends no environment message, attribution reminder
+or placeholder tool (docs/reports/m3j/preregistration.md, from a local capture). The init check expects those three.
+There is no cost per call: `cost_usd` stays None, Claude Code's own figure at API rates goes in
+`plan_cost_estimate_usd`, and the whole-run guard is charged that figure (`guard_estimate_usd`, or the per-problem
+budget when the stream was cut), never as a cost.
+
 Plan limits: a problem cut off by the plan's session or weekly limit (HTTP 429, `usage_limit_reached`, or a
 `rate_limit_event` whose status is `rejected`) ends with stop reason `rate_limited`, not `llm_error`, so it is
 counted as not run and rerun, never as a failure."""
@@ -70,6 +80,8 @@ NETWORK = re.compile(r"https?://|huggingface|github\.com|\bcurl\b|\bwget\b|\bnc\
 # M3i: the plain profile's four tools, and the Bash patterns still denied (the default arm's network rules)
 PLAIN_TOOLS = ["Read", "Write", "Edit", "Bash"]
 PLAIN_DENIED = [d for d in DENIED if d.startswith("Bash(")]
+# M3j: what --bare leaves of the four (2.1.310: CLAUDE_CODE_SIMPLE offers Bash, Edit and Read only)
+BARE_TOOLS = ["Bash", "Edit", "Read"]
 
 PROMPT = """You are solving one hardware-design task. The task tree is the current directory (/code).
 
@@ -102,6 +114,13 @@ def plain_command(prompt, max_turns, model):
     return cmd
 
 
+def bare_command(prompt, max_turns, model):
+    """M3j: the plain profile's command line plus --bare (2.1.310: skips hooks, LSP, plugin sync, attribution,
+    auto-memory, background prefetches, keychain reads and CLAUDE.md discovery; sets CLAUDE_CODE_SIMPLE=1; auth is
+    strictly ANTHROPIC_API_KEY or an apiKeyHelper)."""
+    return plain_command(prompt, max_turns, model) + ["--bare"]
+
+
 def plain_env(env):
     """M3i: the environment of a plain run: an empty HOME (no user settings, skills, memory or CLAUDE.md) and
     auto-memory off."""
@@ -124,15 +143,19 @@ def init_event(lines):
     return None
 
 
-def profile_problems(ev):
-    """What in an init event is not the plain profile ([] if it is): a missing event, another tool set, any MCP
-    server or any skill."""
+def profile_problems(ev, expected=None, api_key=False):
+    """What in an init event is not the profile ([] if it is): a missing event, another tool set than `expected`
+    (the plain profile's four by default), any MCP server or any skill; with `api_key` (M3j), a credential other than
+    ANTHROPIC_API_KEY (`apiKeySource`), so no run billed elsewhere is scored."""
+    expected = PLAIN_TOOLS if expected is None else expected
     if ev is None:
         return ["no init event: the profile could not be checked"]
     out = []
+    if api_key and ev.get("apiKeySource") != "ANTHROPIC_API_KEY":
+        out.append(f"credential {str(ev.get('apiKeySource'))[:40]!r} is not ANTHROPIC_API_KEY")
     tools = [str(t) for t in ev.get("tools") or []]
-    if sorted(tools) != sorted(PLAIN_TOOLS):
-        out.append(f"tools {sorted(tools)} are not {sorted(PLAIN_TOOLS)}")
+    if sorted(tools) != sorted(expected):
+        out.append(f"tools {sorted(tools)} are not {sorted(expected)}")
     if ev.get("mcp_servers"):
         out.append(f"{len(ev['mcp_servers'])} MCP server(s)")
     if ev.get("skills"):
@@ -140,16 +163,17 @@ def profile_problems(ev):
     return out
 
 
-def profile_columns(ev, sha):
+def profile_columns(ev, sha, profile="plain"):
     """The summary fields that show the profile took effect (names and counts only)."""
     ev = ev or {}
-    return {"cc_profile": "plain", "cc_prompt_sha256": sha,
+    return {"cc_profile": profile, "cc_prompt_sha256": sha,
             "cc_tools": ";".join(str(t) for t in ev.get("tools") or []),
             "cc_skills_n": len(ev.get("skills") or []), "cc_mcp_n": len(ev.get("mcp_servers") or []),
-            "cc_model": str(ev.get("model") or "")[:80]}
+            "cc_model": str(ev.get("model") or "")[:80],
+            "cc_api_key_source": str(ev.get("apiKeySource") or "")[:40]}
 
 
-def _run_plain(cmd, cfg, env):
+def _run_plain(cmd, cfg, env, expected=None, api_key=False):
     """Popen, reading stdout as it comes: the init event is checked the moment it arrives, and a run that is not
     the profile is killed before the model has done anything. (out, err, timed_out, profile problems)."""
     problems, lines = [], []
@@ -168,7 +192,7 @@ def _run_plain(cmd, cfg, env):
                         continue
                     if isinstance(ev, dict) and ev.get("type") == "system" and ev.get("subtype") == "init":
                         done.set()
-                        problems.extend(profile_problems(ev))
+                        problems.extend(profile_problems(ev, expected, api_key))
                         if problems:
                             p.kill()
 
@@ -186,12 +210,12 @@ def _run_plain(cmd, cfg, env):
         err = errf.read()
     out = "".join(lines)
     if not done.is_set() and not timed_out:
-        problems.extend(profile_problems(None))
+        problems.extend(profile_problems(None, expected, api_key))
     return out, err, timed_out, problems
 
 
 def _summary_base(cfg):
-    provider = "claude_openrouter" if cfg.provider == "claude_openrouter" else "claude_plan"
+    provider = cfg.provider if cfg.provider in ("claude_openrouter", "claude_api") else "claude_plan"
     return {"provider": provider, "requested_model": cfg.model or None, "model": cfg.model or None,
             "harness": "claudecode", "seed": cfg.seed or None, "switches": cfg.switches(),
             "cost_usd": None, "cost_unreported_calls": 0, "plan_cost_estimate_usd": None,
@@ -333,15 +357,48 @@ def _install_pack(cfg, summary, env):
     return names
 
 
+def api_env(env):
+    """M3j: Claude Code billed to the API key: the plan's token and any other Anthropic auth are removed."""
+    env = dict(env)
+    for k in ("CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL"):
+        env.pop(k, None)
+    return env
+
+
+def plan_env(env):
+    """A plan arm: the API key (and any other Anthropic auth) removed, so Claude Code, which prefers
+    ANTHROPIC_API_KEY to the plan's token, can never bill the key's credit instead of the plan."""
+    env = dict(env)
+    for k in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL"):
+        env.pop(k, None)
+    return env
+
+
+def api_guard(cfg):
+    """M3j: the whole-run guard for an API-key arm, from the ledger's guard charges (estimates, never costs)."""
+    from .graph import ledger_totals
+
+    if not cfg.ledger_dir or cfg.run_budget_usd is None or not os.path.isdir(cfg.ledger_dir):
+        return False
+    return ledger_totals(cfg.ledger_dir)[2] >= cfg.run_budget_usd
+
+
 def run(cfg):
     summary = _summary_base(cfg)
     t0 = time.time()
     via_openrouter = cfg.provider == "claude_openrouter"
+    via_api = cfg.provider == "claude_api"
     key = os.environ.get("OPENROUTER_API_KEY", "") if via_openrouter else ""
     if via_openrouter and not key:
         summary.update(stop_reason="error", error="OPENROUTER_API_KEY is not set", wall_time_s=0)
         return _write(cfg, summary)
-    if not via_openrouter and not os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"):
+    if via_api and not os.environ.get("ANTHROPIC_API_KEY"):
+        summary.update(stop_reason="error", error="ANTHROPIC_API_KEY is not set", wall_time_s=0)
+        return _write(cfg, summary)
+    if via_api and api_guard(cfg):
+        summary.update(stop_reason="run_budget_exhausted", wall_time_s=0)
+        return _write(cfg, summary)
+    if not via_openrouter and not via_api and not os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"):
         summary.update(stop_reason="error", error="CLAUDE_CODE_OAUTH_TOKEN is not set", wall_time_s=0)
         return _write(cfg, summary)
     if via_openrouter:
@@ -365,10 +422,12 @@ def run(cfg):
            "--allowedTools", *ALLOWED, "--disallowedTools", *DENIED]
     if cfg.model:
         cmd += ["--model", cfg.model]
-    plain = cfg.cc_profile == "plain"
-    if plain:  # M3i: the same user message, a different system prompt, tool set and settings
-        cmd = plain_command(PROMPT.format(task=task), cfg.max_rounds, cfg.model)
-        summary.update(cc_profile="plain", cc_prompt_sha256=hashlib.sha256(SYSTEM.encode()).hexdigest())
+    plain = cfg.cc_profile in ("plain", "bare")
+    expected = BARE_TOOLS if cfg.cc_profile == "bare" else PLAIN_TOOLS
+    if plain:  # M3i: the same user message, a different system prompt, tool set and settings (M3j: plus --bare)
+        build = bare_command if cfg.cc_profile == "bare" else plain_command
+        cmd = build(PROMPT.format(task=task), cfg.max_rounds, cfg.model)
+        summary.update(cc_profile=cfg.cc_profile, cc_prompt_sha256=hashlib.sha256(SYSTEM.encode()).hexdigest())
     os.makedirs(cfg.agent_out, exist_ok=True)
     # Claude Code writes its settings under $HOME; the harness's user may have none it can write, so give it one.
     env = dict(os.environ)
@@ -384,11 +443,15 @@ def run(cfg):
             return _write(cfg, summary)
     if via_openrouter:
         env = openrouter_env(env, cfg.model, key)
+    elif via_api:
+        env = api_env(env)
+    else:
+        env = plan_env(env)
     timed_out = False
     bad_profile = []
     try:
         if plain:
-            out, err, timed_out, bad_profile = _run_plain(cmd, cfg, env)
+            out, err, timed_out, bad_profile = _run_plain(cmd, cfg, env, expected, via_api)
         else:
             p = subprocess.run(cmd, cwd=cfg.root, capture_output=True, text=True, timeout=cfg.wall_s,
                                stdin=subprocess.DEVNULL, env=env)
@@ -420,7 +483,7 @@ def run(cfg):
                        skill_first_turn=pack_calls[0][0] if pack_calls else None,
                        skills_listed=None if offered is None else len(known & set(offered)))
     if plain:
-        summary.update(profile_columns(init_event(lines), summary["cc_prompt_sha256"]))
+        summary.update(profile_columns(init_event(lines), summary["cc_prompt_sha256"], cfg.cc_profile))
     result, tools, bash, models = parse_stream(lines)
     usage = (result or {}).get("usage") or {}
     summary.update(
@@ -439,8 +502,12 @@ def run(cfg):
     )
     if via_openrouter:  # the key's usage after this problem (other problems in parallel are in it too)
         summary["key_usage_after_usd"] = key_usage(key)
+    if via_api:  # the guard's charge: Claude Code's own figure at API rates, or the budget if the stream was cut
+        est = summary["plan_cost_estimate_usd"]
+        summary["guard_estimate_usd"] = float(est) if isinstance(est, (int, float)) else cfg.budget_usd
     if bad_profile:  # M3i: not the profile asked for; the problem is not a result and is rerun
-        summary.update(stop_reason="profile_error", error="plain profile refused: " + "; ".join(bad_profile)[:500])
+        summary.update(stop_reason="profile_error",
+                       error=f"{cfg.cc_profile} profile refused: " + "; ".join(bad_profile)[:500])
         return _write(cfg, summary)
     limit = None if timed_out else rate_limited(lines, result)
     if limit and summary["stop_reason"] in ("llm_error", "error"):

@@ -75,7 +75,9 @@ def test_profile_input_and_its_refusals():
     assert Config(harness="claudecode", cc_profile="plain").switches()["cc_profile"] == "plain"
     with pytest.raises(ValueError, match="claudecode"):
         Config(harness="langgraph", cc_profile="plain")
-    with pytest.raises(ValueError, match="default or plain"):
+    with pytest.raises(ValueError, match="default, plain or bare"):
+        Config(harness="claudecode", cc_profile="lean")
+    with pytest.raises(ValueError, match="API key"):  # M3j: bare needs the API key, not the plan
         Config(harness="claudecode", cc_profile="bare")
     with pytest.raises(ValueError, match="no skills"):
         Config(harness="claudecode", cc_profile="plain", skill_pack="v2.0")
@@ -206,7 +208,8 @@ def test_sweep_plain_names_the_profile_and_default_does_not(tmp_path):
     assert "cc_profile" not in json.load(open(str(tmp_path / "d" / "work") + ".run.json"))
 
 
-@pytest.mark.parametrize("kw,msg", [({"CC_PROFILE": "bare"}, "default or plain"),
+@pytest.mark.parametrize("kw,msg", [({"CC_PROFILE": "lean"}, "default, plain or bare"),
+                                     ({"CC_PROFILE": "bare"}, "CLAUDE_ENDPOINT=api"),
                                      ({"CC_PROFILE": "plain", "HARNESS": "langgraph", "MODEL": "fake"}, "claudecode")])
 def test_sweep_refuses_bad_profile_settings(tmp_path, kw, msg):
     r, _ = sweep(tmp_path, **kw)
@@ -219,7 +222,7 @@ def test_workflow_has_the_input_and_pull_requests_get_default():
                                           "workflows", "sweep.yml")))
     on = wf.get("on") or wf.get(True)
     inp = on["workflow_dispatch"]["inputs"]["cc_profile"]
-    assert inp["options"] == ["default", "plain"] and inp["default"] == "default"
+    assert inp["options"] == ["default", "plain", "bare"] and inp["default"] == "default"
     assert "'default'" in wf["env"]["CC_PROFILE"] and "inputs.cc_profile" in wf["env"]["CC_PROFILE"]
 
 

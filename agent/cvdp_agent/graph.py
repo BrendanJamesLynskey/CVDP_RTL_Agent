@@ -981,8 +981,11 @@ def write_ledger(cfg, summary, name=None):
         return
     reported = summary["cost_usd"] or 0.0
     unreported = summary["cost_unreported_calls"] or 0
+    # M3j: an arm billed to the Anthropic API key gets no cost per call; its guard is charged an upper-bound
+    # estimate (guard_estimate_usd), which never enters cost_usd
+    estimate = float(summary.get("guard_estimate_usd") or 0.0)
     entry = {"cost_usd": summary["cost_usd"], "cost_unreported_calls": unreported,
-             "guard_charge_usd": round(reported + unreported * cfg.budget_usd, 8),
+             "guard_charge_usd": round(reported + unreported * cfg.budget_usd + estimate, 8),
              "stop_reason": summary["stop_reason"]}
     try:
         path = os.path.join(cfg.ledger_dir, name or f"{uuid.uuid4().hex}.json")
@@ -998,6 +1001,10 @@ def run(cfg, llm=None, **kw):
         from . import claude_code
 
         return claude_code.run(cfg)
+    if cfg.harness == "apiloop":  # M3j: a plain Messages API loop, its own client
+        from . import apiloop
+
+        return apiloop.run(cfg, client=kw.pop("client", None))
     from . import llm as llm_mod
 
     tracer = kw.pop("tracer", None) or Tracer(cfg.agent_out)

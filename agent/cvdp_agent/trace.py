@@ -11,7 +11,7 @@ _PATTERNS = [
     re.compile(r"Bearer\s*\S*", re.IGNORECASE),
     re.compile(r"Authorization\S*(\s*[:=]\s*\S+)?", re.IGNORECASE),
 ]
-_SECRET_ENV = ("OPENROUTER_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN")
+_SECRET_ENV = ("OPENROUTER_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_API_KEY")
 REDACTED = "[REDACTED]"
 
 
