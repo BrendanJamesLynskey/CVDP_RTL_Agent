@@ -75,22 +75,11 @@ on:
         description: "Lessons snapshot in the repo, e.g. docs/reports/m3b/lessons/lessons_<hash>.json (blank = none)"
         type: string
         default: ""
-      mutation_gate:
-        description: "M3c: mutation-score gate on the agent's own testbench before submit (langgraph only)"
-        type: boolean
-        default: false
-      interface_check:
-        description: "M3c: interface diff by elaboration after each edit (langgraph only)"
-        type: boolean
-        default: false
-      verify_submit:
-        description: "M3d: refuse a submit until the design as it stands passed a simulation (langgraph only)"
-        type: boolean
-        default: false
-      spec_vectors:
-        description: "M3d: verify_submit plus blind reference cases written from the spec (langgraph only)"
-        type: boolean
-        default: false
+      fixed_checks:
+        description: "M3c/M3d extra fixed steps (langgraph only): interface_check, mutation_gate, both, verify_submit, or spec_vectors (turns verify_submit on too)"
+        type: choice
+        options: [none, interface_check, mutation_gate, interface_check+mutation_gate, verify_submit, spec_vectors]
+        default: none
       provider_order:
         description: "Pin OpenRouter providers, comma-separated, in order, no fallbacks (blank = OpenRouter routes)"
         type: string
@@ -163,10 +152,10 @@ env:
   WALL_S: ${{ github.event_name == 'pull_request' && '' || inputs.wall_s }}
   # M3g's held-out problems come from the non-agentic file at the same dataset revision, checked by its hash
   NONAGENTIC_SHA256: cbcd81295561ebb16e4d857e096f4d9908d042c33aff3b58abf236e868411857
-  MUTATION_GATE: ${{ (github.event_name == 'workflow_dispatch' && inputs.mutation_gate) && '1' || '0' }}
-  INTERFACE_CHECK: ${{ (github.event_name == 'workflow_dispatch' && inputs.interface_check) && '1' || '0' }}
-  VERIFY_SUBMIT: ${{ (github.event_name == 'workflow_dispatch' && inputs.verify_submit) && '1' || '0' }}
-  SPEC_VECTORS: ${{ (github.event_name == 'workflow_dispatch' && inputs.spec_vectors) && '1' || '0' }}
+  MUTATION_GATE: ${{ (github.event_name == 'workflow_dispatch' && contains(inputs.fixed_checks, 'mutation_gate')) && '1' || '0' }}
+  INTERFACE_CHECK: ${{ (github.event_name == 'workflow_dispatch' && contains(inputs.fixed_checks, 'interface_check')) && '1' || '0' }}
+  VERIFY_SUBMIT: ${{ (github.event_name == 'workflow_dispatch' && contains(inputs.fixed_checks, 'verify_submit')) && '1' || '0' }}
+  SPEC_VECTORS: ${{ (github.event_name == 'workflow_dispatch' && contains(inputs.fixed_checks, 'spec_vectors')) && '1' || '0' }}
   RUNNER: ${{ github.event_name == 'pull_request' && 'ubuntu-24.04' || inputs.runner }}
   WORK: work
   REAL_MODEL: ${{ github.event_name == 'workflow_dispatch' && inputs.model != 'fake' }}

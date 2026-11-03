@@ -429,8 +429,9 @@ whole-run budget, `reasoning` (default `low`), `seeds` (default 1), `seed_offset
 (default 0: seeds are numbered `seed_offset+1 … seed_offset+seeds`, so a second dispatch of the same settings
 pools with distinct seeds), `harness` (`langgraph`, `deepagents` or `claudecode`), `memory` (blank, or a lessons snapshot path in
 the repo, e.g. `docs/reports/m3b/lessons/lessons_<hash>.json`, mounted read-only into the agent's container),
-`mutation_gate` and `interface_check` (M3c, both default false, LangGraph only), `verify_submit` and
-`spec_vectors` (M3d, both default false, LangGraph only, not with `mutation_gate`) and
+`fixed_checks` (default `none`; LangGraph only: `interface_check`, `mutation_gate` or both (M3c),
+`verify_submit` or `spec_vectors` (M3d, which turns `verify_submit` on too); one input because a dispatch allows at
+most 25) and
 `provider_order` (blank: OpenRouter
 routes each call; the provider that served it is in the trace, and its price can differ from the list price),
 `deny_data_collection` (default false: sends `provider: {data_collection: "deny"}` so OpenRouter routes only to

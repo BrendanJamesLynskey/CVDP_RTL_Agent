@@ -221,3 +221,15 @@ def test_workflow_has_the_input_and_pull_requests_get_default():
     inp = on["workflow_dispatch"]["inputs"]["cc_profile"]
     assert inp["options"] == ["default", "plain"] and inp["default"] == "default"
     assert "'default'" in wf["env"]["CC_PROFILE"] and "inputs.cc_profile" in wf["env"]["CC_PROFILE"]
+
+
+def test_workflow_dispatch_has_at_most_25_inputs():
+    # GitHub rejects a workflow_dispatch with more than 25 inputs: the file is then invalid and every push logs a
+    # failed run with no jobs.
+    import yaml
+    wf = yaml.safe_load(open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".github",
+                                          "workflows", "sweep.yml")))
+    on = wf.get("on") or wf.get(True)
+    inputs = on["workflow_dispatch"]["inputs"]
+    assert len(inputs) <= 25
+    assert "inputs.mutation_gate" not in str(wf) and "fixed_checks" in wf["env"]["SPEC_VECTORS"]
