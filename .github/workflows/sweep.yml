@@ -78,9 +78,9 @@ on:
         type: string
         default: ""
       fixed_checks:
-        description: "M3c/M3d extra fixed steps (langgraph only): interface_check, mutation_gate, both, verify_submit, or spec_vectors (turns verify_submit on too)"
+        description: "Extra fixed steps. langgraph only (M3c/M3d): interface_check, mutation_gate, both, verify_submit, or spec_vectors (turns verify_submit on too). apiloop only (M3k): presubmit_iface (arm K) or timing_claims (arm T)"
         type: choice
-        options: [none, interface_check, mutation_gate, interface_check+mutation_gate, verify_submit, spec_vectors]
+        options: [none, interface_check, mutation_gate, interface_check+mutation_gate, verify_submit, spec_vectors, presubmit_iface, timing_claims]
         default: none
       provider_order:
         description: "Pin OpenRouter providers, comma-separated, in order, no fallbacks (blank = OpenRouter routes)"
@@ -157,6 +157,8 @@ env:
   MUTATION_GATE: ${{ (github.event_name == 'workflow_dispatch' && contains(inputs.fixed_checks, 'mutation_gate')) && '1' || '0' }}
   INTERFACE_CHECK: ${{ (github.event_name == 'workflow_dispatch' && contains(inputs.fixed_checks, 'interface_check')) && '1' || '0' }}
   VERIFY_SUBMIT: ${{ (github.event_name == 'workflow_dispatch' && contains(inputs.fixed_checks, 'verify_submit')) && '1' || '0' }}
+  PRESUBMIT_IFACE: ${{ (github.event_name == 'workflow_dispatch' && contains(inputs.fixed_checks, 'presubmit_iface')) && '1' || '0' }}
+  TIMING_CLAIMS: ${{ (github.event_name == 'workflow_dispatch' && contains(inputs.fixed_checks, 'timing_claims')) && '1' || '0' }}
   SPEC_VECTORS: ${{ (github.event_name == 'workflow_dispatch' && contains(inputs.fixed_checks, 'spec_vectors')) && '1' || '0' }}
   RUNNER: ${{ github.event_name == 'pull_request' && 'ubuntu-24.04' || inputs.runner }}
   WORK: work

@@ -56,6 +56,8 @@ class Config:
     skill_hint: bool = False            # M3h S2c: a one-line user CLAUDE.md saying the skills are installed
     cc_profile: str = "default"         # M3i: "plain" = Claude Code with our system prompt and four tools (claudecode only)
                                     # M3j: "bare" = plain plus --bare (needs an API key: provider claude_api)
+    presubmit_iface: bool = False       # M3k arm K (apiloop): one interface/file/compile check when the model finishes
+    timing_claims: bool = False         # M3k arm T (apiloop): one extra first turn listing the task's cycle-level claims
     out_dir: str = ""                   # default <root>/rundir/agent_out
     fake_script: str = ""               # fake provider: a JSON file or inline JSON list of responses
     ledger_dir: str = ""                # whole-run spend guard: shared directory of per-problem costs
@@ -94,6 +96,9 @@ class Config:
             **({"skill_hint": True} if self.skill_hint else {}),
             # M3i, likewise only when set
             **({"cc_profile": self.cc_profile} if self.cc_profile != "default" else {}),
+            # M3k, likewise only when on
+            **({"presubmit_iface": True} if self.presubmit_iface else {}),
+            **({"timing_claims": True} if self.timing_claims else {}),
             # F1B, likewise only when set
             **({"data_collection": self.data_collection} if self.data_collection else {}),
         }
@@ -117,6 +122,10 @@ class Config:
             raise ValueError("CVDP_CC_PROFILE=bare needs an API key: use CVDP_PROVIDER=claude_api")
         if self.harness == "apiloop" and self.provider not in ("anthropic", "fake"):
             raise ValueError("CVDP_HARNESS=apiloop calls the Anthropic API: use CVDP_PROVIDER=anthropic")
+        if (self.presubmit_iface or self.timing_claims) and self.harness != "apiloop":
+            raise ValueError("CVDP_PRESUBMIT_IFACE and CVDP_TIMING_CLAIMS are steps of the apiloop harness")
+        if self.presubmit_iface and self.timing_claims:
+            raise ValueError("CVDP_PRESUBMIT_IFACE and CVDP_TIMING_CLAIMS are separate arms")
 
 
 def _reasoning(name):
@@ -164,6 +173,8 @@ def from_env():
         interface_check=_flag("CVDP_INTERFACE_CHECK", False),
         verify_submit=_flag("CVDP_VERIFY_SUBMIT", False),
         spec_vectors=_flag("CVDP_SPEC_VECTORS", False),
+        presubmit_iface=_flag("CVDP_PRESUBMIT_IFACE", False),
+        timing_claims=_flag("CVDP_TIMING_CLAIMS", False),
         skills=os.environ.get("CVDP_SKILLS", "").strip(),
         skills_cap_bytes=_num("CVDP_SKILLS_CAP_BYTES", 13_000, int),
         skill_pack=os.environ.get("CVDP_SKILL_PACK", "").strip(),

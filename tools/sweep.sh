@@ -45,6 +45,8 @@ MUTATION_GATE=${MUTATION_GATE:-0}    # M3c: 1 = mutation-score gate before submi
 INTERFACE_CHECK=${INTERFACE_CHECK:-0} # M3c: 1 = interface diff by elaboration after each edit (langgraph only)
 VERIFY_SUBMIT=${VERIFY_SUBMIT:-0}    # M3d: 1 = a submit is refused until the design passed a simulation (langgraph)
 SPEC_VECTORS=${SPEC_VECTORS:-0}      # M3d: 1 = VERIFY_SUBMIT plus blind reference cases from the spec (langgraph)
+PRESUBMIT_IFACE=${PRESUBMIT_IFACE:-0} # M3k arm K: 1 = one interface/file/compile check when the model finishes (apiloop only)
+TIMING_CLAIMS=${TIMING_CLAIMS:-0}    # M3k arm T: 1 = one extra first turn listing the task's cycle-level claims (apiloop only)
 DATA_COLLECTION=${DATA_COLLECTION:-} # F1B: deny = OpenRouter routes only to providers that collect no data; blank = as before
 CLAUDE_ENDPOINT=${CLAUDE_ENDPOINT:-plan} # F1B, claudecode only: plan (the owner's plan) | openrouter (any OpenRouter model)
                                      # | api (M3j: Claude models billed to ANTHROPIC_API_KEY, the plan's API credit)
@@ -72,6 +74,7 @@ num BUDGET_USD "$BUDGET_USD"; int MAX_TURNS "$MAX_TURNS"; int THREADS "$THREADS"
 bit SELF_CHECK "$SELF_CHECK"; bit LINT "$LINT"; int SEEDS "$SEEDS"
 bit MUTATION_GATE "$MUTATION_GATE"; bit INTERFACE_CHECK "$INTERFACE_CHECK"
 bit VERIFY_SUBMIT "$VERIFY_SUBMIT"; bit SPEC_VECTORS "$SPEC_VECTORS"
+bit PRESUBMIT_IFACE "$PRESUBMIT_IFACE"; bit TIMING_CLAIMS "$TIMING_CLAIMS"
 [ "$SPEC_VECTORS" = 0 ] || VERIFY_SUBMIT=1   # S is V plus the spec cases
 [[ "$SEED_OFFSET" =~ ^[0-9]+$ ]] || die "SEED_OFFSET must be a non-negative integer, got '$SEED_OFFSET'"
 case "$REASONING" in
@@ -92,6 +95,10 @@ fi
 if [ "$HARNESS" != langgraph ] && [ "$VERIFY_SUBMIT" = 1 ]; then
   die "VERIFY_SUBMIT and SPEC_VECTORS are steps of the LangGraph graph: use HARNESS=langgraph"
 fi
+if [ "$HARNESS" != apiloop ] && { [ "$PRESUBMIT_IFACE" = 1 ] || [ "$TIMING_CLAIMS" = 1 ]; }; then
+  die "PRESUBMIT_IFACE and TIMING_CLAIMS are steps of the apiloop harness: use HARNESS=apiloop"
+fi
+if [ "$PRESUBMIT_IFACE" = 1 ] && [ "$TIMING_CLAIMS" = 1 ]; then die "PRESUBMIT_IFACE and TIMING_CLAIMS are separate arms"; fi
 if [ "$VERIFY_SUBMIT" = 1 ] && [ "$MUTATION_GATE" = 1 ]; then die "VERIFY_SUBMIT and MUTATION_GATE are separate arms"; fi
 if [ "$VERIFY_SUBMIT" = 1 ] && [ "$SELF_CHECK" = 0 ]; then die "VERIFY_SUBMIT needs SELF_CHECK=1 (it needs a testbench)"; fi
 if [ -n "$SKILLS" ]; then
@@ -119,6 +126,7 @@ if [ "$CC_PROFILE" != default ]; then
 fi
 if [ "$CC_PROFILE" = bare ] && [ "$CLAUDE_ENDPOINT" != api ]; then die "CC_PROFILE=bare needs an API key: use CLAUDE_ENDPOINT=api"; fi
 CC_PROFILE_FLAG=""; [ "$CC_PROFILE" = default ] || CC_PROFILE_FLAG=1   # collect.py appends the profile columns
+M3K_FLAG=""; { [ "$PRESUBMIT_IFACE" = 1 ] || [ "$TIMING_CLAIMS" = 1 ]; } && M3K_FLAG=1   # collect.py appends M3k's columns
 API_FLAG=""   # M3j: an API-key arm; collect.py appends the token and estimate columns (and the profile columns)
 if [ "$HARNESS" = apiloop ] || { [ "$HARNESS" = claudecode ] && [ "$CLAUDE_ENDPOINT" = api ]; }; then
   API_FLAG=1; CC_PROFILE_FLAG=1
@@ -171,7 +179,7 @@ run_phase() {
   printf '{"problems": %s, "seeds": %s, "seed_offset": %s, "run_budget_usd": %s, "model": "%s", "reasoning": "%s", "provider_order": "%s"}\n' \
     "$n" "$SEEDS" "$SEED_OFFSET" "$guard" "$MODEL" "$REASONING" "$PROVIDER_ORDER" > "$work.run.json"
   python3 - "$work.run.json" "$HARNESS" "$MEMORY" "$MUTATION_GATE" "$INTERFACE_CHECK" "$VERIFY_SUBMIT" \
-    "$SPEC_VECTORS" "$SKILLS" "$SPLIT" "$SKILL_PACK" "$SKILL_PACK_SHA" "$SKILL_HINT" "$CC_PROFILE" "$DATA_COLLECTION" "$CLAUDE_ENDPOINT" "$WALL_S" "$HARNESS_AGENT_TIMEOUT_S" <<'EOF'
+    "$SPEC_VECTORS" "$SKILLS" "$SPLIT" "$SKILL_PACK" "$SKILL_PACK_SHA" "$SKILL_HINT" "$CC_PROFILE" "$DATA_COLLECTION" "$CLAUDE_ENDPOINT" "$WALL_S" "$HARNESS_AGENT_TIMEOUT_S" "$PRESUBMIT_IFACE" "$TIMING_CLAIMS" <<'EOF'
 import json, sys
 run = json.load(open(sys.argv[1]))
 run.update(harness=sys.argv[2], memory=sys.argv[3])
@@ -193,6 +201,8 @@ if sys.argv[15] != "plan":
     run.update(claude_endpoint=sys.argv[15])
 if sys.argv[16]:  # a wall cap other than the default, likewise: the agent's cap and the harness's kill
     run.update(wall_s=int(sys.argv[16]), harness_agent_timeout_s=int(sys.argv[17]))
+if sys.argv[18] == "1" or sys.argv[19] == "1":  # M3k, likewise
+    run.update(presubmit_iface=sys.argv[18] == "1", timing_claims=sys.argv[19] == "1")
 json.dump(run, open(sys.argv[1], "w"))
 EOF
 
@@ -225,6 +235,10 @@ EOF
   if [ "$CC_PROFILE" != default ]; then  # M3i: named only when set
     export CVDP_CC_PROFILE="$CC_PROFILE"
     export CVDP_AGENT_ENV="$CVDP_AGENT_ENV,CVDP_CC_PROFILE"
+  fi
+  if [ "$PRESUBMIT_IFACE" = 1 ] || [ "$TIMING_CLAIMS" = 1 ]; then  # M3k: named only when on
+    export CVDP_PRESUBMIT_IFACE="$PRESUBMIT_IFACE" CVDP_TIMING_CLAIMS="$TIMING_CLAIMS"
+    export CVDP_AGENT_ENV="$CVDP_AGENT_ENV,CVDP_PRESUBMIT_IFACE,CVDP_TIMING_CLAIMS"
   fi
   if [ -n "$DATA_COLLECTION" ]; then  # F1B: named only when set
     export CVDP_DATA_COLLECTION="$DATA_COLLECTION" CVDP_AGENT_ENV="$CVDP_AGENT_ENV,CVDP_DATA_COLLECTION"
@@ -286,7 +300,7 @@ collect_phase() {
     if [ -f "$d/raw_result.json" ]; then
       python3 "$repo/tools/collect.py" "$d" --dataset "$work.problems.jsonl" --runner "${RUNNER:-local}" \
         --model "$MODEL" --seed "$seed" --reasoning "$REASONING" $hdr ${SKILL_PACK:+--skill-pack} \
-        ${CC_PROFILE_FLAG:+--cc-profile} ${API_FLAG:+--api} >> "$work/results.csv"
+        ${CC_PROFILE_FLAG:+--cc-profile} ${API_FLAG:+--api} ${M3K_FLAG:+--m3k} >> "$work/results.csv"
       hdr=--no-header
       collected=$((collected + 1))
     else
