@@ -136,7 +136,7 @@ pack's private text is in it. A problem cut off by the plan's limit is recorded 
 to use it; amended after the smoke runs, where Haiku loaded no skill unprompted) on M3g's held-out 100 and the 86, 3
 runs each, plus one unhinted S2 run on the held-out set.
 
-**M3i** (in progress; pre-registered in [`docs/reports/m3i/preregistration.md`](docs/reports/m3i/preregistration.md),
+**M3i** (done, null; pre-registered in [`docs/reports/m3i/preregistration.md`](docs/reports/m3i/preregistration.md),
 report [`docs/reports/M3i_report.md`](docs/reports/M3i_report.md), smoke runs
 [`docs/reports/m3i/smoke.md`](docs/reports/m3i/smoke.md)): how much of Claude Code is the harness? Sweep input
 `cc_profile=plain` runs Claude Code 2.1.310 with the LangGraph agent's own system prompt (read from
@@ -145,14 +145,18 @@ and no settings, CLAUDE.md, skills or MCP servers. The `init` event is checked a
 `cc_tools`, `cc_skills_n`, `cc_mcp_n`, `cc_model`; a run whose init event is not the profile ends as `profile_error` and
 is not scored. The comparison is plain against M3h's arm A (Claude Code as shipped), same model.
 
-**M3j** (in progress; pre-registered in [`docs/reports/m3j/preregistration.md`](docs/reports/m3j/preregistration.md),
-request captures in [`docs/reports/m3j/capture/`](docs/reports/m3j/capture), made with
+**M3j** (done, null; report [`docs/reports/M3j_report.md`](docs/reports/M3j_report.md), analysis
+[`docs/reports/m3j/analyze.sh`](docs/reports/m3j/analyze.sh), pre-registered in
+[`docs/reports/m3j/preregistration.md`](docs/reports/m3j/preregistration.md), smoke runs
+[`docs/reports/m3j/smoke.md`](docs/reports/m3j/smoke.md), request captures in [`docs/reports/m3j/capture/`](docs/reports/m3j/capture), made with
 [`tools/capture_requests.py`](tools/capture_requests.py)): lean Claude Code against a plain API loop, with Haiku 5.5,
 billed to the Anthropic API key (the Max plan's monthly API credit, repository secret `ANTHROPIC_API_KEY`). Sweep inputs
 `claude_endpoint=api` (Claude Code on the key; `cc_profile=plain`, or `cc_profile=bare` for plain plus `--bare`) and
 `harness=apiloop` ([`agent/cvdp_agent/apiloop.py`](agent/cvdp_agent/apiloop.py): the Messages API with our system
 prompt and four tools of our own, no Claude Code). Only those arms are given the key; a plan arm never is. Claude
-Code's `init` event must report `apiKeySource` `ANTHROPIC_API_KEY`, or the run ends as `profile_error`.
+Code's `init` event must report `apiKeySource` `ANTHROPIC_API_KEY`, or the run ends as `profile_error`. Result: our
+loop passed exactly as often as lean Claude Code (R − PA = +0.0 points [−4.3, +4.3], 54.7% each) on 70% of its prompt
+tokens; `--bare` and the billing route made no detectable difference either; all scored runs cost about $7.3 of API credit.
 
 **M2a** (merged, [`docs/reports/M2a_report.md`](docs/reports/M2a_report.md)): reasoning limits, a retry on empty
 replies and unreadable decisions, and seeds. On the same 10 problems on Arm64, DeepSeek at `reasoning=off` passed

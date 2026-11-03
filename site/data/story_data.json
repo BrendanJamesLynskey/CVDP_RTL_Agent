@@ -1761,7 +1761,65 @@
    "i_ptok_hx": "37",
    "i_ptok_save": "63",
    "i_ptok_dx": "37",
-   "i_tools_n": "4"
+   "i_tools_n": "4",
+   "j_ho_e": "+0.0",
+   "j_ho_ci": "[\u22124.3, +4.3]",
+   "j_ho_p": "1.00",
+   "j_ho_bws": "7 / 7 / 86",
+   "j_ho_b_e": "+3.7",
+   "j_ho_b_ci": "[+0.0, +7.7]",
+   "j_ho_b_p": "0.096",
+   "j_ho_b_bws": "13 / 5 / 82",
+   "j_ho_pap_e": "\u22123.3",
+   "j_ho_pap_ci": "[\u22127.3, +0.7]",
+   "j_ho_pap_p": "0.24",
+   "j_ho_pap_bws": "6 / 12 / 82",
+   "j_ho_rd_e": "\u22123.7",
+   "j_ho_rd_ci": "[\u22128.3, +0.3]",
+   "j_ho_rd_p": "0.42",
+   "j_ho_rd_bws": "10 / 15 / 75",
+   "j_d86_e": "+1.2",
+   "j_d86_ci": "[\u22124.7, +7.0]",
+   "j_d86_p": "1.00",
+   "j_d86_bws": "4 / 3 / 79",
+   "j_d86_b_e": "+0.0",
+   "j_d86_b_ci": "[\u22127.0, +7.0]",
+   "j_d86_b_p": "1.00",
+   "j_d86_b_bws": "5 / 5 / 76",
+   "j_rate_hPA": "54.7",
+   "j_k_hPA": "164",
+   "j_n_hPA": "300",
+   "j_rate_hB": "58.3",
+   "j_k_hB": "175",
+   "j_n_hB": "300",
+   "j_rate_hR": "54.7",
+   "j_k_hR": "164",
+   "j_n_hR": "300",
+   "j_rate_dPA": "66.3",
+   "j_k_dPA": "57",
+   "j_n_dPA": "86",
+   "j_rate_dB": "66.3",
+   "j_k_dB": "57",
+   "j_n_dB": "86",
+   "j_rate_dR": "67.4",
+   "j_k_dR": "58",
+   "j_n_dR": "86",
+   "j_turns_hPA": "5",
+   "j_ptok_hPA": "66,787",
+   "j_turns_hB": "5",
+   "j_ptok_hB": "56,391",
+   "j_turns_hR": "5",
+   "j_ptok_hR": "46,570",
+   "j_ptok_rpa": "70",
+   "j_ptok_rd": "28",
+   "j_usd_hPA": "1.68",
+   "j_usd_hB": "1.57",
+   "j_usd_hR": "1.44",
+   "j_usd_dPA": "0.93",
+   "j_usd_dB": "0.84",
+   "j_usd_dR": "0.81",
+   "j_usd_scored": "7.3",
+   "j_console": "7.83"
   }
  },
  "m3b_confirm": {
@@ -3509,5 +3567,129 @@
     "0"
    ]
   ]
+ },
+ "m3j": {
+  "effects": {
+   "ho": {
+    "finding": "no detectable effect",
+    "eff": 0.0,
+    "lo": -4.3,
+    "hi": 4.3,
+    "better": 7,
+    "worse": 7,
+    "same": 86,
+    "p": 1.0
+   },
+   "ho_b": {
+    "finding": "no detectable effect",
+    "eff": 3.7,
+    "lo": 0.0,
+    "hi": 7.7,
+    "better": 13,
+    "worse": 5,
+    "same": 82,
+    "p": 0.0963
+   },
+   "ho_pap": {
+    "finding": "no detectable effect",
+    "eff": -3.3,
+    "lo": -7.3,
+    "hi": 0.7,
+    "better": 6,
+    "worse": 12,
+    "same": 82,
+    "p": 0.238
+   },
+   "ho_rd": {
+    "finding": "no detectable effect",
+    "eff": -3.7,
+    "lo": -8.3,
+    "hi": 0.3,
+    "better": 10,
+    "worse": 15,
+    "same": 75,
+    "p": 0.424
+   },
+   "d86": {
+    "finding": "no detectable effect",
+    "eff": 1.2,
+    "lo": -4.7,
+    "hi": 7.0,
+    "better": 4,
+    "worse": 3,
+    "same": 79,
+    "p": 1.0
+   },
+   "d86_b": {
+    "finding": "no detectable effect",
+    "eff": 0.0,
+    "lo": -7.0,
+    "hi": 7.0,
+    "better": 5,
+    "worse": 5,
+    "same": 76,
+    "p": 1.0
+   }
+  },
+  "n_ho": 100,
+  "n": 86,
+  "arms": {
+   "hPA": {
+    "k": 164,
+    "n": 300,
+    "rate": 54.7
+   },
+   "hB": {
+    "k": 175,
+    "n": 300,
+    "rate": 58.3
+   },
+   "hR": {
+    "k": 164,
+    "n": 300,
+    "rate": 54.7
+   },
+   "dPA": {
+    "k": 57,
+    "n": 86,
+    "rate": 66.3
+   },
+   "dB": {
+    "k": 57,
+    "n": 86,
+    "rate": 66.3
+   },
+   "dR": {
+    "k": 58,
+    "n": 86,
+    "rate": 67.4
+   }
+  },
+  "turns_med": {
+   "hPA": 5.0,
+   "hB": 5.0,
+   "hR": 5.0
+  },
+  "ptok": {
+   "hPA": 66787,
+   "hB": 56391,
+   "hR": 46570
+  },
+  "usd": {
+   "hPA": 1.68,
+   "hB": 1.57,
+   "hR": 1.44,
+   "dPA": 0.93,
+   "dB": 0.84,
+   "dR": 0.81
+  },
+  "key_source": [
+   "ANTHROPIC_API_KEY"
+  ],
+  "tools_b": [
+   "Bash;Edit;Read"
+  ],
+  "console_usd": 7.83,
+  "console_before_usd": 0.57
  }
 }

@@ -289,3 +289,15 @@ def test_collect_api_columns_only_with_the_flag(tmp_path):
     assert "api_cost_estimate_usd" not in collect.FIELDS
     cols = collect.m3j_columns({"cache_read_tokens": 5, "api_cost_estimate_usd": 0.1, "network_flags": ["curl x"]})
     assert cols["cache_read_tokens"] == 5 and cols["network_flags_n"] == 1 and cols["plan_cost_estimate_usd"] == ""
+
+
+def test_ablate_zero_bound_is_not_an_effect():
+    """M3j: a bootstrap bound that is exactly 0 (thirds summing to +/-1e-17) must read as no detectable effect."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("ablate", os.path.join(ROOT, "tools", "ablate.py"))
+    ab = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ab)
+    assert ab.verdict({"lo": round(1e-17, 9), "hi": 0.07}) == "no detectable effect"
+    rows = lambda vals: [{"id": f"p{i}", "pass": v, "_run": "r#seed1"} for i, v in enumerate(vals)]
+    p = ab.paired(rows(["1", "0"]), rows(["1", "0"]))
+    assert ab.verdict(p) == "no detectable effect"

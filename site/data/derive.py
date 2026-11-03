@@ -698,6 +698,49 @@ m3i = {
     "skills_mcp": sorted({(x["cc_skills_n"], x["cc_mcp_n"]) for k in ("hP", "dP") for x in h_rows[k]}),
 }
 
+# ---- M3j (lean Claude Code against a plain API loop, billed to the API key) ----
+# docs/reports/M3j_report.md and m3j/. Prefix j_. PA, B and R from M3j; P and D from M3i/M3h above (hP, hA, dP, dA).
+# Held-out seeds 1-2 and 3 are separate dispatches; R's 86 run is m3h_merge.py's merge of its first run and the rerun.
+M3J = os.path.join(REP, "m3j")
+J_RUNS = {"hPA": hi_load(M3J, "heldout_PA"), "hB": hi_load(M3J, "heldout_B"), "hR": hi_load(M3J, "heldout_R"),
+          "dPA": restrict(hi_load(M3J, "dev86_PA_"), EVAL), "dB": restrict(hi_load(M3J, "dev86_B_"), EVAL),
+          "dR": restrict(hi_load(M3J, "dev86_R_merged"), EVAL)}
+j_arms = {k: pool(v) for k, v in J_RUNS.items()}
+j_rows = {k: [x for _, _, r in v for x in r] for k, v in J_RUNS.items()}
+# cost covers every row the sweeps ran: the 86-problem dispatches ran all 92 agentic problems
+j_rows.update({"cdPA": [x for _, _, r in hi_load(M3J, "dev86_PA_") for x in r], "cdB": [x for _, _, r in hi_load(M3J, "dev86_B_") for x in r],
+               "cdR": [x for _, _, r in hi_load(M3J, "dev86_R_merged") for x in r]})
+j_ho = parse_sections(os.path.join(M3J, "heldout_paired.md"))
+j_effects = {"ho": j_ho["R-PA"], "ho_b": j_ho["B-PA"],
+             "ho_pap": parse_sections(os.path.join(M3J, "heldout_PA_vs_P.md"))["PA-P"],
+             "ho_rd": parse_sections(os.path.join(M3J, "heldout_R_vs_D.md"))["R-D"],
+             "d86": parse_sections(os.path.join(M3J, "dev86_paired.md"))["R-PA"],
+             "d86_b": parse_sections(os.path.join(M3J, "dev86_paired.md"))["B-PA"]}
+j_chk = {"ho": paired_ids(j_arms["hR"], j_arms["hPA"], G_HO), "ho_b": paired_ids(j_arms["hB"], j_arms["hPA"], G_HO),
+         "ho_pap": paired_ids(j_arms["hPA"], h_arms["hP"], G_HO), "ho_rd": paired_ids(j_arms["hR"], h_arms["hA"], G_HO),
+         "d86": paired_ids(j_arms["dR"], j_arms["dPA"], EVAL), "d86_b": paired_ids(j_arms["dB"], j_arms["dPA"], EVAL)}
+def j_mean(k, col):
+    return sum(float(x[col] or 0) for x in j_rows[k]) / len(j_rows[k])
+def j_sum(k, col):
+    return sum(float(x[col] or 0) for x in j_rows[k])
+def j_list_usd(k):
+    """R's cost from its tokens at Claude Haiku 5.5's list rates under 100K tokens per request: fresh input $0.10/M,
+    cache read $0.01/M, cache write $0.125/M, output $0.50/M (the report's Cost section)."""
+    cr, cw, pt = j_sum(k, "cache_read_tokens"), j_sum(k, "cache_write_tokens"), j_sum(k, "prompt_tokens")
+    return ((pt - cr - cw) * 0.10 + cr * 0.01 + cw * 0.125 + j_sum(k, "completion_tokens") * 0.50) / 1e6
+m3j = {
+    "effects": j_effects, "n_ho": len(G_HO), "n": len(EVAL),
+    "arms": {k: {"k": v["k"], "n": v["n"], "rate": v["rate"]} for k, v in j_arms.items()},
+    "turns_med": {k: statistics.median(float(x["turns"]) for x in j_rows[k]) for k in ("hPA", "hB", "hR")},
+    "ptok": {k: round(j_mean(k, "prompt_tokens")) for k in ("hPA", "hB", "hR")},
+    "usd": {"hPA": round(j_sum("hPA", "plan_cost_estimate_usd"), 2), "hB": round(j_sum("hB", "plan_cost_estimate_usd"), 2),
+            "hR": round(j_list_usd("hR"), 2), "dPA": round(j_sum("cdPA", "plan_cost_estimate_usd"), 2),
+            "dB": round(j_sum("cdB", "plan_cost_estimate_usd"), 2), "dR": round(j_list_usd("cdR"), 2)},
+    "key_source": sorted({x["cc_api_key_source"] for k in ("hPA", "hB", "dPA", "dB") for x in j_rows[k]}),
+    "tools_b": sorted({x["cc_tools"] for k in ("hB", "dB") for x in j_rows[k]}),
+    "console_usd": 7.83, "console_before_usd": 0.57,
+}
+
 spend_all = round(spend_all + conf_cost + m3c_scored + m3c_smoke + m3d_scored + m3d_smoke + e_scored + e_smoke + e_finish + g_scored + g_smoke, 2)  # + confirming run, M3c, M3d, M3e (with brief 14b's two) and M3g scored sweeps and smoke runs
 
 # Prose numbers in story.html: <span data-d="key">value</span>; --inject rewrites the value from here.
@@ -915,6 +958,25 @@ hi_new["i_ptok_dx"] = f"{round(100 * m3i['ptok']['dP'] / m3i['ptok']['dA'])}"
 hi_new["i_tools_n"] = str(len(m3i["tools"][0].split(";")))
 hi_clash = sorted(set(hi_new) & hi_before)
 prose.update(hi_new)
+
+# M3j (prefix j_)
+j_before = set(prose)
+j_new = {}
+for k, e in m3j["effects"].items():
+    j_new[f"j_{k}_e"] = sg(e["eff"]); j_new[f"j_{k}_ci"] = ci(e); j_new[f"j_{k}_p"] = p2(e["p"])
+    j_new[f"j_{k}_bws"] = f"{e['better']} / {e['worse']} / {e['same']}"
+for k, v in m3j["arms"].items():
+    j_new[f"j_rate_{k}"] = f"{v['rate']:.1f}"; j_new[f"j_k_{k}"] = str(v["k"]); j_new[f"j_n_{k}"] = str(v["n"])
+for k in ("hPA", "hB", "hR"):
+    j_new[f"j_turns_{k}"] = f"{m3j['turns_med'][k]:g}"; j_new[f"j_ptok_{k}"] = f"{m3j['ptok'][k]:,}"
+j_new["j_ptok_rpa"] = str(round(100 * m3j["ptok"]["hR"] / m3j["ptok"]["hPA"]))
+j_new["j_ptok_rd"] = str(round(100 * m3j["ptok"]["hR"] / m3i["ptok"]["hA"]))
+for k, v in m3j["usd"].items():
+    j_new[f"j_usd_{k}"] = f"{v:.2f}"
+j_new["j_usd_scored"] = f"{sum(m3j['usd'].values()):.1f}"
+j_new["j_console"] = f"{m3j['console_usd']:.2f}"
+j_clash = sorted(set(j_new) & j_before)
+prose.update(j_new)
 m3b["prose"] = prose
 
 data = {
@@ -934,7 +996,7 @@ data = {
     "external": ext,
     "m3b": m3b,
     "m3b_confirm": m3b_conf, "m3c": m3c, "ladder": claude_ladder,
-    "unsolved": unsolved, "m3d": m3d, "m3e": m3e, "m3g": m3g, "m3h": m3h, "m3i": m3i,
+    "unsolved": unsolved, "m3d": m3d, "m3e": m3e, "m3g": m3g, "m3h": m3h, "m3i": m3i, "m3j": m3j,
 }
 
 # ---- checks against the reports ----
@@ -1278,6 +1340,28 @@ check("median turns D 6, P 5; median wall time D 32 s, P 25 s" in rep3i and (pro
       and "median turns D 11, P 8; median wall time 89 s and 44 s" in rep3i and (prose["i_turns_dA"], prose["i_turns_dP"]) == ("11", "8"), "M3i effort in report")
 check(m3i["tools"] == ["Bash;Edit;Read;Write"] and m3i["skills_mcp"] == [("0", "0")] and "`cc_tools` = `Bash;Edit;Read;Write`" in rep3i, f"M3i profile took effect {m3i['tools']} {m3i['skills_mcp']}")
 check("**Status: DONE (2026-11-02). Decision: null.**" in rep3i, "M3i status in report")
+# M3j (docs/reports/M3j_report.md and the ablate.py outputs beside it)
+rep3j = open(os.path.join(REP, "M3j_report.md")).read()
+check(not j_clash, f"M3j prose keys clash with existing ones: {j_clash}")
+check([len(J_RUNS[k]) for k in ("hPA", "hB", "hR")] == [2, 2, 2] and all(j_arms[k]["n"] == 300 for k in ("hPA", "hB", "hR")),
+      "M3j held-out: two dispatches per arm, 300 problem-runs each")
+check(all(j_arms[k]["n"] == len(EVAL) for k in ("dPA", "dB", "dR")), "M3j 86: one run per arm over the 86")
+check(all(x["stop_reason"] not in ("rate_limited", "profile_error", "run_budget_exhausted") for k in J_RUNS for x in j_rows[k]),
+      "M3j: no not-run rows left")
+check(m3j["key_source"] == ["ANTHROPIC_API_KEY"] and m3j["tools_b"] == ["Bash;Edit;Read"], f"M3j profiles {m3j['key_source']} {m3j['tools_b']}")
+for k, e in j_effects.items():
+    check((e["eff"], e["better"], e["worse"], e["same"]) == j_chk[k], f"M3j {k} effect {e} vs recomputed {j_chk[k]}")
+check("- **Primary: R − PA = +0.0 points [−4.3, +4.3]** (7 better, 7 worse, 86 same; sign test p = 1)" in rep3j
+      and (prose["j_ho_e"], prose["j_ho_ci"], prose["j_ho_bws"]) == ("+0.0", "[−4.3, +4.3]", "7 / 7 / 86"), "M3j primary in report")
+check("**B − PA = +3.7 [+0.0, +7.7]** (13 / 5 / 82; p = 0.096)" in rep3j and j_effects["ho_b"]["finding"] == "no detectable effect"
+      and "**PA − P = −3.3 [−7.3, +0.7]** (6 / 12 / 82; p = 0.24)" in rep3j and "**R − D = −3.7 [−8.3, +0.3]** (10 / 15 / 75; p = 0.42)" in rep3j,
+      "M3j secondaries in report")
+check(f"| PA | 5 (5.8) | 23 | 3 | {prose['j_ptok_hPA']} |" in rep3j and f"| R | 5 (5.4) | 22 | 0 | {prose['j_ptok_hR']} |" in rep3j
+      and f"That is {prose['j_ptok_rpa']}% of PA's" in rep3j and f"{prose['j_ptok_rd']}% of D's" in rep3j, "M3j tokens in report")
+check(f"| Held-out (300 problem-runs) | ${prose['j_usd_hPA']} (Claude Code's figure) | ${prose['j_usd_hB']} (Claude Code's figure) | ${prose['j_usd_hR']} (from tokens at list rates) |" in rep3j
+      and f"| The 86 (92 problems run) | ${prose['j_usd_dPA']} | ${prose['j_usd_dB']} | ${prose['j_usd_dR']} |" in rep3j
+      and f"about **${prose['j_usd_scored']} of API credit**" in rep3j and f"${prose['j_console']} for the month" in rep3j, "M3j cost in report")
+check("**Status: DONE (2026-11-03). Decision: null.**" in rep3j, "M3j status in report")
 check(78.5 < spend_all < 79.5, f"spend M1 to M3g {spend_all}")
 check(prose["proc_null"] == prose["proc_n"] == "11" and prose["proc_det"] == "0", f"process changes null {prose['proc_null']} of {prose['proc_n']}")
 
