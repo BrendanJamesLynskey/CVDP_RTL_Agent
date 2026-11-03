@@ -451,7 +451,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
     <div class="edge" data-edge></div>
     <h2>Read as a verification engineer would</h2>
     <div class="ios"><span class="k">IN ONE SENTENCE</span>
-      <p>The agent's self-check is a testbench with no coverage and no quality measure, which is why it passed on code the hidden tests failed in 61 of 73 cases; the planned M3c milestone answers that with a mutation-score gate on the agent's testbench and an interface diff by elaboration.</p>
+      <p>The agent's self-check is a testbench with no coverage and no quality measure, which is why it passed on code the hidden tests failed in 61 of 73 cases; M3c then tried a mutation-score gate on that testbench and an interface diff by elaboration, and neither moved the score.</p>
     </div>
     <p>The hidden cocotb tests play the role of a sign-off regression the designer cannot see. The agent's own testbench plays the designer's unit test. Mapped onto the usual verification concepts, here is what the project does and does not do.</p>
     <div class="tw"><table>
@@ -467,7 +467,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
           <td><span class="chip no">NOT MEASURED</span></td></tr>
         <tr><td><strong>Testbench quality</strong></td>
           <td>Measured indirectly, from outcomes: the own testbench passed in 61 of 73 failed submissions where it ran (84% false passes on those).</td>
-          <td>No direct measure yet. M3c plans a mutation score: does the agent's testbench catch deliberately broken copies of its own design?</td>
+          <td>M3c measured it as a gate: before submit, the agent's testbench had to fail on at least half of 12 broken copies of its design (Yosys <code>mutate</code>) that compile. The gate worked, and the pass rate did not move (<a href="results-m3c-m3e.html#m3c">M3c</a>).</td>
           <td><span class="chip part">INDIRECT</span></td></tr>
         <tr><td><strong>Constrained-random stimulus</strong></td>
           <td>Not asked of the agent; its prompt lists the checks it may run.</td>
@@ -478,15 +478,15 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
           <td>No SVA. The M5 track plans SVA properties checked with SymbiYosys.</td>
           <td><span class="chip plan">PLANNED (M5)</span></td></tr>
         <tr><td><strong>Formal: <a class="gl" href="reference.html#g-bmc">BMC</a>, <a class="gl" href="reference.html#g-equiv">equivalence</a>, <a class="gl" href="reference.html#g-mut">mutation</a></strong></td>
-          <td>None run yet.</td>
-          <td>Planned for M3c: a mutation-score gate on the agent's testbench (Yosys <code>mutate</code>) and an interface diff by elaboration (pyslang), both fixed steps in the graph. Formal checks of SVA properties with SymbiYosys are planned for the M5 track. No equivalence checking is planned.</td>
-          <td><span class="chip plan">PLANNED</span></td></tr>
+          <td>Mutation only: M3c&rsquo;s gate, plus an interface diff by elaboration (pyslang), both fixed steps in the graph. Neither moved the score.</td>
+          <td>No BMC and no equivalence checking. Formal checks of SVA properties with SymbiYosys are planned for the M5 track.</td>
+          <td><span class="chip part">MUTATION (M3C)</span></td></tr>
         <tr><td><strong>Regression triage</strong></td>
           <td>Done: a deterministic label for each of 565 failures, checked against hand labels; a measured noise floor (flaky results: 10 problems flip between identical runs); a null-agent floor and a golden check (M0).</td>
           <td>The hidden build's own compiler message is not in the log, so the cause of each <code>compile_fail_hidden</code> is not shown one by one.</td>
           <td><span class="chip done">DONE</span></td></tr>
       </tbody></table></div>
-    <p>The two M3 failure modes have verification answers. A testbench that passes on wrong code is a testbench-quality and coverage problem: a mutation score asks whether the testbench fails on mutated copies of the design, and so measures what it can catch. A name the hidden testbench needs but the design lacks is an interface problem: elaborating the design and diffing its ports, parameters and hierarchy against the specification catches it before submission, when the name is given. Neither has results yet.</p>
+    <p>The two M3 failure modes have verification answers. A testbench that passes on wrong code is a testbench-quality and coverage problem: a mutation score asks whether the testbench fails on mutated copies of the design, and so measures what it can catch. A name the hidden testbench needs but the design lacks is an interface problem: elaborating the design and diffing its ports, parameters and hierarchy against the specification catches it before submission, when the name is given. M3c ran both as fixed steps and neither moved the pass rate; M3d&rsquo;s verify-before-submit step did not either. The agent&rsquo;s tests share its own reading of the specification, so making it test more does not catch its misreadings.</p>
   </div>
 </section>
 
@@ -506,7 +506,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
         <div class="scope" style="margin:0 0 10px"><div class="plot" id="c-cmp"></div></div>
         <div id="cmp-list" class="ctx"></div>
         <p class="small" style="margin-top:10px">Why these compare: the same problem file, the same release, and the same score (the hidden tests, one run, pass or fail). Why only roughly: different models and agents, two of them with no agent loop at all; all three are marked "not independently verified" on the leaderboard; only one gives any cost figure; and the leaderboard's harness and dataset commits may differ from this project's pins (harness <code>8e894cf</code>, dataset revision <code>5b807d9</code>). Wilson intervals on their rows are computed here, from k and n. Source: <a href="https://lbc-bench.si2.org">LBC-bench</a>, data file <a href="https://github.com/si2org/lbc-bench.github.io/blob/b8354131ba89f915f5f940a3300a06777ebe1e98/data/leaderboards.json">leaderboards.json at b835413</a>.</p>
-        <p>The plain reading: Haiku 5.5 and gpt-6-luna inside this agent (52 to 56) land where two frontier models land in a single turn on the same problems (52 and 53), and near Claude Code with Sonnet 4.6 (48). With one run each and intervals about 20 points wide, none of these differences is established.</p>
+        <p>The plain reading: Anthropic Claude Haiku 5.5 and OpenAI gpt-6-luna inside this agent (52 to 56) land where two frontier models land in a single turn on the same problems (52 and 53), and near Claude Code with Sonnet 4.6 (48). With one run each and intervals about 20 points wide, none of these differences is established. Our later runs (Claude Code and Claude Opus 5.5, up to 73.3%) are on the 86 reachable problems, not these 92, so they are not in this comparison.</p>
       </div></div>
 
     <!-- src: docs/reports/m3b/arms_paired_eval86.md "Arms"; docs/reports/m3c/arms_paired_eval86.md; docs/reports/claude_code/ladder_paired_eval86.md; tools/m3b_eval_ids.txt -->

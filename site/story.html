@@ -508,7 +508,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
       <div>
         <h3>What this project is</h3>
         <!-- src: README.md (split hash 2007f4311ed731a9, 92 problems, cid split, rules) -->
-        <p>An open <a class="gl" href="#g-langgraph">LangGraph</a> agent, run end to end in GitHub Actions on the free, open-tool split of CVDP 1.1.0: 92 problems in four <a class="gl" href="#g-cid">categories</a> (spec to RTL 34, RTL modification 25, spec to RTL with module reuse 22, bug fixing 11). Every cost is provider-reported (via <a class="gl" href="#g-openrouter">OpenRouter</a>), every score comes from the hidden tests, and no LLM ever scores anything.</p>
+        <p>An open <a class="gl" href="#g-langgraph">LangGraph</a> agent, run end to end in GitHub Actions on the free, open-tool split of CVDP 1.1.0: 92 problems in four <a class="gl" href="#g-cid">categories</a> (spec to RTL 34, RTL modification 25, spec to RTL with module reuse 22, bug fixing 11). Every cost of our agent is provider-reported (via <a class="gl" href="#g-openrouter">OpenRouter</a>); the Claude Code runs used a Claude Max plan, which bills nothing per call. Every score comes from the hidden tests, and no LLM ever scores anything.</p>
       </div>
     </div>
   </div>
@@ -537,7 +537,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
 
     <h3>Deep Agents, the other harness</h3>
     <!-- src: agent/cvdp_agent/deep.py -->
-    <p>In M3b the same model ran inside <a class="gl" href="#g-deep">Deep Agents</a> instead of our fixed graph. There is no set order of steps: the model is at the centre and, at every turn, chooses which tool to call next, reads the result and decides again, until it replies without calling a tool, which submits. This freedom is what scored <span data-d="cf_e">+4.7</span> points higher.</p>
+    <p>In M3b the same model, OpenAI gpt-6-luna, ran inside <a class="gl" href="#g-deep">Deep Agents</a> instead of our fixed graph. There is no set order of steps: the model is at the centre and, at every turn, chooses which tool to call next, reads the result and decides again, until it replies without calling a tool, which submits. With gpt-6-luna in both, this harness scored <span data-d="cf_e">+4.7</span> points higher than our graph, confirmed by a pre-registered second test (<a href="#m3b">M3b</a>). It was never compared with Claude Code.</p>
     <div class="scope"><div class="hd"><span><b>Deep Agents</b> · one model, eight tools, a free loop</span><span>M3b</span></div>
       <div class="plot" id="c-deep"></div>
       <div class="ft">Same model, prompts for the task, caps, file-write rules and checks as our agent; up to 22 model calls a problem. Its shell tool and its sub-agents are switched off, so every call is the main agent&rsquo;s.</div>
@@ -548,7 +548,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
     <p>What each setup can do, and how. Our agent does not call tools at all: its graph reads every file into the prompt, applies the edits the model writes, and runs the checks itself after every edit. Deep Agents and Claude Code give the model tools to call when it chooses. Claude Code has no special RTL tools; it runs the simulators through its shell.</p>
     <div class="scope"><div class="hd"><span><b>Tools</b> · four setups, six capabilities</span><span>M3b, M3e, M3i</span></div>
       <div class="plot" id="c-tools"></div>
-      <div class="ft">Claude Code by default offers 22 tools; this project allows six (Read, Edit, Write, Glob, Grep, Bash) and blocks web access, sub-agents and network commands. The lean set-up of M3i offers only four. Every setup has the same free tools installed: Icarus Verilog, Verilator, Yosys and cocotb.</div>
+      <div class="ft">Claude Code by default offers 22 tools; this project allows six (Read, Edit, Write, Glob, Grep, Bash) and blocks web access, sub-agents and network commands. The lean set-up of M3i offers only four (<a href="#cc-api">its flags, and what Claude Code still adds</a>). Every setup has the same free tools installed: Icarus Verilog, Verilator, Yosys and cocotb.</div>
     </div>
 
     <h3>The sweep, as a schematic</h3>
@@ -558,13 +558,14 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
       Both images are built natively for x86-64 and Arm64 and pulled from GHCR. The harness runs 4 problems at a time. A shared ledger stops new problems calling the LLM once the summed cost passes the run budget. The work directory is uploaded only if a scan finds nothing key-shaped in it.</div>
     </div>
 
-    <h3>Stop rules, checked in code before every step</h3>
+    <h3>Our agent&rsquo;s stop rules, checked in code before every step</h3>
     <!-- src: README.md "Stop rules"; M1_report.md -->
     <ul>
       <li><strong>Turns</strong>: 10 edit, check and reflect cycles by default.</li>
       <li><strong>Dollars</strong>: $0.10 per problem, provider-reported cost only. A call whose cost is not reported stops the problem (<code>cost_unreported</code>), because the budget can no longer be enforced.</li>
       <li><strong>Wall time</strong>: 480 s, under the harness's 600 s agent timeout. Each LLM call has a hard deadline 2 s before the cap.</li>
       <li>On any stop or crash, the last edit that compiled is kept, the summary is written, and the agent exits 0.</li>
+      <li>Claude Code has its own limits instead: up to 60 turns (<code>--max-turns 60</code>) and the same 480 s wall cap, with no dollar cap, since a Claude Max plan bills nothing per call.</li>
     </ul>
 
     <details class="why"><summary><span class="wk">WHY</span>Why sweeps run in GitHub Actions, not locally</summary><div>
@@ -589,7 +590,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
     <div class="edge" data-edge></div>
     <h2>Milestones, M0 to M3i</h2>
     <div class="ios"><span class="k">IN ONE SENTENCE</span>
-      <p>Each milestone asked one question and answered it with runs anyone can download: does the harness run (M0), does the agent work (M1), how do models and reasoning settings compare (M2a, M2), do the agent's own checks pay for themselves (M3), does a richer harness or a memory of lessons help (M3b, then a confirming run), do two model-free checks run as fixed steps help (M3c), why do the problems no model solves fail (the unsolved analysis), does making the agent test before it submits help (M3d), is the gap to Claude Code the harness or the model (M3e), does a pack of RTL design know-how help (M3g), does it help as Claude Code skills (M3h), and how much of Claude Code is its own harness (M3i).</p>
+      <p>Each milestone asked one question and answered it with runs anyone can download. The model moved the score; the Deep Agents harness moved it a little; nothing else did.</p>
     </div>
     <div class="bus" id="msbus">
       <!-- src: README.md M0 table -->
@@ -659,15 +660,15 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
     <h3>The measurements at a glance</h3>
     <div class="meas" role="list">
       <!-- src: docs/reports/M2_report.md "Results: all 92 problems" -->
-      <div role="listitem"><div class="k">pass@1, best model</div><div class="v num">52&ndash;56 / 92</div><div class="s">Haiku 5.5 on two runners; gpt-6-luna 52&ndash;53</div></div>
+      <div role="listitem"><div class="k">pass@1, our agent in M2</div><div class="v num">52&ndash;56 / 92</div><div class="s">Anthropic Claude Haiku 5.5 on two runners; OpenAI gpt-6-luna 52&ndash;53. With Claude Opus 5.5 (M3e) it reached <span data-d="e3f_rate_opus">72.1</span>% of the 86.</div></div>
       <!-- src: docs/reports/M2_report.md, $/solved column -->
-      <div role="listitem"><div class="k">cost per solved</div><div class="v num">$0.0105</div><div class="s">gpt-6-luna, x86-64; Haiku $0.0184&ndash;0.0214</div></div>
+      <div role="listitem"><div class="k">cost per solved</div><div class="v num">$0.0105</div><div class="s">OpenAI gpt-6-luna, x86-64; Claude Haiku 5.5 $0.0184&ndash;0.0214</div></div>
       <!-- src: docs/reports/M2_report.md "Run-to-run noise"; site/data/story_data.json m2_flips -->
       <div role="listitem"><div class="k">identical-run flips</div><div class="v x num">10</div><div class="s">problems change result between two runs of Haiku</div></div>
       <!-- src: docs/reports/M3_report.md "Paired results" -->
-      <div role="listitem"><div class="k">ablations with an effect</div><div class="v x num">0 of 6</div><div class="s">every 95% interval includes 0</div></div>
+      <div role="listitem"><div class="k">ablations with an effect</div><div class="v x num">0 of 6</div><div class="s">self-check, lint, turn caps and budget: none moved the score</div></div>
       <!-- src: docs/reports/m3b/confirm_result.md; docs/reports/m3b/confirm_paired_eval86.md (B - A on 6 new runs an arm) -->
-      <div role="listitem"><div class="k">harness effect, confirmed</div><div class="v num"><span data-d="cf_e">+4.7</span> pts</div><div class="s">Deep Agents &minus; LangGraph <span data-d="cf_ci">[+1.0, +8.5]</span>, pre-registered, <span data-d="cf_runs">6</span> new runs an arm; memory, M3c checks, M3d verify step and M3g pack: none detectable</div></div>
+      <div role="listitem"><div class="k">harness effect, confirmed</div><div class="v num"><span data-d="cf_e">+4.7</span> pts</div><div class="s">Deep Agents over our LangGraph graph, both on OpenAI gpt-6-luna, confirmed by a second, fresh test. Memory, M3c checks, M3d verify step and M3g pack: none detectable.</div></div>
       <!-- src: M1 about $0.75 (M3_report.md cost bookkeeping) + M2, M3, M3b, M3b confirming, M3c, M3d, M3e and M3g run CSVs, the M3b snapshot and the smoke runs; summed by site/data/derive.py -->
       <div role="listitem"><div class="k">LLM spend, M1&ndash;M3g</div><div class="v num">&asymp; $<span data-d="spend_all">79.03</span></div><div class="s">provider-reported; the Claude Code ladder, M3h and M3i ran on a plan, not counted</div></div>
     </div>
@@ -681,7 +682,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
     <div class="edge" data-edge></div>
     <h2>M2: three models, 92 problems, two runners</h2>
     <div class="ios"><span class="k">IN ONE SENTENCE</span>
-      <p>Haiku 5.5 and gpt-6-luna solve the same share of the 92 problems, Luna at half the cost per solved problem, DeepSeek V4.1 Flash solves about 10 fewer, and two identical runs of one model differ on about 10 problems, so a gap of a few problems means nothing.</p>
+      <p>In our LangGraph agent, Anthropic Claude Haiku 5.5 and OpenAI gpt-6-luna solve the same share of the 92 problems, Luna at half the cost per solved problem, DeepSeek V4.1 Flash solves about 10 fewer, and two identical runs of one model differ on about 10 problems, so a gap of a few problems means nothing.</p>
     </div>
     <p>Each model ran all 92 problems once on an x86-64 and once on an Arm64 <a class="gl" href="#g-runners">runner</a>, with the same image and settings, against the <a class="gl" href="#g-null">null agent</a>'s floor of zero.</p>
     <div class="scope"><div class="hd"><span><b><a class="gl" href="#g-pass1">pass@1</a></b> with <a class="gl" href="#g-wilson">Wilson</a> 95% intervals · one run per runner</span><span>CH1 = x86-64 · CH2 = Arm64</span></div>
@@ -721,7 +722,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
     <div class="edge" data-edge></div>
     <h2>M3: six changes to the agent, none detectable</h2>
     <div class="ios"><span class="k">IN ONE SENTENCE</span>
-      <p>Turning the self-check or lint off, capping turns at 5 or 20, or cutting the budget to $0.02 changed the pass rate by less than two identical runs differ, though turning lint off made each solved problem 38 to 59% dearer.</p>
+      <p>With OpenAI gpt-6-luna, turning the self-check or lint off, capping turns at 5 or 20, or cutting the budget to $0.02 changed the pass rate by less than two identical runs differ, though turning lint off made each solved problem 38 to 59% dearer.</p>
     </div>
     <!-- src: docs/reports/M3_report.md "Arms and settings" -->
     <p>Each arm is an <a class="gl" href="#g-ablation">ablation</a>: one setting changed, everything else held. Every arm uses gpt-6-luna (the cheapest per solved problem in M2), all 92 problems, Arm64 and 4 threads, and runs twice. Each arm is compared with the base (A) problem by problem: a problem's rate in an arm is its passes over the arm's two runs, so 0, &frac12; or 1. The effect is the mean of the differences, with a <a class="gl" href="#g-boot">paired bootstrap</a> interval and an exact <a class="gl" href="#g-sign">sign test</a>.</p>
@@ -762,7 +763,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
     <h2>M3b: a richer harness, or a memory of lessons?</h2>
     <div class="ios"><span class="k">IN ONE SENTENCE</span>
       <!-- src: docs/reports/M3b_report.md "In short"; numbers in data-d spans are written by site/data/derive.py -->
-      <p>At a fixed model, a frozen memory of <span data-d="les_n">40</span> lessons did not detectably change the pass rate; the Deep Agents harness added a few points, first as a hypothesis on <span data-d="m3b_runs_arm">3</span> runs an arm, then confirmed by a pre-registered test on <span data-d="cf_runs">6</span> new runs an arm (B &minus; A <span data-d="cf_e">+4.7</span> <span data-d="cf_ci">[+1.0, +8.5]</span>), for this one model on this one benchmark.</p>
+      <p>With OpenAI gpt-6-luna held fixed, a frozen memory of <span data-d="les_n">40</span> lessons did not change the pass rate, and moving our agent from its LangGraph graph to the Deep Agents harness added <span data-d="cf_e">+4.7</span> points, confirmed by a second, fresh test fixed in advance, for this one model on this one benchmark.</p>
       <!-- src: docs/reports/M3b_report.md "In short" (3-run result, unchanged); docs/reports/m3b/confirm_result.md (the confirmation) -->
     </div>
     <!-- src: docs/reports/M3b_report.md "The question", "Arms and settings", "The two problem sets" -->
@@ -909,11 +910,11 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
     <h2>Beside it: Claude Code as the whole agent</h2>
     <div class="ios"><span class="k">IN ONE SENTENCE</span>
       <!-- src: docs/reports/claude_code_ladder.md "In short" -->
-      <p>Exploratory, one run per model: Claude Code with Opus 5.5 solved <span data-d="l_opus_e">+11.6</span> points more of the <span data-d="m3b_n">86</span> problems than our LangGraph agent with gpt-6-luna, the only clear gap, and since both the harness and the model change, it says how good that pairing is here, not which change is responsible.</p>
+      <p>Exploratory, one run per model: Claude Code with Anthropic Claude Opus 5.5 solved <span data-d="l_opus_e">+11.6</span> points more of the <span data-d="m3b_n">86</span> problems than our LangGraph agent with OpenAI gpt-6-luna, the only clear gap; since both the harness and the model change, it says how good that pairing is here, not which change is responsible (M3e answers that).</p>
     </div>
     <p class="small">M3e has since separated the two for Opus 5.5: on the 86 problems, the model accounts for nearly all of the gap (<span data-d="e3f_model_e">+11.2</span> of <span data-d="e3f_total_e">+12.4</span>). <a href="#m3e">M3e: harness or model?</a></p>
     <!-- src: docs/reports/claude_code_ladder.md "Setup" -->
-    <p>Here the whole agent is swapped. <a class="gl" href="#g-claudecode">Claude Code</a> runs headless (<code>claude -p</code>) inside the harness's container, with file and shell tools and a 60-turn budget, on four Claude models, one run each, on the same <span data-d="m3b_n">86</span> problems and the same 480 s wall cap. Each is paired problem by problem with M3c's arm A (LangGraph with gpt-6-luna, <span data-d="c_runs_arm">3</span> runs, <span data-d="c_rate_A">61.6</span>%). It was not pre-registered.</p>
+    <p>Here the whole agent is swapped. <a class="gl" href="#g-claudecode">Claude Code</a> runs headless (<code>claude -p</code>) inside the harness's container on a Claude Max plan, not via OpenRouter, with six tools (Read, Edit, Write, Glob, Grep, Bash; web access, sub-agents and network commands blocked) and a 60-turn budget, on four Anthropic models (Claude Opus 5.5, Sonnet 5.5, Fable 5.1, Haiku 5.5), one run each, on the same <span data-d="m3b_n">86</span> problems and the same 480 s wall cap. Each is paired problem by problem with M3c's arm A (LangGraph with gpt-6-luna, <span data-d="c_runs_arm">3</span> runs, <span data-d="c_rate_A">61.6</span>%). It was not pre-registered.</p>
     <div class="scope"><div class="hd"><span><b>paired effect against LangGraph + gpt-6-luna</b>, points [95%]</span><span>dashed = one run, exploratory</span></div>
       <div class="plot" id="c-ladder"></div>
       <div class="ft"><!-- src: docs/reports/claude_code/ladder_paired_eval86.md; point effects, counts and sign tests recomputed from docs/reports/claude_code/runs/*.csv against docs/reports/m3c/runs/A*.csv by site/data/derive.py -->Pass@1 in each row's label. Only Opus's interval excludes zero (<span data-d="l_opus_bws">25 / 9 / 52</span> better / worse / same, p = <span data-d="l_opus_p">0.009</span>); Sonnet's reaches just below it (<span data-d="l_sonnet_ci">[−0.4, +17.4]</span>). The band is the base's own noise floor; a one-run arm carries that noise on top of the interval shown.</div>
@@ -923,7 +924,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
       <li><strong>Not in order of model size.</strong> Opus <span data-d="l_rate_opus">73.3</span>%, Sonnet <span data-d="l_rate_sonnet">69.8</span>%, Fable <span data-d="l_rate_fable">67.4</span>%, Haiku <span data-d="l_rate_haiku">66.3</span>%.</li>
       <li><strong>Fable is held back by the wall cap.</strong> It stopped on the 480 s cap on <span data-d="l_wcap_fable">17</span> of <span data-d="m3b_n">86</span> problems, and <span data-d="l_wcapf_fable">10</span> of those failed; its median wall time is <span data-d="l_wall_fable">265</span> s against <span data-d="l_wall_sonnet">24</span> to <span data-d="l_wall_haiku">83</span> s for the others. Under this cap its score is a lower bound, not a measure.</li>
       <li><strong>Two things change at once.</strong> Each arm differs from the base in both the harness and the model. The LangGraph agent with a Claude model was not run.</li>
-      <li><strong>Cost is not comparable.</strong> These runs used a subscription plan, so no call has a provider-reported price. Claude Code's own estimates at API rates are in the report, labelled as estimates; they are not money spent, and are not drawn here.</li>
+      <li><strong>Cost is not comparable.</strong> These runs used a Claude Max plan, so no call has a provider-reported price. Claude Code's own estimates at API rates are in the report, labelled as estimates; they are not money spent, and are not drawn here.</li>
       <li>At least one Claude model solved <span data-d="l_union">74</span> of the <span data-d="m3b_n">86</span> problems, and all four solved <span data-d="l_all">45</span>.</li>
     </ul>
 
@@ -1011,7 +1012,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
     <h2>M3e: harness or model?</h2>
     <div class="ios"><span class="k">IN ONE SENTENCE</span>
       <!-- src: docs/reports/M3e_report.md "In short"; numbers in data-d spans are written by site/data/derive.py -->
-      <p>Exploratory: our unchanged LangGraph agent with Opus 5.5 instead of gpt-6-luna gained <span data-d="e3f_model_e">+11.2</span> points on the 86 problems, and Claude Code with the same model did no better than it (<span data-d="e3f_harness_e">+1.2</span>, interval across zero), so Claude Code's lead in the ladder is the model, not its agent loop.</p>
+      <p>Exploratory: our unchanged LangGraph agent with Anthropic Claude Opus 5.5 instead of OpenAI gpt-6-luna gained <span data-d="e3f_model_e">+11.2</span> points on the 86 problems, and Claude Code with the same model did no better than it (<span data-d="e3f_harness_e">+1.2</span>, interval across zero), so Claude Code's lead in the ladder is the model, not its agent loop.</p>
     </div>
     <!-- src: docs/reports/M3e_report.md "Status", "Setup", "The first dispatch's guard", "Finishing the arm" -->
     <p>The ladder changed the harness and the model at once. M3e holds the harness fixed: the same 10-turn graph, settings and container as arm A, with Opus 5.5 at reasoning <code>low</code>, one pre-registered run. The first dispatch's whole-run cost guard refused the last <span data-d="e3_refused">19</span> of the 86 problems before any LLM call; two later dispatches, from the same agent code and image, ran them, so the Opus arm covers all 86, each problem once. The Sonnet arm was not run, to keep within the spend ceiling.</p>
@@ -1038,7 +1039,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
     <h2>M3g: a pack of design know-how</h2>
     <div class="ios"><span class="k">IN ONE SENTENCE</span>
       <!-- src: docs/reports/M3g_report.md "In short"; numbers in data-d spans are written by site/data/derive.py -->
-      <p>A frozen pack of RTL design know-how, loaded as skills into gpt-6-luna's prompts, made no detectable difference: <span data-d="g_ho_e">+1.0</span> <span data-d="g_ho_ci">[−2.7, +4.7]</span> points on <span data-d="g_ho_n">100</span> held-out problems nobody had inspected, and <span data-d="g_d86_e">−2.3</span> <span data-d="g_d86_ci">[−7.4, +2.3]</span> on the <span data-d="m3b_n">86</span>.</p>
+      <p>A frozen pack of RTL design know-how, written into our agent&rsquo;s prompts, made no detectable difference to OpenAI gpt-6-luna: <span data-d="g_ho_e">+1.0</span> points on <span data-d="g_ho_n">100</span> held-out problems nobody had inspected, and <span data-d="g_d86_e">−2.3</span> on the <span data-d="m3b_n">86</span>, both within noise.</p>
     </div>
     <!-- src: docs/reports/M3g_report.md "Setup"; agent/cvdp_agent/config.py (skills_max, skills_cap_bytes); tools/m3g_heldout_ids.txt header (the # lines only) -->
     <p>M3e showed that the gap to Claude Code is the model. Can written know-how make up part of it for the cheap model? The pack holds <span data-d="g_pack_n">15</span> <a class="gl" href="#g-skill">skills</a> (reading a specification, FSMs, resets, widths, handshakes, FIFOs, clock-domain crossing and more), written from outside sources only, by a writer barred from CVDP and this repository, then frozen (manifest SHA-256 <code><span data-d="g_pack_sha">e6ca1610</span>&hellip;</code>, checked before use). In arm K the plan step sees the pack's <code>INDEX.md</code> and names up to <span data-d="g_max">3</span> skills; their text, at most <span data-d="g_cap">13,000</span> bytes, goes into every edit prompt. Arm A is M3c's arm A, unchanged. The test and its decision rule were pre-registered.</p>
@@ -1067,7 +1068,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
     <h2>M3h: the pack as Claude Code's own skills</h2>
     <div class="ios"><span class="k">IN ONE SENTENCE</span>
       <!-- src: docs/reports/M3h_report.md "In short"; numbers in data-d spans are written by site/data/derive.py -->
-      <p>Installed as Claude Code's own skills and hinted, a pack of RTL design know-how was loaded in nearly every run, and made no detectable difference to Haiku 5.5: <span data-d="h_ho_e">−2.0</span> <span data-d="h_ho_ci">[−6.3, +1.7]</span> points on the <span data-d="h_ho_n">100</span> held-out problems, and <span data-d="h_d86_e">+3.5</span> <span data-d="h_d86_ci">[−2.3, +9.3]</span> on the <span data-d="m3b_n">86</span> (one run).</p>
+      <p>Installed as Claude Code&rsquo;s own skills (<code>~/.claude/skills/</code> in a fresh HOME) and hinted in the prompt, the pack was loaded in nearly every run and made no detectable difference to Anthropic Claude Haiku 5.5 on a Claude Max plan: <span data-d="h_ho_e">−2.0</span> points on the <span data-d="h_ho_n">100</span> held-out problems and <span data-d="h_d86_e">+3.5</span> on the <span data-d="m3b_n">86</span> (one run), both within noise, at about twice the turns.</p>
     </div>
     <!-- src: docs/reports/M3h_report.md "Setup", "The 86"; docs/reports/m3h/preregistration.md -->
     <p>M3g gave the pack to a cheap model through our own prompts. M3h asks the same of Claude Code, where skills are a built-in mechanism: the model sees each skill's name and description and loads the body when it chooses. Arm A is Claude Code with Haiku 5.5 as shipped. In S1c the first pack (<span data-d="h_pack_v1">15</span> <a class="gl" href="#g-skill">skills</a>) is installed, and in S2c a second version (<span data-d="h_pack_v2">25</span> skills, private) is. Both add one line, &ldquo;RTL design skills are installed; check them before you start&rdquo;, because without it Haiku loaded one in only <span data-d="h_load_hS2n">3</span> of <span data-d="h_n_hS2n">100</span> runs. Each skill is checked against a pinned hash before any model call, and a leak guard keeps the private text out of everything published. Pre-registered, on the held-out set (<span data-d="h_runs_ho">3</span> runs an arm) and on the <span data-d="m3b_n">86</span> (<span data-d="h_runs_d86">1</span> run an arm: cut from three to save the weekly plan budget, after the held-out result was known to be null; the report records it as a deviation).</p>
@@ -1095,20 +1096,20 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
     <h2>M3i: how much of Claude Code is the harness?</h2>
     <div class="ios"><span class="k">IN ONE SENTENCE</span>
       <!-- src: docs/reports/M3i_report.md "In short"; numbers in data-d spans are written by site/data/derive.py -->
-      <p>Claude Code stripped to our own prompt and four tools passed the same share of held-out problems as Claude Code as shipped, <span data-d="i_ho_e">−0.3</span> <span data-d="i_ho_ci">[−4.0, +3.3]</span> points, using about <span data-d="i_ptok_hx">37</span>% of its prompt tokens.</p>
+      <p>Claude Code with our agent&rsquo;s system prompt (<code>--system-prompt</code>), four tools (<code>--tools</code>) and settings, skills, MCP servers and auto-memory off passed the same share of held-out problems as stock Claude Code (<span data-d="i_ho_e">−0.3</span> points, within noise) with <span data-d="i_ptok_save">63</span>% fewer input tokens. Both arms: Anthropic Claude Haiku 5.5 on a Claude Max plan, not via OpenRouter.</p>
     </div>
     <!-- src: docs/reports/M3i_report.md "Setup", "Did the profile take effect?"; docs/reports/m3i/preregistration.md -->
-    <p>M3e found that Claude Code's lead is the model. M3i asks how much of the rest is Claude Code&rsquo;s default system prompt, tool set and defaults. Arm D is Claude Code with Haiku 5.5 as shipped (M3h&rsquo;s arm A, reused). Arm P is the same program with a <em>plain</em> profile: our agent&rsquo;s system prompt replaces Claude Code&rsquo;s default one (<code>--system-prompt</code>), only Read, Write, Edit and Bash are available (<code>--tools</code>; <span data-d="i_tools_n">4</span> tools instead of 22), and no settings, skills, MCP servers or auto-memory load (<code>--setting-sources ""</code>, an empty <code>--strict-mcp-config</code>, <code>--disable-slash-commands</code>, auto-memory off, empty HOME). Every P row records its tools, skill count and server count from Claude Code&rsquo;s own start-up event, and a run that was not the profile would have been stopped and rerun: none was. Pre-registered, on the held-out set (<span data-d="h_runs_ho">3</span> runs an arm) and, descriptively, on the <span data-d="m3b_n">86</span> (<span data-d="h_runs_d86">1</span> run an arm).</p>
+    <p>M3e found that Claude Code's lead is the model. M3i asks how much of the rest is Claude Code&rsquo;s default system prompt, tool set and defaults. Arm D is Claude Code with Anthropic Claude Haiku 5.5 as shipped (M3h&rsquo;s arm A, reused). Arm P is the same program with a <em>plain</em> profile: our agent&rsquo;s system prompt replaces Claude Code&rsquo;s default one (<code>--system-prompt</code>), only Read, Write, Edit and Bash are available (<code>--tools</code>; <span data-d="i_tools_n">4</span> tools instead of 22), and no settings, skills, MCP servers or auto-memory load (<code>--setting-sources ""</code>, an empty <code>--strict-mcp-config</code>, <code>--disable-slash-commands</code>, auto-memory off, empty HOME). Every P row records its tools, skill count and server count from Claude Code&rsquo;s own start-up event, and a run that was not the profile would have been stopped and rerun: none was. Pre-registered, on the held-out set (<span data-d="h_runs_ho">3</span> runs an arm) and, descriptively, on the <span data-d="m3b_n">86</span> (<span data-d="h_runs_d86">1</span> run an arm).</p>
     <div class="scope"><div class="hd"><span><b>P &minus; D</b>, points [95%] · paired · pre-registered</span><span>0 = no effect</span></div>
       <div class="plot" id="c-m3i"></div>
       <div class="ft"><!-- src: docs/reports/m3i/heldout_paired.md, dev86_paired.md, dev79_paired.md; effects recomputed from m3i/runs and m3h/runs by site/data/derive.py -->Pooled pass@1, held-out: D <span data-d="i_k_hA">175</span>/<span data-d="i_n_hA">300</span> = <span data-d="i_rate_hA">58.3</span>%, P <span data-d="i_k_hP">174</span>/<span data-d="i_n_hP">300</span> = <span data-d="i_rate_hP">58.0</span>%; <span data-d="i_ho_bws">9 / 11 / 80</span> better / worse / same, sign test p = <span data-d="i_ho_p">0.82</span>. The 86, one run each: D <span data-d="i_k_dA">58</span>, P <span data-d="i_k_dP">61</span> of <span data-d="m3b_n">86</span>; <span data-d="i_d86_bws">7 / 4 / 75</span>. The 79 (without the <span data-d="u_blim">7</span> benchmark-limited problems): <span data-d="i_d79_e">+2.5</span> <span data-d="i_d79_ci">[−5.1, +10.1]</span>. The held-out interval rules out a gain or loss of more than about 4 points from Claude Code&rsquo;s own prompt, tools and defaults; the 86 cannot change that.</div>
     </div>
     <!-- src: docs/reports/M3i_report.md "Secondary", "Reading"; m3i/dev86_effort.md -->
     <ul>
-      <li><strong>The same pass rate for about a third of the prompt tokens.</strong> Prompt tokens including cache a problem-run: D <span data-d="i_ptok_hA">167,423</span>, P <span data-d="i_ptok_hP">61,805</span> held-out; <span data-d="i_ptok_dA">431,567</span> and <span data-d="i_ptok_dP">157,887</span> on the 86 (<span data-d="i_ptok_dx">37</span>% again).</li>
+      <li><strong>The same pass rate for <span data-d="i_ptok_save">63</span>% fewer input tokens.</strong> Input (prompt) tokens including cache a problem-run: D <span data-d="i_ptok_hA">167,423</span>, P <span data-d="i_ptok_hP">61,805</span> held-out; <span data-d="i_ptok_dA">431,567</span> and <span data-d="i_ptok_dP">157,887</span> on the 86 (<span data-d="i_ptok_dx">37</span>% again).</li>
       <li><strong>Quicker.</strong> Median turns <span data-d="i_turns_hA">6</span> against <span data-d="i_turns_hP">5</span> held-out (<span data-d="i_turns_dA">11</span> against <span data-d="i_turns_dP">8</span> on the 86), and median wall time <span data-d="i_wall_hA">32</span> s against <span data-d="i_wall_hP">25</span> s.</li>
       <li><strong>It agrees with M3e.</strong> At a fixed model, neither Claude Code&rsquo;s agent loop (M3e) nor its prompt, tool set and defaults (here) add a measurable pass rate over a plain loop.</li>
-      <li><strong>Cost:</strong> the plan, nothing billed per call. <strong>Confounds:</strong> D ran on 31 October and P on 2 November, with the same version and image; both keep Claude Code&rsquo;s fixed request lines and tool schemas, so P is Claude Code stripped down, not a bare API call. One model.</li>
+      <li><strong>Cost:</strong> the plan, nothing billed per call. <strong>Confounds:</strong> D ran on 31 October and P on 2 November, with the same version and image; both keep Claude Code&rsquo;s fixed request lines and tool schemas, so P is Claude Code stripped down, not a bare API call (<a href="#cc-api">what still differs, and why <code>--bare</code> was not used</a>). One model.</li>
     </ul>
     <p class="small">The full report, with the profile check and every caveat: <a href="https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent/blob/main/docs/reports/M3i_report.md">docs/reports/M3i_report.md</a>.</p>
   </div>
@@ -1180,7 +1181,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
     <div class="edge" data-edge></div>
     <h2>Read as a verification engineer would</h2>
     <div class="ios"><span class="k">IN ONE SENTENCE</span>
-      <p>The agent's self-check is a testbench with no coverage and no quality measure, which is why it passed on code the hidden tests failed in 61 of 73 cases; the planned M3c milestone answers that with a mutation-score gate on the agent's testbench and an interface diff by elaboration.</p>
+      <p>The agent's self-check is a testbench with no coverage and no quality measure, which is why it passed on code the hidden tests failed in 61 of 73 cases; M3c then tried a mutation-score gate on that testbench and an interface diff by elaboration, and neither moved the score.</p>
     </div>
     <p>The hidden cocotb tests play the role of a sign-off regression the designer cannot see. The agent's own testbench plays the designer's unit test. Mapped onto the usual verification concepts, here is what the project does and does not do.</p>
     <div class="tw"><table>
@@ -1196,7 +1197,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
           <td><span class="chip no">NOT MEASURED</span></td></tr>
         <tr><td><strong>Testbench quality</strong></td>
           <td>Measured indirectly, from outcomes: the own testbench passed in 61 of 73 failed submissions where it ran (84% false passes on those).</td>
-          <td>No direct measure yet. M3c plans a mutation score: does the agent's testbench catch deliberately broken copies of its own design?</td>
+          <td>M3c measured it as a gate: before submit, the agent's testbench had to fail on at least half of 12 broken copies of its design (Yosys <code>mutate</code>) that compile. The gate worked, and the pass rate did not move (<a href="#m3c">M3c</a>).</td>
           <td><span class="chip part">INDIRECT</span></td></tr>
         <tr><td><strong>Constrained-random stimulus</strong></td>
           <td>Not asked of the agent; its prompt lists the checks it may run.</td>
@@ -1207,15 +1208,15 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
           <td>No SVA. The M5 track plans SVA properties checked with SymbiYosys.</td>
           <td><span class="chip plan">PLANNED (M5)</span></td></tr>
         <tr><td><strong>Formal: <a class="gl" href="#g-bmc">BMC</a>, <a class="gl" href="#g-equiv">equivalence</a>, <a class="gl" href="#g-mut">mutation</a></strong></td>
-          <td>None run yet.</td>
-          <td>Planned for M3c: a mutation-score gate on the agent's testbench (Yosys <code>mutate</code>) and an interface diff by elaboration (pyslang), both fixed steps in the graph. Formal checks of SVA properties with SymbiYosys are planned for the M5 track. No equivalence checking is planned.</td>
-          <td><span class="chip plan">PLANNED</span></td></tr>
+          <td>Mutation only: M3c&rsquo;s gate, plus an interface diff by elaboration (pyslang), both fixed steps in the graph. Neither moved the score.</td>
+          <td>No BMC and no equivalence checking. Formal checks of SVA properties with SymbiYosys are planned for the M5 track.</td>
+          <td><span class="chip part">MUTATION (M3C)</span></td></tr>
         <tr><td><strong>Regression triage</strong></td>
           <td>Done: a deterministic label for each of 565 failures, checked against hand labels; a measured noise floor (flaky results: 10 problems flip between identical runs); a null-agent floor and a golden check (M0).</td>
           <td>The hidden build's own compiler message is not in the log, so the cause of each <code>compile_fail_hidden</code> is not shown one by one.</td>
           <td><span class="chip done">DONE</span></td></tr>
       </tbody></table></div>
-    <p>The two M3 failure modes have verification answers. A testbench that passes on wrong code is a testbench-quality and coverage problem: a mutation score asks whether the testbench fails on mutated copies of the design, and so measures what it can catch. A name the hidden testbench needs but the design lacks is an interface problem: elaborating the design and diffing its ports, parameters and hierarchy against the specification catches it before submission, when the name is given. Neither has results yet.</p>
+    <p>The two M3 failure modes have verification answers. A testbench that passes on wrong code is a testbench-quality and coverage problem: a mutation score asks whether the testbench fails on mutated copies of the design, and so measures what it can catch. A name the hidden testbench needs but the design lacks is an interface problem: elaborating the design and diffing its ports, parameters and hierarchy against the specification catches it before submission, when the name is given. M3c ran both as fixed steps and neither moved the pass rate; M3d&rsquo;s verify-before-submit step did not either. The agent&rsquo;s tests share its own reading of the specification, so making it test more does not catch its misreadings.</p>
   </div>
 </section>
 
@@ -1235,7 +1236,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
         <div class="scope" style="margin:0 0 10px"><div class="plot" id="c-cmp"></div></div>
         <div id="cmp-list" class="ctx"></div>
         <p class="small" style="margin-top:10px">Why these compare: the same problem file, the same release, and the same score (the hidden tests, one run, pass or fail). Why only roughly: different models and agents, two of them with no agent loop at all; all three are marked "not independently verified" on the leaderboard; only one gives any cost figure; and the leaderboard's harness and dataset commits may differ from this project's pins (harness <code>8e894cf</code>, dataset revision <code>5b807d9</code>). Wilson intervals on their rows are computed here, from k and n. Source: <a href="https://lbc-bench.si2.org">LBC-bench</a>, data file <a href="https://github.com/si2org/lbc-bench.github.io/blob/b8354131ba89f915f5f940a3300a06777ebe1e98/data/leaderboards.json">leaderboards.json at b835413</a>.</p>
-        <p>The plain reading: Haiku 5.5 and gpt-6-luna inside this agent (52 to 56) land where two frontier models land in a single turn on the same problems (52 and 53), and near Claude Code with Sonnet 4.6 (48). With one run each and intervals about 20 points wide, none of these differences is established.</p>
+        <p>The plain reading: Anthropic Claude Haiku 5.5 and OpenAI gpt-6-luna inside this agent (52 to 56) land where two frontier models land in a single turn on the same problems (52 and 53), and near Claude Code with Sonnet 4.6 (48). With one run each and intervals about 20 points wide, none of these differences is established. Our later runs (Claude Code and Claude Opus 5.5, up to 73.3%) are on the 86 reachable problems, not these 92, so they are not in this comparison.</p>
       </div></div>
 
     <!-- src: docs/reports/m3b/arms_paired_eval86.md "Arms"; docs/reports/m3c/arms_paired_eval86.md; docs/reports/claude_code/ladder_paired_eval86.md; tools/m3b_eval_ids.txt -->
@@ -1253,11 +1254,11 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
     <div class="edge" data-edge></div>
     <h2>Threats to validity: what this does not show</h2>
     <div class="ios"><span class="k">IN ONE SENTENCE</span>
-      <p>These results hold for one cheap model per ablation arm, on 92 open-tool problems (86 in M3b, M3c and M3d), at a resolution of a few points; they say nothing about smaller effects, other models, the heavy or commercial splits, or verification-writing tasks.</p>
+      <p>These results hold for one model per ablation arm (OpenAI gpt-6-luna in our agent, Anthropic Claude Haiku 5.5 in Claude Code), on CVDP&rsquo;s open-tool problems (the 92, the 86 reachable ones, and 100 held-out ones from M3g on), at a resolution of a few points; they say nothing about smaller effects, other models, the heavy or commercial splits, or verification-writing tasks.</p>
     </div>
     <ul class="threats">
       <!-- src: M3_report.md "Arms and settings", "Known gaps"; M2_report.md "Known gaps"; M1_report.md "Known gaps"; README.md -->
-      <li><b>One model per arm.</b> Every M3, M3b, M3c, M3d and M3g arm uses gpt-6-luna, and M3h and M3i use Haiku 5.5 on Claude Code. An ablation that does nothing for it may matter for another model.</li>
+      <li><b>One model per arm.</b> Every M3, M3b, M3c, M3d and M3g arm uses OpenAI gpt-6-luna, and M3h and M3i use Anthropic Claude Haiku 5.5 in Claude Code. An ablation that does nothing for it may matter for another model.</li>
       <li><b>Sampling is not seeded.</b> <code>CVDP_SEED</code> is a label only; OpenRouter sampling cannot be seeded across providers. Both runs of every M3 arm carry the label seed 1.</li>
       <li><b>The free, open-tool split only.</b> 92 problems in four categories. The verification-writing categories (testbench stimulus, checkers, assertions: cid012&ndash;014) need Cadence Xcelium and are not run.</li>
       <li><b>2 runs per arm resolve about &plusmn;5 points in M3</b>, and M3b's 3 runs on 86 problems do little better. A real effect smaller than that would read as "no detectable effect". The null results are not evidence of no effect.</li>
@@ -1267,6 +1268,8 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
       <li><b>The ladder changes harness and model together.</b> Claude Code with a Claude model against LangGraph with gpt-6-luna, with a 60-turn budget against 10; it does not say which change is responsible. Its plan has no per-call price, so it has no comparable cost.</li>
       <!-- src: docs/reports/M3e_report.md "Caveats" -->
       <li><b>M3e is one run, from three dispatches.</b> The first one's cost guard refused the alphabetical tail of <span data-d="e3_refused">19</span> problems, run a few hours later from the same agent code and image; the Sonnet arm was not run; and the model effect includes the reasoning label (luna at <code>default</code>, Opus at <code>low</code>).</li>
+      <!-- src: docs/reports/m3i/preregistration.md "Known differences from a bare API call" -->
+      <li><b>M3i&rsquo;s lean Claude Code is not a bare API call.</b> On a Claude Max plan <code>--bare</code> cannot be used, so two fixed system blocks, an environment message, Claude Code&rsquo;s tool schemas and its loop stay in every request. Both arms carry them, so P &minus; D is fair, but it does not measure Claude Code against a raw API loop. <a href="#cc-api">The full list</a>.</li>
       <li><b>M3c's gate fails open when it cannot mutate.</b> <span data-d="g_skip">61</span> of <span data-d="g_runs">390</span> gate runs were <code>skipped</code> and let the submit through, so M is not a pure "every submit was gated" arm.</li>
       <!-- src: docs/reports/unsolved_analysis.md "In short"; tools/benchmark_limited_ids.txt -->
       <li><b>Some problems are benchmark-limited.</b> <span data-d="u_blim">7</span> of the <span data-d="m3b_n">86</span> evaluation problems need a detail the task never gives (a file name, default parameters, a lookup table), shown by counterfactual reruns. No agent can be expected to pass them, so they cap every score and shrink every effect a little. They are kept in the reported scores, and the <span data-d="u_n79">79</span>-problem figures are shown beside them, never in their place. <code>reachable.py</code>, which built the 86, checked the names the hidden test reads but not the file paths it compiles.</li>
@@ -1278,6 +1281,10 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
       <li><b>M3b tests one memory snapshot.</b> <span data-d="les_n">40</span> generic lessons from <span data-d="les_att">87</span> attempts, only <span data-d="les_pass">19</span> of them passes, several near-duplicates, <span data-d="les_never">6</span> never retrieved. A null C &minus; A says this memory does not help, not that no memory could.</li>
       <li><b>M3b's caching claim is inferred.</b> Cached prompt tokens are not recorded per call, so the reading that Deep Agents' extra tokens are mostly cached rests on its cost per prompt token, not a measured cache-hit count. Its rounds are also not turns: compare the harnesses on cost and wall time, not on turns.</li>
       <li><b>The M3b effects are paired on the 86 reachable problems.</b> <!-- src: docs/reports/M3b_report.md "All 92 problems, secondary" --> On all 92 the 6 excluded problems fail in all 72 of their runs, so every effect is a little smaller and no finding changes (B &minus; A +4.0, C &minus; A +1.4, D &minus; C +5.4 points).</li>
+    </ul>
+    <details class="drawer" id="minor-caveats">
+      <summary><span class="wk">SMALLER CAVEATS</span><span class="wd">Labelling, logging and bookkeeping limits that change no finding: hand labels, truncated output, cost lower bounds, soft caps, provider mix.</span></summary>
+      <div><ul class="threats">
       <li><b>The hand-label hold-out had no <code>signal_missing_hidden</code> case</b>, so the new rule is checked only on the set it was developed on, and the same person wrote the rules and the labels.</li>
       <li><b>Problems are treated as exchangeable</b> by the bootstrap and the sign test. cid003 (34 problems) weighs most.</li>
       <li><b>Self-check pass or fail is read from truncated tool output</b> in the trace.</li>
@@ -1290,7 +1297,8 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
       <li><b>Caps are soft by design</b>: wall time by up to about 40 s, the budget by up to one call.</li>
       <li><b>Model serving varies</b>: DeepSeek's calls went to 15&ndash;19 providers per sweep, so its cost and behaviour mix providers.</li>
       <li><b>One log label is wrong but harmless</b>: <code>tools/log_check.py</code> called a simulation that hung "harness_error" (4 in the first two M2 sweeps); the pass rates are right.</li>
-    </ul>
+      </ul></div>
+    </details>
   </div>
 </section>
 
@@ -1301,7 +1309,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
     <div class="edge" data-edge></div>
     <h2>What's next: open questions</h2>
     <div class="ios"><span class="k">IN ONE SENTENCE</span>
-      <p>M3d, M3e, M3g, M3h and M3i are done and the harness effect is confirmed; a stronger testbench requirement, a pack of design know-how (twice, the second time as Claude Code skills) and a stripped-down Claude Code were null, the harness-or-model question is answered for Opus on all 86 problems, the questions below stay open, and no milestone to answer them has been fixed.</p>
+      <p>Answered: the Deep Agents gain is confirmed, and the gap to Claude Code is the model, not the harness. Still open: repeats of the one-run Claude Code arms, Fable with a longer wall cap, and whether design know-how helps a stronger model. No milestone to answer them has been fixed.</p>
     </div>
     <div class="ms plan"><span class="lz c3">OPEN &middot; FROM M3C, M3D, M3G AND THE LADDER</span>
       <!-- src: docs/reports/M3c_report.md "Known gaps"; docs/reports/M3d_report.md "Known gaps"; docs/reports/claude_code_ladder.md "Caveats"; docs/reports/M3g_report.md "Caveats" -->

@@ -409,7 +409,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
       <div>
         <h3>What this project is</h3>
         <!-- src: README.md (split hash 2007f4311ed731a9, 92 problems, cid split, rules) -->
-        <p>An open <a class="gl" href="reference.html#g-langgraph">LangGraph</a> agent, run end to end in GitHub Actions on the free, open-tool split of CVDP 1.1.0: 92 problems in four <a class="gl" href="reference.html#g-cid">categories</a> (spec to RTL 34, RTL modification 25, spec to RTL with module reuse 22, bug fixing 11). Every cost is provider-reported (via <a class="gl" href="reference.html#g-openrouter">OpenRouter</a>), every score comes from the hidden tests, and no LLM ever scores anything.</p>
+        <p>An open <a class="gl" href="reference.html#g-langgraph">LangGraph</a> agent, run end to end in GitHub Actions on the free, open-tool split of CVDP 1.1.0: 92 problems in four <a class="gl" href="reference.html#g-cid">categories</a> (spec to RTL 34, RTL modification 25, spec to RTL with module reuse 22, bug fixing 11). Every cost of our agent is provider-reported (via <a class="gl" href="reference.html#g-openrouter">OpenRouter</a>); the Claude Code runs used a Claude Max plan, which bills nothing per call. Every score comes from the hidden tests, and no LLM ever scores anything.</p>
       </div>
     </div>
   </div>
@@ -438,7 +438,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
 
     <h3>Deep Agents, the other harness</h3>
     <!-- src: agent/cvdp_agent/deep.py -->
-    <p>In M3b the same model ran inside <a class="gl" href="reference.html#g-deep">Deep Agents</a> instead of our fixed graph. There is no set order of steps: the model is at the centre and, at every turn, chooses which tool to call next, reads the result and decides again, until it replies without calling a tool, which submits. This freedom is what scored <span data-d="cf_e">+4.7</span> points higher.</p>
+    <p>In M3b the same model, OpenAI gpt-6-luna, ran inside <a class="gl" href="reference.html#g-deep">Deep Agents</a> instead of our fixed graph. There is no set order of steps: the model is at the centre and, at every turn, chooses which tool to call next, reads the result and decides again, until it replies without calling a tool, which submits. With gpt-6-luna in both, this harness scored <span data-d="cf_e">+4.7</span> points higher than our graph, confirmed by a pre-registered second test (<a href="results-m2-m3b.html#m3b">M3b</a>). It was never compared with Claude Code.</p>
     <div class="scope"><div class="hd"><span><b>Deep Agents</b> · one model, eight tools, a free loop</span><span>M3b</span></div>
       <div class="plot" id="c-deep"></div>
       <div class="ft">Same model, prompts for the task, caps, file-write rules and checks as our agent; up to 22 model calls a problem. Its shell tool and its sub-agents are switched off, so every call is the main agent&rsquo;s.</div>
@@ -449,7 +449,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
     <p>What each setup can do, and how. Our agent does not call tools at all: its graph reads every file into the prompt, applies the edits the model writes, and runs the checks itself after every edit. Deep Agents and Claude Code give the model tools to call when it chooses. Claude Code has no special RTL tools; it runs the simulators through its shell.</p>
     <div class="scope"><div class="hd"><span><b>Tools</b> · four setups, six capabilities</span><span>M3b, M3e, M3i</span></div>
       <div class="plot" id="c-tools"></div>
-      <div class="ft">Claude Code by default offers 22 tools; this project allows six (Read, Edit, Write, Glob, Grep, Bash) and blocks web access, sub-agents and network commands. The lean set-up of M3i offers only four. Every setup has the same free tools installed: Icarus Verilog, Verilator, Yosys and cocotb.</div>
+      <div class="ft">Claude Code by default offers 22 tools; this project allows six (Read, Edit, Write, Glob, Grep, Bash) and blocks web access, sub-agents and network commands. The lean set-up of M3i offers only four (<a href="./#cc-api">its flags, and what Claude Code still adds</a>). Every setup has the same free tools installed: Icarus Verilog, Verilator, Yosys and cocotb.</div>
     </div>
 
     <h3>The sweep, as a schematic</h3>
@@ -459,13 +459,14 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
       Both images are built natively for x86-64 and Arm64 and pulled from GHCR. The harness runs 4 problems at a time. A shared ledger stops new problems calling the LLM once the summed cost passes the run budget. The work directory is uploaded only if a scan finds nothing key-shaped in it.</div>
     </div>
 
-    <h3>Stop rules, checked in code before every step</h3>
+    <h3>Our agent&rsquo;s stop rules, checked in code before every step</h3>
     <!-- src: README.md "Stop rules"; M1_report.md -->
     <ul>
       <li><strong>Turns</strong>: 10 edit, check and reflect cycles by default.</li>
       <li><strong>Dollars</strong>: $0.10 per problem, provider-reported cost only. A call whose cost is not reported stops the problem (<code>cost_unreported</code>), because the budget can no longer be enforced.</li>
       <li><strong>Wall time</strong>: 480 s, under the harness's 600 s agent timeout. Each LLM call has a hard deadline 2 s before the cap.</li>
       <li>On any stop or crash, the last edit that compiled is kept, the summary is written, and the agent exits 0.</li>
+      <li>Claude Code has its own limits instead: up to 60 turns (<code>--max-turns 60</code>) and the same 480 s wall cap, with no dollar cap, since a Claude Max plan bills nothing per call.</li>
     </ul>
 
     <details class="why"><summary><span class="wk">WHY</span>Why sweeps run in GitHub Actions, not locally</summary><div>
