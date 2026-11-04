@@ -159,6 +159,15 @@ Code's `init` event must report `apiKeySource` `ANTHROPIC_API_KEY`, or the run e
 loop passed exactly as often as lean Claude Code (R − PA = +0.0 points [−4.3, +4.3], 54.7% each) on 70% of its prompt
 tokens; `--bare` and the billing route made no detectable difference either; all scored runs cost about $7.3 of API credit.
 
+**M3k** (built, not yet scored; report skeleton [`docs/reports/M3k_report.md`](docs/reports/M3k_report.md), pre-registered in
+[`docs/reports/m3k/preregistration.md`](docs/reports/m3k/preregistration.md), replay of arm K on M3j's runs
+[`docs/reports/m3k/replay.md`](docs/reports/m3k/replay.md), smoke runs [`docs/reports/m3k/smoke.md`](docs/reports/m3k/smoke.md), made with
+[`tools/m3k_replay.py`](tools/m3k_replay.py)): two cheap harness steps on the plain API loop, model and loop held fixed.
+Sweep input `fixed_checks=presubmit_iface` (arm K, [`agent/cvdp_agent/presubmit.py`](agent/cvdp_agent/presubmit.py): one
+deterministic interface, file-name and compile check when the model says it is finished, at most two round trips) or
+`fixed_checks=timing_claims` (arm T: one extra first turn listing the task's cycle-level claims). The apiloop's guard
+now prices fresh input, cache writes and cache reads apart.
+
 **M2a** (merged, [`docs/reports/M2a_report.md`](docs/reports/M2a_report.md)): reasoning limits, a retry on empty
 replies and unreadable decisions, and seeds. On the same 10 problems on Arm64, DeepSeek at `reasoning=off` passed
 6/10 for $0.0867 with no empty replies; at `low` it passed 7/10 for $0.3546 with 14 empty replies.
@@ -527,6 +536,7 @@ empty (an old ledger and the harness's reuse of `raw_result.json` would make the
 | M3h | The knowledge pack as Claude Code's own skills, with Haiku 5.5: is it used, and does it help |
 | M3i | How much of Claude Code is the harness: a plain profile (our system prompt, four tools) against Claude Code as shipped, same model |
 | M3j | Lean Claude Code against a plain Messages API loop, and what `--bare` changes, billed to the API key, same model |
+| M3k | A pre-submit interface check and a timing-claims first turn on the plain API loop, same model |
 | M4 | Write-up, logs packed for the Si2 LBC-bench leaderboard |
 | M5 | Open AMBA verification track: test plan, cocotb testbench with coverage, SVA with SymbiYosys; scored by seeded-bug kill rate and false alarms |
 

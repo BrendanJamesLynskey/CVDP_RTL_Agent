@@ -189,7 +189,9 @@ def test_apiloop_request_is_bare_and_matches_the_plain_profile(tmp_path):
     assert c.requests[1]["messages"][2]["content"][0]["type"] == "tool_result"
     assert s["stop_reason"] == "submit" and s["llm_calls"] == 2 and s["tool_calls"] == 1
     assert s["prompt_tokens"] == 2900 and s["cache_read_tokens"] == 900 and s["cost_usd"] is None
-    assert s["api_cost_estimate_usd"] == s["guard_estimate_usd"] == apiloop.upper_estimate(2900, 200)
+    # M3k: priced per request by usage (fresh, cache reads, cache writes), not every input token at the long rate
+    assert s["api_cost_estimate_usd"] == s["guard_estimate_usd"] == round(
+        apiloop.call_cost(1000, 0, 0, 100) + apiloop.call_cost(1000, 900, 0, 100), 6)
     assert s["cc_profile"] == "apiloop" and s["cc_tools"] == "Read;Write;Edit;Bash"
 
 
