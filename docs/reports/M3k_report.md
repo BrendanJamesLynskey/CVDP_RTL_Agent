@@ -10,9 +10,9 @@ PR #54 merges.
 
 ## In short
 
-- **Primary: K − R on the held-out set = TODO [TODO, TODO]** (TODO better / TODO worse / TODO same; sign test p = TODO).
-- **Primary: T − R on the held-out set = TODO [TODO, TODO]** (TODO / TODO / TODO; p = TODO).
-- Decision (Bonferroni over two, 97.5% intervals): K TODO; T TODO.
+- **Primary: T − R on the held-out set = TODO [TODO, TODO]** (TODO better / TODO worse / TODO same; sign test p = TODO).
+- Exploratory: K − R on the held-out set = TODO [TODO, TODO] (TODO / TODO / TODO; p = TODO).
+- Decision (T only, 95% interval; K demoted to exploratory before any scored sweep, see the pre-registration): T TODO.
 - Cost: TODO of API credit (Console before TODO, after TODO).
 
 ## Runs

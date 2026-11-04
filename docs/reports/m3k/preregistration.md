@@ -107,15 +107,23 @@ One dispatch per seed (`seeds=1`, `seed_offset` 0, 1, 2; a `seeds=3` dispatch sk
 
 ## Primary and decision rule
 
-**Primary: K - R and T - R on the held-out set,** paired by problem, as in M3g-M3j (`tools/ablate.py`): each problem's pass
-rate over its 3 runs per arm, the mean difference, a paired bootstrap interval over problems (2,000 resamples) and the exact
-two-sided sign test (ties dropped). **Bonferroni over the two comparisons: 97.5% intervals** (the sign test is reported
-beside them and does not decide). An arm is **better** if its interval lies wholly above zero, **worse** if wholly below,
+**Planner amendment, 2026-11-04, before any scored sweep.** Because the replay puts K's ceiling (+3.0 points) below the
+resolution of three runs, and the held-out replay was used to tune K's filters, **K is demoted to a secondary,
+exploratory arm.** It is still run (3 held-out + 1 on the 86, about $2.4 of API credit) and reported with the same
+statistics, but it decides nothing and takes no share of the error rate.
+
+**Primary: T - R on the held-out set, the only primary comparison,** paired by problem, as in M3g-M3j (`tools/ablate.py`):
+each problem's pass rate over its 3 runs per arm, the mean difference, a paired bootstrap interval over problems (2,000
+resamples) and the exact two-sided sign test (ties dropped), **95% intervals, no correction** (the sign test is reported
+beside them and does not decide). T is **better** if its interval lies wholly above zero, **worse** if wholly below,
 otherwise **no detectable effect**, reported with the interval's ends as the largest loss and gain it leaves open (bounds
 rounded before the verdict, as `ablate.py` now does).
 
-**Power.** M3j's R - PA half-width on this set, with 3 runs, was 4.3 points at 95%; at 97.5% it is about 4.9. An effect
-smaller than that reads as no detectable effect.
+**Power.** M3j's R - PA half-width on this set, with 3 runs, was 4.3 points at 95%. An effect smaller than that reads as
+no detectable effect.
+
+**K - R (exploratory):** the same paired statistics at 95%, labelled exploratory; read beside the replay ceiling, with K's
+false alarms on passing runs counted (a pass under R that fails under K after a K round trip).
 
 **Secondary (exploratory, no correction):** label shift on the 86 (does K cut `compile_fail_own` + `signal_missing_hidden`;
 does T cut `tests_failed_no_selfcheck`), K's round trips and how often the findings were fixed, tokens, turns, wall time,
