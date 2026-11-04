@@ -741,6 +741,43 @@ m3j = {
     "console_usd": 7.83, "console_before_usd": 0.57,
 }
 
+# ---- M3k (a timing-claims turn T and an exploratory pre-submit check K on the plain API loop; R reused from M3j) ----
+# docs/reports/M3k_report.md and m3k/. Prefix k_. R is M3j's arm R (J_RUNS hR, dR). The 86's llm_error rows are not run.
+M3K = os.path.join(REP, "m3k")
+K_RUNS = {"hR": J_RUNS["hR"], "hT": hi_load(M3K, "heldout_T"), "hK": hi_load(M3K, "heldout_K"),
+          "dR": J_RUNS["dR"], "dT": restrict(hi_load(M3K, "dev86_T_"), EVAL), "dK": restrict(hi_load(M3K, "dev86_K_"), EVAL)}
+k_arms = {k: pool(v) for k, v in K_RUNS.items()}
+k_rows = {k: [x for _, _, r in v for x in r] for k, v in K_RUNS.items()}
+k_rows.update({"cdT": [x for _, _, r in hi_load(M3K, "dev86_T_") for x in r], "cdK": [x for _, _, r in hi_load(M3K, "dev86_K_") for x in r]})
+k_ho = parse_sections(os.path.join(M3K, "heldout_paired.md"))
+k_d86 = parse_sections(os.path.join(M3K, "dev86_paired.md"))
+k_effects = {"ho_t": k_ho["T-R"], "ho_k": k_ho["K-R"], "d86_t": k_d86["T-R"], "d86_k": k_d86["K-R"]}
+k_chk = {"ho_t": paired_ids(k_arms["hT"], k_arms["hR"], G_HO), "ho_k": paired_ids(k_arms["hK"], k_arms["hR"], G_HO),
+         "d86_t": paired_ids(k_arms["dT"], k_arms["dR"], EVAL), "d86_k": paired_ids(k_arms["dK"], k_arms["dR"], EVAL)}
+def k_mean(k, col):
+    return sum(float(x[col] or 0) for x in k_rows[k]) / len(k_rows[k])
+k_fired = [x for x in k_rows["hK"] if x["presubmit_rounds"] not in ("", "0")]
+k_fired_ids = {x["id"] for x in k_fired}
+# the problems where K and R differ, and how many of them are ones where K's check fired
+k_diff = [i for i in G_HO if k_arms["hK"]["_rate"][i] != k_arms["hR"]["_rate"][i]]
+m3k = {
+    "effects": k_effects, "n_ho": len(G_HO), "n": len(EVAL),
+    "arms": {k: {"k": v["k"], "n": v["n"], "rate": v["rate"]} for k, v in k_arms.items()},
+    "turns_med": {k: statistics.median(float(x["turns"]) for x in k_rows[k]) for k in ("hR", "hT", "hK")},
+    "ptok": {k: round(k_mean(k, "prompt_tokens")) for k in ("hR", "hT", "hK")},
+    "wall_med": {k: round(statistics.median(float(x["wall_time_s"]) for x in k_rows[k])) for k in ("hR", "hT", "hK")},
+    "fired_n": len(k_fired), "fired_problems": len(k_fired_ids), "fired_pass": sum(int(x["pass"]) for x in k_fired),
+    "fired_cleared": sum(1 for x in k_fired if x["presubmit_final_findings_n"] == "0"),
+    "fired_net": sum(k_arms["hK"]["_rate"][i] - k_arms["hR"]["_rate"][i] for i in k_fired_ids),
+    "diff_n": len(k_diff), "diff_fired": sum(1 for i in k_diff if i in k_fired_ids),
+    "usd": {"hT": round(sum(float(x["api_cost_estimate_usd"] or 0) for x in k_rows["hT"]), 2),
+            "hK": round(sum(float(x["api_cost_estimate_usd"] or 0) for x in k_rows["hK"]), 2),
+            "dT": round(sum(float(x["api_cost_estimate_usd"] or 0) for x in k_rows["cdT"]), 2),
+            "dK": round(sum(float(x["api_cost_estimate_usd"] or 0) for x in k_rows["cdK"]), 2)},
+    "llm_error": sum(1 for k in ("cdT", "cdK") for x in k_rows[k] if x["stop_reason"] == "llm_error"),
+    "claims_med": statistics.median(float(x["timing_claims_n"]) for x in k_rows["hT"]),
+}
+
 spend_all = round(spend_all + conf_cost + m3c_scored + m3c_smoke + m3d_scored + m3d_smoke + e_scored + e_smoke + e_finish + g_scored + g_smoke, 2)  # + confirming run, M3c, M3d, M3e (with brief 14b's two) and M3g scored sweeps and smoke runs
 
 # Prose numbers in story.html: <span data-d="key">value</span>; --inject rewrites the value from here.
@@ -977,6 +1014,27 @@ j_new["j_usd_scored"] = f"{sum(m3j['usd'].values()):.1f}"
 j_new["j_console"] = f"{m3j['console_usd']:.2f}"
 j_clash = sorted(set(j_new) & j_before)
 prose.update(j_new)
+
+# M3k (prefix k_)
+k_before = set(prose)
+k_new = {}
+for k, e in m3k["effects"].items():
+    k_new[f"k_{k}_e"] = sg(e["eff"]); k_new[f"k_{k}_ci"] = ci(e); k_new[f"k_{k}_p"] = p2(e["p"])
+    k_new[f"k_{k}_bws"] = f"{e['better']} / {e['worse']} / {e['same']}"
+for k, v in m3k["arms"].items():
+    k_new[f"k_rate_{k}"] = f"{v['rate']:.1f}"; k_new[f"k_k_{k}"] = str(v["k"]); k_new[f"k_n_{k}"] = str(v["n"])
+for k in ("hR", "hT", "hK"):
+    k_new[f"k_turns_{k}"] = f"{m3k['turns_med'][k]:g}"; k_new[f"k_ptok_{k}"] = f"{m3k['ptok'][k]:,}"; k_new[f"k_wall_{k}"] = str(m3k["wall_med"][k])
+k_new["k_ptok_tx"] = str(round(100 * (m3k["ptok"]["hT"] / m3k["ptok"]["hR"] - 1)))
+k_new["k_ptok_kx"] = str(round(100 * (m3k["ptok"]["hK"] / m3k["ptok"]["hR"] - 1)))
+k_new["k_fired_n"] = str(m3k["fired_n"]); k_new["k_fired_problems"] = str(m3k["fired_problems"])
+k_new["k_fired_cleared"] = str(m3k["fired_cleared"]); k_new["k_diff_n"] = str(m3k["diff_n"])
+for k, v in m3k["usd"].items():
+    k_new[f"k_usd_{k}"] = f"{v:.2f}"
+k_new["k_usd_scored"] = f"{sum(m3k['usd'].values()):.2f}"
+k_new["k_usd_r"] = f"{m3j['usd']['hR']:.2f}"
+k_clash = sorted(set(k_new) & k_before)
+prose.update(k_new)
 m3b["prose"] = prose
 
 data = {
@@ -996,7 +1054,7 @@ data = {
     "external": ext,
     "m3b": m3b,
     "m3b_confirm": m3b_conf, "m3c": m3c, "ladder": claude_ladder,
-    "unsolved": unsolved, "m3d": m3d, "m3e": m3e, "m3g": m3g, "m3h": m3h, "m3i": m3i, "m3j": m3j,
+    "unsolved": unsolved, "m3d": m3d, "m3e": m3e, "m3g": m3g, "m3h": m3h, "m3i": m3i, "m3j": m3j, "m3k": m3k,
 }
 
 # ---- checks against the reports ----
@@ -1362,6 +1420,32 @@ check(f"| Held-out (300 problem-runs) | ${prose['j_usd_hPA']} (Claude Code's fig
       and f"| The 86 (92 problems run) | ${prose['j_usd_dPA']} | ${prose['j_usd_dB']} | ${prose['j_usd_dR']} |" in rep3j
       and f"about **${prose['j_usd_scored']} of API credit**" in rep3j and f"${prose['j_console']} for the month" in rep3j, "M3j cost in report")
 check("**Status: DONE (2026-11-03). Decision: null.**" in rep3j, "M3j status in report")
+# M3k (docs/reports/M3k_report.md and the ablate.py outputs beside it)
+rep3k = open(os.path.join(REP, "M3k_report.md")).read()
+check(not k_clash, f"M3k prose keys clash with existing ones: {k_clash}")
+check([len(K_RUNS[k]) for k in ("hT", "hK")] == [3, 3] and all(k_arms[k]["n"] == 300 for k in ("hR", "hT", "hK")),
+      "M3k held-out: three dispatches per arm, 300 problem-runs each")
+check(all(k_arms[k]["n"] == len(EVAL) for k in ("dR", "dT", "dK")), "M3k 86: one run per arm over the 86")
+check(all(x["stop_reason"] == "submit" for k in ("hT", "hK") for x in k_rows[k]), "M3k: every held-out row ended in submit")
+check(m3k["llm_error"] == 3 and "**3 `llm_error` rows**" in rep3k, "M3k: three llm_error rows on the 86, not held-out")
+for k, e in k_effects.items():
+    check((e["eff"], e["better"], e["worse"], e["same"]) == k_chk[k], f"M3k {k} effect {e} vs recomputed {k_chk[k]}")
+check("- **Primary: T − R on the held-out set = +0.3 points [−4.7, +5.3]** (9 better, 9 worse, 82 same; sign test p = 1)" in rep3k
+      and (prose["k_ho_t_e"], prose["k_ho_t_ci"], prose["k_ho_t_bws"]) == ("+0.3", "[−4.7, +5.3]", "9 / 9 / 82"), "M3k primary in report")
+check("- **Exploratory: K − R = +1.3 [−0.7, +3.7]** (7 / 3 / 90; p = 0.344)" in rep3k
+      and (prose["k_ho_k_e"], prose["k_ho_k_ci"], prose["k_ho_k_bws"]) == ("+1.3", "[−0.7, +3.7]", "7 / 3 / 90"), "M3k exploratory in report")
+check(f"T passed {prose['k_k_hT']}/300" not in rep3k and f"passed {prose['k_k_hT']}/300 ({prose['k_rate_hT']}%) against R's {prose['k_k_hR']}/300 ({prose['k_rate_hR']}%)" in rep3k
+      and f"K passed {prose['k_k_hK']}/300 ({prose['k_rate_hK']}%)" in rep3k, "M3k pooled pass@1 in report")
+check(f"| R | 5 (5.4) | 22 | {prose['k_ptok_hR']} |" in rep3k and f"| T | 6 (6.4) | 36 | {prose['k_ptok_hT']} (+{prose['k_ptok_tx']}%) |" in rep3k
+      and f"| K | 5 (5.6) | 22 | {prose['k_ptok_hK']} (+{prose['k_ptok_kx']}%) |" in rep3k, "M3k tokens in report")
+rep3k_1 = " ".join(rep3k.split())
+check(f"It sent a message in {prose['k_fired_n']} of 300 held-out problem-runs ({prose['k_fired_problems']} problems). The model cleared all the findings in {prose['k_fired_cleared']} of them" in rep3k_1
+      and f"| Runs where the check sent a message | {prose['k_fired_n']} ({m3k['fired_pass']} passed) in {prose['k_fired_problems']} problems |" in rep3k_1, "M3k firing counts")
+check(m3k["fired_net"] == 0 and m3k["diff_fired"] == 0 and m3k["diff_n"] == 10, f"M3k: K and R differ on {m3k['diff_n']} problems, {m3k['diff_fired']} where K fired; net on fired {m3k['fired_net']}")
+check(f"| Held-out (300 problem-runs) | $1.44 | ${prose['k_usd_hT']} | ${prose['k_usd_hK']} |" in rep3k
+      and f"| The 86 (92 problems run) | $0.81 | ${prose['k_usd_dT']} | ${prose['k_usd_dK']} |" in rep3k
+      and f"about **${float(prose['k_usd_scored']):.2f} of API credit**" in rep3k, "M3k cost in report")
+check("**Status: DONE (2026-11-04). Decision: null.**" in rep3k, "M3k status in report")
 check(78.5 < spend_all < 79.5, f"spend M1 to M3g {spend_all}")
 check(prose["proc_null"] == prose["proc_n"] == "11" and prose["proc_det"] == "0", f"process changes null {prose['proc_null']} of {prose['proc_n']}")
 

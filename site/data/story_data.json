@@ -1819,7 +1819,62 @@
    "j_usd_dB": "0.84",
    "j_usd_dR": "0.81",
    "j_usd_scored": "7.3",
-   "j_console": "7.83"
+   "j_console": "7.83",
+   "k_ho_t_e": "+0.3",
+   "k_ho_t_ci": "[\u22124.7, +5.3]",
+   "k_ho_t_p": "1.00",
+   "k_ho_t_bws": "9 / 9 / 82",
+   "k_ho_k_e": "+1.3",
+   "k_ho_k_ci": "[\u22120.7, +3.7]",
+   "k_ho_k_p": "0.34",
+   "k_ho_k_bws": "7 / 3 / 90",
+   "k_d86_t_e": "\u22121.2",
+   "k_d86_t_ci": "[\u22128.1, +5.8]",
+   "k_d86_t_p": "1.00",
+   "k_d86_t_bws": "4 / 5 / 77",
+   "k_d86_k_e": "+1.2",
+   "k_d86_k_ci": "[\u22124.7, +8.1]",
+   "k_d86_k_p": "1.00",
+   "k_d86_k_bws": "4 / 3 / 79",
+   "k_rate_hR": "54.7",
+   "k_k_hR": "164",
+   "k_n_hR": "300",
+   "k_rate_hT": "55.0",
+   "k_k_hT": "165",
+   "k_n_hT": "300",
+   "k_rate_hK": "56.0",
+   "k_k_hK": "168",
+   "k_n_hK": "300",
+   "k_rate_dR": "67.4",
+   "k_k_dR": "58",
+   "k_n_dR": "86",
+   "k_rate_dT": "66.3",
+   "k_k_dT": "57",
+   "k_n_dT": "86",
+   "k_rate_dK": "68.6",
+   "k_k_dK": "59",
+   "k_n_dK": "86",
+   "k_turns_hR": "5",
+   "k_ptok_hR": "46,570",
+   "k_wall_hR": "22",
+   "k_turns_hT": "6",
+   "k_ptok_hT": "75,086",
+   "k_wall_hT": "36",
+   "k_turns_hK": "5",
+   "k_ptok_hK": "49,484",
+   "k_wall_hK": "22",
+   "k_ptok_tx": "61",
+   "k_ptok_kx": "6",
+   "k_fired_n": "18",
+   "k_fired_problems": "7",
+   "k_fired_cleared": "3",
+   "k_diff_n": "10",
+   "k_usd_hT": "2.27",
+   "k_usd_hK": "1.47",
+   "k_usd_dT": "1.17",
+   "k_usd_dK": "0.84",
+   "k_usd_scored": "5.75",
+   "k_usd_r": "1.44"
   }
  },
  "m3b_confirm": {
@@ -3691,5 +3746,113 @@
   ],
   "console_usd": 7.83,
   "console_before_usd": 0.57
+ },
+ "m3k": {
+  "effects": {
+   "ho_t": {
+    "finding": "no detectable effect",
+    "eff": 0.3,
+    "lo": -4.7,
+    "hi": 5.3,
+    "better": 9,
+    "worse": 9,
+    "same": 82,
+    "p": 1.0
+   },
+   "ho_k": {
+    "finding": "no detectable effect",
+    "eff": 1.3,
+    "lo": -0.7,
+    "hi": 3.7,
+    "better": 7,
+    "worse": 3,
+    "same": 90,
+    "p": 0.344
+   },
+   "d86_t": {
+    "finding": "no detectable effect",
+    "eff": -1.2,
+    "lo": -8.1,
+    "hi": 5.8,
+    "better": 4,
+    "worse": 5,
+    "same": 77,
+    "p": 1.0
+   },
+   "d86_k": {
+    "finding": "no detectable effect",
+    "eff": 1.2,
+    "lo": -4.7,
+    "hi": 8.1,
+    "better": 4,
+    "worse": 3,
+    "same": 79,
+    "p": 1.0
+   }
+  },
+  "n_ho": 100,
+  "n": 86,
+  "arms": {
+   "hR": {
+    "k": 164,
+    "n": 300,
+    "rate": 54.7
+   },
+   "hT": {
+    "k": 165,
+    "n": 300,
+    "rate": 55.0
+   },
+   "hK": {
+    "k": 168,
+    "n": 300,
+    "rate": 56.0
+   },
+   "dR": {
+    "k": 58,
+    "n": 86,
+    "rate": 67.4
+   },
+   "dT": {
+    "k": 57,
+    "n": 86,
+    "rate": 66.3
+   },
+   "dK": {
+    "k": 59,
+    "n": 86,
+    "rate": 68.6
+   }
+  },
+  "turns_med": {
+   "hR": 5.0,
+   "hT": 6.0,
+   "hK": 5.0
+  },
+  "ptok": {
+   "hR": 46570,
+   "hT": 75086,
+   "hK": 49484
+  },
+  "wall_med": {
+   "hR": 22,
+   "hT": 36,
+   "hK": 22
+  },
+  "fired_n": 18,
+  "fired_problems": 7,
+  "fired_pass": 6,
+  "fired_cleared": 3,
+  "fired_net": 0.0,
+  "diff_n": 10,
+  "diff_fired": 0,
+  "usd": {
+   "hT": 2.27,
+   "hK": 1.47,
+   "dT": 1.17,
+   "dK": 0.84
+  },
+  "llm_error": 3,
+  "claims_med": 21.0
  }
 }

@@ -31,8 +31,8 @@ STORY = [
      "How the CVDP RTL agent works: a six-node LangGraph graph, its checks and caps, the GitHub Actions pipeline, and one real failure replayed."),
     ("results-m2-m3b", "results-m2-m3b.html", "Results, M0 to M3b", "Part 2 · Results, M0 to M3b",
      "The milestones, three models on 92 problems (M2), six ablations with no detectable effect (M3), and the Deep Agents harness and lessons memory (M3b)."),
-    ("results-m3c-m3e", "results-m3c-m3e.html", "Results, M3c to M3j", "Part 3 · Results, M3c to M3j",
-     "Two model-free checks (M3c), Claude Code with four Claude models, verify before submit (M3d), the same agent with Opus 5.5 (M3e), a pack of RTL design know-how (M3g), the same pack as Claude Code skills (M3h), Claude Code stripped to our prompt and four tools (M3i), and lean Claude Code against a plain API loop of our own (M3j)."),
+    ("results-m3c-m3e", "results-m3c-m3e.html", "Results, M3c to M3k", "Part 3 · Results, M3c to M3k",
+     "Two model-free checks (M3c), Claude Code with four Claude models, verify before submit (M3d), the same agent with Opus 5.5 (M3e), a pack of RTL design know-how (M3g), the same pack as Claude Code skills (M3h), Claude Code stripped to our prompt and four tools (M3i), lean Claude Code against a plain API loop of our own (M3j), and two cheap harness steps on that loop (M3k)."),
     ("claude-code", "claude-code.html", "Claude Code, close to an API call", "Part 4 · Claude Code, close to an API call",
      "How far Claude Code can be stripped towards a plain API call, what it still sends in every request, and a plain Messages API loop of our own that scored the same (M3i, M3j)."),
     ("analysis", "analysis.html", "Analysis", "Part 5 · Analysis",
@@ -43,7 +43,7 @@ STORY = [
 DATA = [os.path.join("docs", "problems.json")]
 # short names for the breadcrumb's "on this page" links
 SHORT = {"intro": "One failure, replayed", "how": "How it works", "milestones": "Milestones", "m2": "M2", "m3": "M3", "m3b": "M3b",
-         "m3c": "M3c", "ladder": "Claude Code ladder", "m3d": "M3d", "m3e": "M3e", "m3g": "M3g", "m3h": "M3h", "m3i": "M3i", "m3j": "M3j", "cc-api": "Stripping it down", "cc-api-loop": "A plain API loop", "cc-api-use": "Which to use", "fail": "Why it fails",
+         "m3c": "M3c", "ladder": "Claude Code ladder", "m3d": "M3d", "m3e": "M3e", "m3g": "M3g", "m3h": "M3h", "m3i": "M3i", "m3j": "M3j", "m3k": "M3k", "cc-api": "Stripping it down", "cc-api-loop": "A plain API loop", "cc-api-use": "Which to use", "fail": "Why it fails",
          "dv": "Verification view", "compare": "Comparison", "validity": "Validity", "next": "What's next", "faq": "FAQ",
          "glossary": "Glossary"}
 # ids the story's script builds at run time, by page
