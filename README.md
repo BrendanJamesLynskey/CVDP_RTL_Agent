@@ -9,7 +9,7 @@ problem** and wall time, by category, against a null agent and against published
 A short front page (what we found, M3e included) leads to six parts:
 [how it works](https://cvdp-rtl-agent.vercel.app/how),
 [results, M0 to M3b](https://cvdp-rtl-agent.vercel.app/results-m2-m3b),
-[results, M3c to M3j](https://cvdp-rtl-agent.vercel.app/results-m3c-m3e),
+[results, M3c to M3k](https://cvdp-rtl-agent.vercel.app/results-m3c-m3e),
 [Claude Code, close to an API call](https://cvdp-rtl-agent.vercel.app/claude-code),
 [analysis](https://cvdp-rtl-agent.vercel.app/analysis) and
 [reference](https://cvdp-rtl-agent.vercel.app/reference) (validity, open questions, FAQ, glossary).
@@ -159,14 +159,15 @@ Code's `init` event must report `apiKeySource` `ANTHROPIC_API_KEY`, or the run e
 loop passed exactly as often as lean Claude Code (R − PA = +0.0 points [−4.3, +4.3], 54.7% each) on 70% of its prompt
 tokens; `--bare` and the billing route made no detectable difference either; all scored runs cost about $7.3 of API credit.
 
-**M3k** (built, not yet scored; report skeleton [`docs/reports/M3k_report.md`](docs/reports/M3k_report.md), pre-registered in
+**M3k** (done, null; report [`docs/reports/M3k_report.md`](docs/reports/M3k_report.md), analysis
+[`docs/reports/m3k/analyze.sh`](docs/reports/m3k/analyze.sh), pre-registered in
 [`docs/reports/m3k/preregistration.md`](docs/reports/m3k/preregistration.md), replay of arm K on M3j's runs
 [`docs/reports/m3k/replay.md`](docs/reports/m3k/replay.md), smoke runs [`docs/reports/m3k/smoke.md`](docs/reports/m3k/smoke.md), made with
 [`tools/m3k_replay.py`](tools/m3k_replay.py)): two cheap harness steps on the plain API loop, model and loop held fixed.
 Sweep input `fixed_checks=presubmit_iface` (arm K, [`agent/cvdp_agent/presubmit.py`](agent/cvdp_agent/presubmit.py): one
 deterministic interface, file-name and compile check when the model says it is finished, at most two round trips) or
 `fixed_checks=timing_claims` (arm T: one extra first turn listing the task's cycle-level claims). The apiloop's guard
-now prices fresh input, cache writes and cache reads apart.
+now prices fresh input, cache writes and cache reads apart. Result: T − R = +0.3 points [−4.7, +5.3] (primary, no detectable effect); K − R = +1.3 [−0.7, +3.7] (exploratory, no detectable effect, and none of the problems that differ is one where the check fired); T used 61% more input tokens; about $5.75 of API credit.
 
 **M2a** (merged, [`docs/reports/M2a_report.md`](docs/reports/M2a_report.md)): reasoning limits, a retry on empty
 replies and unreadable decisions, and seeds. On the same 10 problems on Arm64, DeepSeek at `reasoning=off` passed

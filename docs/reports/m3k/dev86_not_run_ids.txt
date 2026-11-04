@@ -1,0 +1,3 @@
+# problems with an llm_error row in T or K on the 86 (not run; M3k report)
+cvdp_agentic_hdbn_codec_0001
+cvdp_agentic_binary_search_tree_algorithms_0001
