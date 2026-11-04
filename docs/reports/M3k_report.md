@@ -26,7 +26,7 @@
 - **T is the expensive one:** 61% more input tokens per held-out problem-run (75,086 against 46,570), median wall time
   36 s against 22 s, and $2.27 against R's $1.44 for the same score.
 - **Cost:** about **$5.75 of API credit** for all scored runs (the repriced `api_cost_estimate_usd`, a list-price
-  estimate). Console: TODO (planner: before TODO, after TODO).
+  estimate). Console (owner's reading): $8.00 before, $13.74 after, so $5.74 for the scored runs.
 
 **Decision: null.** This is another null for an agent change, after M3b's memory, M3g's pack, M3h's skills, M3i and M3j.
 The only confirmed gain on this benchmark remains M3b's harness result (+4.7 [+1.0, +8.5]).
@@ -155,7 +155,7 @@ in `submit`, except the 3 `llm_error` rows above.
 T and K: `api_cost_estimate_usd`, summed over rows, at Claude Haiku 5.5's list rates by usage per request (the corrected
 guard; pre-registration, "The guard fix"). T and K total **$5.75**. R is M3j's figure (priced from tokens at the same
 list rates; M3j's own `api_cost_estimate_usd` column used the old upper bound and is not used here). It is a list-price
-estimate, not the Console's bill. **TODO (planner): Console before TODO, after TODO.**
+estimate, not the Console's bill. The owner's Console reading: **$8.00 before the scored runs and $13.74 after, $5.74 billed**, matching the estimate.
 
 ## What it means
 
