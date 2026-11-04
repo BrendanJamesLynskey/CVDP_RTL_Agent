@@ -128,7 +128,27 @@ def test_k_file_extension_and_missing_file(tmp_path):
 
 
 def test_k_compile_error(tmp_path):
-    assert "compile_error" in kinds(tree(tmp_path, GOOD.replace("<= din", "<= nope_signal")))
+    # a syntax error: pyslang and Yosys both refuse it
+    assert "compile_error" in kinds(tree(tmp_path, GOOD.replace("<= din;", "<= ;")))
+
+
+def test_k_declared_module_is_never_missing(tmp_path):
+    """Yosys' `hierarchy -top` prunes unused modules, so absence from the elaborated design is not absence from
+    rtl/: a module declared in any rtl/ file is not reported missing (smoke run, dev gcd_0007)."""
+    orig = "module helper(input logic a, output logic y);\n assign y = a;\nendmodule\n"
+    root = tmp_path / "code"
+    (root / "rtl").mkdir(parents=True)
+    (root / "rtl" / "helper.sv").write_text(orig)
+    (root / "prompt.json").write_text(json.dumps({"prompt": "Add a top."}))
+    pc = presubmit.PresubmitCheck(str(root))
+    (root / "rtl" / "top.sv").write_text("module top(input logic a, output logic y);\n assign y = a;\nendmodule\n")
+    fake = {"findings": [{"kind": "missing_module", "module": "helper", "name": "helper", "detail": "x"},
+                         {"kind": "missing_module", "module": "ghost", "name": "ghost", "detail": "y"}]}
+    given = {"helper": {"source": "rtl", "ports": {}, "params": {}}, "ghost": {"source": "rtl", "ports": {},
+                                                                              "params": {}}}
+    kept = presubmit.precise(given, fake["findings"], presubmit.declared_modules(str(root)))
+    assert [f["name"] for f in kept] == ["ghost"]
+    assert pc.check()["findings"] == [] or all(f["name"] != "helper" for f in pc.check()["findings"])
 
 
 def test_k_message_template_is_fixed():

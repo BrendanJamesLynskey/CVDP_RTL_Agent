@@ -68,14 +68,24 @@ def file_findings(root, wanted):
     return out
 
 
-def precise(given, findings):
+def declared_modules(root):
+    """Names of the modules declared in any rtl/ file (text, comments dropped). Yosys' `hierarchy -top` prunes the
+    modules the top does not use, so a module missing from the elaborated design may still be declared."""
+    names = set()
+    for text in interface.design_sources(root).values():
+        text = re.sub(r"//[^\n]*|/\*.*?\*/", " ", text, flags=re.DOTALL)
+        names |= set(re.findall(r"\bmodule\s+(?:automatic\s+|static\s+)?([A-Za-z_]\w*)", text))
+    return names
+
+
+def precise(given, findings, declared=()):
     """Keep the findings that held up in the replay on M3j's passing runs (docs/reports/m3k/replay.md): a module
     named only in prose or by a file name is not required (the design's module may be named otherwise and still
     pass), and a width read from prose is not trusted. Original RTL, a module header and a visible testbench are."""
     out = []
     for f in findings:
         src = (given.get(f["module"]) or {}).get("source")
-        if f["kind"] == "missing_module" and src not in ("rtl", "testbench"):
+        if f["kind"] == "missing_module" and (src not in ("rtl", "testbench") or f["name"] in declared):
             continue
         if f["kind"] == "width" and src not in ("rtl", "header", "testbench"):
             continue
@@ -109,5 +119,5 @@ class PresubmitCheck:
                              "detail": "the RTL under rtl/ does not elaborate: " + (note or "no design")[:300]})
         if engine is not None and self.iface.given:
             findings += precise(self.iface.given, interface.compare(self.iface.given, self.iface.names, design)
-                                + direction_findings(self.iface.given, design))
+                                + direction_findings(self.iface.given, design), declared_modules(self.root))
         return {"findings": findings, "engine": engine, "note": note}
