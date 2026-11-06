@@ -19,8 +19,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Martian+Mono:wght@300;500;700;800&display=swap">
 <style>
-/* Layout concept: the page is a waveform viewer. Time runs down the page; a cursor line and a ns readout
-   follow the scroll; each section is a signal group named in a left gutter, opened by a clock edge.
+/* Layout: one reading column; every label on the page carries information (no decorative signal names or times).
    Light theme = a timing diagram printed on engineering paper. Dark theme = a monochrome scope screen, red only for failures. */
 :root {
   --paper: #f1f4f2;        /* engineering paper */
@@ -43,7 +42,6 @@
   --f-disp: "Martian Mono", "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
   --f-body: "IBM Plex Sans", "Helvetica Neue", Arial, system-ui, sans-serif;
   --f-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
-  --gut: 196px;
   --measure: 68ch;
 }
 @media (prefers-color-scheme: dark) {
@@ -110,12 +108,8 @@ strong { font-weight: 600; }
 }
 .bar .file { color: var(--ink); white-space: nowrap; }
 .bar .file b { font-family: var(--f-disp); font-weight: 800; color: var(--ch1); }
-.ruler { flex: 1; height: 100%; min-width: 0; position: relative;
-  background:
-    repeating-linear-gradient(90deg, var(--grid-2) 0 1px, transparent 1px 10px) left bottom / 100% 6px no-repeat,
-    repeating-linear-gradient(90deg, var(--ink-3) 0 1px, transparent 1px 50px) left bottom / 100% 12px no-repeat; }
+.ruler { flex: 1; height: 100%; min-width: 0; position: relative; }
 .ruler .prog { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--ch3); width: 0; }
-.tread { white-space: nowrap; color: var(--ch3); min-width: 15ch; text-align: right; }
 .tbtn { font: 600 11px/1 var(--f-mono); letter-spacing: .08em; color: var(--ink); background: var(--panel);
   border: 1px solid var(--grid-2); padding: 7px 9px; cursor: pointer; border-radius: 2px; min-height: 30px; white-space: nowrap; }
 .tbtn:hover { border-color: var(--ch3); }
@@ -123,17 +117,10 @@ a.tbtn { text-decoration: none; display: inline-flex; align-items: center; white
 .tbtn.theme [data-m] { opacity: .6; font-weight: 500; }
 .tbtn.theme [data-m].on { opacity: 1; font-weight: 800; text-decoration: underline; text-underline-offset: 3px; }
 a.file { text-decoration: none; }
-.cursor { position: fixed; z-index: 15; left: 0; right: 0; top: 50%; height: 0; border-top: 1px dashed var(--ch3); opacity: .55; pointer-events: none; }
-.cursor span { position: absolute; right: max(10px, env(safe-area-inset-right, 0px)); top: -9px; font: 500 10px/1 var(--f-mono);
-  background: var(--paper); color: var(--ch3); padding: 2px 4px; border: 1px solid var(--ch3); }
 
 /* ---- page frame and sections ---- */
 main { max-width: 1120px; margin: 0 auto; padding-top: calc(64px + env(safe-area-inset-top, 0px)); }
-.sec { display: grid; grid-template-columns: var(--gut) minmax(0, 1fr); gap: 0 28px; position: relative; padding-block: 28px 56px; }
-.gutter { position: relative; border-right: 1px solid var(--grid-2); }
-.gutter .sticky { position: sticky; top: 70px; padding: 4px 14px 0 0; display: grid; gap: 6px; }
-.sig { font: 600 12px/1.3 var(--f-mono); color: var(--ink); overflow-wrap: anywhere; }
-.sig::before { content: "\25B8\00a0"; color: var(--ink-3); }
+.sec { position: relative; padding-block: 28px 56px; }
 .lz { --c: var(--ch1); display: inline-flex; align-items: center; justify-content: center; min-height: 22px; padding: 0 14px;
   font: 600 11px/1 var(--f-mono); color: var(--c); background: color-mix(in srgb, var(--c) 12%, transparent);
   clip-path: polygon(8px 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 8px 100%, 0 50%);
@@ -141,11 +128,6 @@ main { max-width: 1120px; margin: 0 auto; padding-top: calc(64px + env(safe-area
 .lz.x { --c: var(--x); }
 .lz.c2 { --c: var(--ch2); }
 .lz.c3 { --c: var(--ch3); }
-.stamp { font: 500 10.5px/1 var(--f-mono); color: var(--ink-3); }
-.clk { position: absolute; right: -1px; top: 0; bottom: 0; width: 14px; color: var(--ch1); opacity: .55;
-  background: currentColor;
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='48'%3E%3Cpath d='M1 0V24H13V48' fill='none' stroke='black' stroke-width='1.5'/%3E%3C/svg%3E") repeat-y;
-          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='48'%3E%3Cpath d='M1 0V24H13V48' fill='none' stroke='black' stroke-width='1.5'/%3E%3C/svg%3E") repeat-y; }
 .body { min-width: 0; }
 .edge { display: flex; align-items: center; gap: 10px; font: 500 11px/1 var(--f-mono); color: var(--ink-3); margin-bottom: 8px; flex-wrap: wrap; }
 .edge svg { flex: none; color: var(--ch1); }
@@ -220,7 +202,7 @@ nav.pnav a small { display: block; font: 500 10.5px/1.3 var(--f-mono); letter-sp
 nav.pnav .nx { text-align: right; grid-column: 3; }
 nav.pnav .up { grid-column: 2; align-self: center; }
 @media (max-width: 560px) { nav.pnav { grid-template-columns: 1fr; } nav.pnav .nx, nav.pnav .up { grid-column: auto; text-align: left; } }
-@media print { .bar, .cursor, nav.pnav, .ctl { display: none !important; } main { padding-top: 0; } }
+@media print { .bar, nav.pnav, .ctl { display: none !important; } main { padding-top: 0; } }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 18px; }
 .two > div { min-width: 0; }
 .two h3 { margin-top: 0; }
@@ -334,23 +316,17 @@ footer { border-top: 2px solid var(--ink); margin-top: 20px; padding-block: 18px
 footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
 
 @media (max-width: 860px) {
-  :root { --gut: 0px; }
-  .sec { grid-template-columns: minmax(0, 1fr); padding-block: 22px 40px; }
-  .gutter { border-right: 0; border-bottom: 1px solid var(--grid-2); margin-bottom: 14px; }
-  .gutter .sticky { position: static; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 0 0 8px; }
-  .clk { display: none; }
+  .sec { padding-block: 22px 40px; }
   .two { grid-template-columns: 1fr; }
   .ruler { display: none; }
   .bar { justify-content: space-between; }
 }
-@media (max-width: 860px) { .cursor span { display: none; } .cursor { opacity: .35; } }
 @media (max-width: 480px) {
   .meas > div:last-child:nth-child(odd) { grid-column: span 2; }
   .bar .file .long { display: none; }
   .bar { gap: 8px; }
   .tbtn { letter-spacing: .02em; padding: 7px 6px; }
-  .tread { display: none; }
-  dl.gloss { grid-template-columns: minmax(0, 1fr); }
+    dl.gloss { grid-template-columns: minmax(0, 1fr); }
   dl.gloss dt { border-bottom: 0; padding-bottom: 0; }
   .ctl button { width: 44px; height: 44px; }
   .ctl select { height: 44px; }
@@ -361,13 +337,11 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
 </style>
 
 <div class="bar" role="banner">
-  <a class="file" href="./" title="The front page"><b>cvdp_rtl_agent</b><span class="long">.vcd</span></a>
+  <a class="file" href="./" title="The front page"><b>CVDP RTL Agent</b></a>
   <div class="ruler" aria-hidden="true"><div class="prog" id="prog"></div></div>
-  <span class="tread num" id="tread" aria-hidden="true">T = 0 ns</span>
   <a class="tbtn" href="problems.html" title="Read the 86 problems, each with its pass grid and a note">BROWSE PROBLEMS</a>
   <button class="tbtn theme" id="theme" type="button" aria-pressed="false" aria-label="Dark theme" title="Switch between the dark and light themes"><span data-m="dark">DARK</span> / <span data-m="light">LIGHT</span></button>
 </div>
-<div class="cursor" aria-hidden="true"><span id="curlab">cursor</span></div>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
@@ -388,10 +362,8 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
 <nav class="crumb" aria-label="Where you are"><a href="./">&larr; Front page</a><span><b>Part 4 of 6</b> &middot; Claude Code, close to an API call</span><span>On this page: <a href="#cc-api">Stripping it down</a> &middot; <a href="#cc-api-loop">A plain API loop</a> &middot; <a href="#cc-api-use">Which to use</a></span></nav>
 
 <!-- ================================================================== CLAUDE CODE, CLOSE TO AN API CALL -->
-<section class="sec" id="cc-api" data-page="claude-code" data-sig="claude_code.lean" data-val="&asymp; API">
-  <div class="gutter"><div class="clk"></div><div class="sticky"><span class="sig">claude_code.lean</span><span class="lz">&asymp; API</span><span class="stamp num" data-stamp></span></div></div>
+<section class="sec" id="cc-api" data-page="claude-code">
   <div class="body">
-    <div class="edge" data-edge></div>
     <h2>Claude Code, close to an API call</h2>
     <div class="ios"><span class="k">IN ONE SENTENCE</span>
       <!-- src: docs/reports/M3i_report.md and M3j_report.md "In short"; numbers in data-d spans are written by site/data/derive.py -->
@@ -433,10 +405,8 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
 </section>
 
 <!-- ================================================================== CLAUDE CODE AGAINST A PLAIN API LOOP -->
-<section class="sec" id="cc-api-loop" data-page="claude-code" data-sig="claude_code.api" data-val="NULL">
-  <div class="gutter"><div class="clk"></div><div class="sticky"><span class="sig">claude_code.api</span><span class="lz">NULL</span><span class="stamp num" data-stamp></span></div></div>
+<section class="sec" id="cc-api-loop" data-page="claude-code">
   <div class="body">
-    <div class="edge" data-edge></div>
     <h2>Going all the way: a plain API loop</h2>
     <!-- src: docs/reports/m3j/preregistration.md "The question", "Arms" -->
     <p>Claude Code has one more switch, <code>--bare</code>, which strips out more than the flags above. The catch is that it only works with an API key, not with a Claude subscription, so M3i could not use it. Then it turned out that the Max subscription includes a monthly allowance of Anthropic API credit. That made the last step possible, and M3j used it to run three new set-ups side by side, all on Anthropic Claude Haiku 5.5:</p>
@@ -475,10 +445,8 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
 </section>
 
 <!-- ================================================================== WHICH TO USE -->
-<section class="sec" id="cc-api-use" data-page="claude-code" data-sig="claude_code.cost" data-val="$">
-  <div class="gutter"><div class="clk"></div><div class="sticky"><span class="sig">claude_code.cost</span><span class="lz">$</span><span class="stamp num" data-stamp></span></div></div>
+<section class="sec" id="cc-api-use" data-page="claude-code">
   <div class="body">
-    <div class="edge" data-edge></div>
     <h2>Which one to use</h2>
     <!-- src: docs/reports/M3j_report.md "Cost", "What it means" -->
     <p>Since the scores match, the choice comes down to cost and convenience. M3j spent about $<span data-d="j_usd_scored">7.3</span> of API credit across all its scored runs. On the held-out set, 300 problem-runs cost $<span data-d="j_usd_hPA">1.68</span> with lean Claude Code, $<span data-d="j_usd_hB">1.57</span> with <code>--bare</code> and $<span data-d="j_usd_hR">1.44</span> with our own loop. At Claude Haiku 5.5&rsquo;s prices these are small sums either way; the gaps would matter more with a larger model.</p>
@@ -498,7 +466,6 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
 </nav>
 
 <footer>
-  <div class="row"><span>$finish;</span><span>// end of simulation</span></div>
   <div class="row">
     <a href="https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent">Repository</a>
     <a href="https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent/tree/main/docs/reports">Milestone reports</a>
@@ -1602,34 +1569,15 @@ function fillText() {
   GLOSS.forEach(([id, t, dd]) => { h("dt", { id }, G, t); h("dd", {}, G, dd); });
 }
 
-/* ---------------------------------------------------------- page clock: cursor ns, section stamps and edges */
-const NS_PER_PX = 10;
-const secs = Array.from(document.querySelectorAll(".sec"));
-function stamps() {
-  secs.forEach((sec, i) => {
-    const t = Math.round(sec.offsetTop * NS_PER_PX / 100) * 100;
-    const st = sec.querySelector("[data-stamp]"); if (st) st.textContent = "@ " + t.toLocaleString("en-GB") + " ns";
-    const edge = sec.querySelector("[data-edge]");
-    if (edge && i > 0) {
-      const prev = secs[i - 1].dataset.val, cur = sec.dataset.val;
-      edge.innerHTML = '<svg width="34" height="18" viewBox="0 0 34 18" aria-hidden="true"><path d="M0 15H12V3H24V15H34" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>' +
-        `<span>posedge clk @ ${t.toLocaleString("en-GB")} ns</span><span class="lz c3" style="opacity:.6">${prev}</span><span>&rarr;</span><span class="lz">${cur}</span>`;
-    }
-  });
-}
-const tread = document.getElementById("tread"), prog = document.getElementById("prog"), curlab = document.getElementById("curlab");
+/* ---------------------------------------------------------- reading progress */
+const prog = document.getElementById("prog");
 let rafQ = false;
 function onScroll() {
   if (rafQ) return; rafQ = true;
   requestAnimationFrame(() => {
     rafQ = false;
-    const y = window.scrollY + window.innerHeight / 2;
-    tread.textContent = "T = " + Math.round(y * NS_PER_PX).toLocaleString("en-GB") + " ns";
     const max = document.documentElement.scrollHeight - window.innerHeight;
     prog.style.width = (max > 0 ? 100 * window.scrollY / max : 0) + "%";
-    let cur = secs[0];
-    for (const sc of secs) if (sc.offsetTop <= y) cur = sc;
-    curlab.textContent = cur.dataset.sig + " = " + cur.dataset.val;
   });
 }
 
@@ -1667,14 +1615,14 @@ if (has("cmp-list")) cmpLists();
 if (has("m3b-lessons")) m3bLessons();
 if (has("faqlist")) fillText();
 if (has("p-waffle")) waffleLegend();
-stamps(); onScroll();
+onScroll();
 let lastW = window.innerWidth, rT = null;
 window.addEventListener("resize", () => {
   clearTimeout(rT);
-  rT = setTimeout(() => { if (window.innerWidth === lastW) return; lastW = window.innerWidth; statics.forEach(f => f()); players.forEach(p => p.redraw()); stamps(); onScroll(); }, 150);
+  rT = setTimeout(() => { if (window.innerWidth === lastW) return; lastW = window.innerWidth; statics.forEach(f => f()); players.forEach(p => p.redraw()); onScroll(); }, 150);
 });
 window.addEventListener("scroll", onScroll, { passive: true });
-window.addEventListener("load", () => { stamps(); onScroll(); });
+window.addEventListener("load", () => { onScroll(); });
 function openHash() {
   if (!location.hash || !/^#[A-Za-z0-9._~-]+$/.test(location.hash)) return;
   const t = document.getElementById(location.hash.slice(1));
