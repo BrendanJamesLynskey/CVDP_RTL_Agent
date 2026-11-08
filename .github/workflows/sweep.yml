@@ -4,6 +4,9 @@
 #                      only). Its text must never reach a log, the step summary or an artifact: the raw transcript is
 #                      not kept, and a leak guard scans everything before any of it is published.
 #   (M3i)              cc_profile = plain: Claude Code with our system prompt and four tools (claudecode only)
+#   (M3l)              fixed_checks = retrieved_examples (apiloop only): the closest real modules of the private pack's
+#                      reference/ layer (skill_pack = its tag, v4.0) as examples in the first user message; the upstream
+#                      code is fetched from the public repos at pinned SHAs, and the leak guard also covers the pack's prose
 #   (M3j)              claude_endpoint = api or harness = apiloop: billed to ANTHROPIC_API_KEY (the plan's API credit);
 #                      only those arms are given the key, and cc_profile = bare adds --bare
 #   pull_request       a smoke run with the scripted `fake` provider on 2 problems: no secret, proves the image, the
@@ -78,9 +81,9 @@ on:
         type: string
         default: ""
       fixed_checks:
-        description: "Extra fixed steps. langgraph only (M3c/M3d): interface_check, mutation_gate, both, verify_submit, or spec_vectors (turns verify_submit on too). apiloop only (M3k): presubmit_iface (arm K) or timing_claims (arm T)"
+        description: "Extra fixed steps. langgraph only (M3c/M3d): interface_check, mutation_gate, both, verify_submit, or spec_vectors (turns verify_submit on too). apiloop only (M3k): presubmit_iface (arm K) or timing_claims (arm T); apiloop only (M3l): retrieved_examples (arm E, needs skill_pack)"
         type: choice
-        options: [none, interface_check, mutation_gate, interface_check+mutation_gate, verify_submit, spec_vectors, presubmit_iface, timing_claims]
+        options: [none, interface_check, mutation_gate, interface_check+mutation_gate, verify_submit, spec_vectors, presubmit_iface, timing_claims, retrieved_examples]
         default: none
       provider_order:
         description: "Pin OpenRouter providers, comma-separated, in order, no fallbacks (blank = OpenRouter routes)"
@@ -91,7 +94,7 @@ on:
         type: string
         default: ""
       skill_pack:
-        description: "M3h: private pack tag (v1.0 or v2.0) as Claude Code skills (blank = none; claudecode only)"
+        description: "Private pack tag: M3h v1.0 or v2.0 as Claude Code skills (claudecode only); M3l v4.0 for fixed_checks=retrieved_examples (apiloop only); blank = none"
         type: string
         default: ""
       skill_hint:
@@ -159,6 +162,7 @@ env:
   VERIFY_SUBMIT: ${{ (github.event_name == 'workflow_dispatch' && contains(inputs.fixed_checks, 'verify_submit')) && '1' || '0' }}
   PRESUBMIT_IFACE: ${{ (github.event_name == 'workflow_dispatch' && contains(inputs.fixed_checks, 'presubmit_iface')) && '1' || '0' }}
   TIMING_CLAIMS: ${{ (github.event_name == 'workflow_dispatch' && contains(inputs.fixed_checks, 'timing_claims')) && '1' || '0' }}
+  RETRIEVED_EXAMPLES: ${{ (github.event_name == 'workflow_dispatch' && contains(inputs.fixed_checks, 'retrieved_examples')) && '1' || '0' }}
   SPEC_VECTORS: ${{ (github.event_name == 'workflow_dispatch' && contains(inputs.fixed_checks, 'spec_vectors')) && '1' || '0' }}
   RUNNER: ${{ github.event_name == 'pull_request' && 'ubuntu-24.04' || inputs.runner }}
   WORK: work
@@ -202,7 +206,9 @@ jobs:
       - name: Private skill pack, pinned commit and manifest
         if: env.SKILL_PACK != ''
         # names, counts and hashes only; never the files
-        run: python3 tools/skill_pack.py verify "$SKILL_PACK_DIR" "$SKILL_PACK"
+        run: |
+          if [ "$RETRIEVED_EXAMPLES" = 1 ]; then python3 tools/skill_pack.py verify-reference "$SKILL_PACK_DIR" "$SKILL_PACK"
+          else python3 tools/skill_pack.py verify "$SKILL_PACK_DIR" "$SKILL_PACK"; fi
 
       - uses: docker/login-action@v3
         with:
@@ -301,7 +307,9 @@ jobs:
         run: |
           pub=(--public data --public cvdp)
           [ "$SKILL_PACK" != v1.0 ] || pub+=(--public agent/cvdp_agent/skills/rtl_pack)
-          python3 tools/leak_guard.py --pack "$SKILL_PACK_DIR/generic" "${pub[@]}" --withhold work \
+          # M3l: the pack's reference/ prose is private too; the upstream code fetched from the public repos is public
+          ref=(); if [ "$RETRIEVED_EXAMPLES" = 1 ]; then ref=(--reference "$SKILL_PACK_DIR/reference"); pub+=(--public examples_bundle/upstream); fi
+          python3 tools/leak_guard.py --pack "$SKILL_PACK_DIR/generic" "${ref[@]}" "${pub[@]}" --withhold work \
             --withheld-csv work/withheld.csv --annotate work/results.csv \
             work work.* "$(dirname "$GITHUB_STEP_SUMMARY")"
 

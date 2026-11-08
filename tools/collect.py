@@ -64,6 +64,10 @@ M3J_FIELDS = ["cache_read_tokens", "cache_write_tokens", "api_cost_estimate_usd"
 # M3k: arms K and T on the apiloop, appended only with `--m3k` (after M3j's): findings at the first pre-submit check, round
 # trips sent back to the model (at most 2), findings at the last check, and the lines of T's cycle-level-claims list
 M3K_FIELDS = ["presubmit_findings_n", "presubmit_rounds", "presubmit_final_findings_n", "timing_claims_n"]
+# M3l: arm E on the apiloop, appended only with `--m3l` (after M3k's): the pack entries shown (ids, ";"), their bytes, the
+# entries withheld by the repo deny-list and by the per-problem overlap rule, and the best retrieval score
+M3L_FIELDS = ["examples_ids", "examples_bytes", "examples_withheld_repo", "examples_withheld_overlap",
+              "examples_top_score"]
 M3C_GATE = ("gate_runs", "gate_failures", "mutants_generated", "mutants_compiled", "mutants_killed",
             "mutants_unfinished", "gate_wall_s")
 M3C_IFACE = ("interface_runs", "interface_mismatch_runs", "interface_blocks")
@@ -177,8 +181,12 @@ def m3k_columns(s):
     return {k: ("" if s.get(k) is None else s[k]) for k in M3K_FIELDS}
 
 
+def m3l_columns(s):
+    return {k: ("" if s.get(k) is None else s[k]) for k in M3L_FIELDS}
+
+
 def rows(work, dataset=None, runner="", model="", seed="", reasoning_hint="", skill_pack=False, cc_profile=False,
-         api=False, m3k=False):
+         api=False, m3k=False, m3l=False):
     """`reasoning_hint` is the sweep's setting, used for a row whose agent left no summary."""
     raw = json.load(open(os.path.join(work, "raw_result.json")))
     meta = {}
@@ -260,6 +268,8 @@ def rows(work, dataset=None, runner="", model="", seed="", reasoning_hint="", sk
             row.update(m3j_columns(s))
         if m3k:
             row.update(m3k_columns(s))
+        if m3l:
+            row.update(m3l_columns(s))
     return out
 
 
@@ -275,14 +285,15 @@ def main():
     ap.add_argument("--skill-pack", action="store_true", help="M3h: append the skill pack columns")
     ap.add_argument("--cc-profile", action="store_true", help="M3i: append the Claude Code profile columns")
     ap.add_argument("--m3k", action="store_true", help="M3k: append the pre-submit and timing-claims columns")
+    ap.add_argument("--m3l", action="store_true", help="M3l: append the retrieved-examples columns")
     ap.add_argument("--api", action="store_true", help="M3j: append the API-key arm's token and estimate columns")
     a = ap.parse_args()
     w = csv.DictWriter(sys.stdout, fieldnames=FIELDS + (M3H_FIELDS if a.skill_pack else [])
                        + (M3I_FIELDS if a.cc_profile else []) + (M3J_FIELDS if a.api else [])
-                       + (M3K_FIELDS if a.m3k else []))
+                       + (M3K_FIELDS if a.m3k else []) + (M3L_FIELDS if a.m3l else []))
     if not a.no_header:
         w.writeheader()
-    for r in rows(a.work, a.dataset, a.runner, a.model, a.seed, a.reasoning, a.skill_pack, a.cc_profile, a.api, a.m3k):
+    for r in rows(a.work, a.dataset, a.runner, a.model, a.seed, a.reasoning, a.skill_pack, a.cc_profile, a.api, a.m3k, a.m3l):
         w.writerow(r)
 
 
