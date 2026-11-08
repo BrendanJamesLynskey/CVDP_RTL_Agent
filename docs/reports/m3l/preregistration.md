@@ -183,4 +183,7 @@ Claude Haiku 5.5 on this loop, not that retrieved examples never help.
 
 ## Amendments
 
-None yet.
+**2026-11-08, after the smoke and before any scored dispatch:** the smoke ([`smoke.md`](smoke.md)) cost $0.0130 for the 3
+`m3g_smoke` problems (no example) and $0.0396 for 3 dev problems with examples. Expected cost per scored dispatch: **about
+$0.5 for a held-out dispatch, $0.85 to $0.9 for the 86**; guards at about 3x: **`run_budget_usd` 1.6 for each held-out
+dispatch, 2.6 for the 86**. No constant or rule above was changed.
