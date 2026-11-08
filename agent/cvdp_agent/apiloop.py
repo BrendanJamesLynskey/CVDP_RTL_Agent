@@ -26,6 +26,11 @@ M3k (both off by default, so a plain run's requests are byte-identical to M3j's 
 - arm T, `CVDP_TIMING_CLAIMS=1`: one extra call before the loop, with TIMING_INSTRUCTION, no tool allowed; the
   reply stays in the conversation.
 
+M3l (off by default; a plain run's requests stay byte-identical to arm R's):
+- arm E, `CVDP_RETRIEVED_EXAMPLES=1`: the one or two closest real modules of the private pack's reference layer
+  (examples.py) are appended to the first user message under a fixed lead-in; with none above the threshold the
+  message is exactly R's. Nothing else changes.
+
 The transcript is not kept whole: `api_tools.jsonl` has one line per tool call (turn, tool, path or the first 200
 characters of a Bash command, exit code, output size), redacted."""
 import hashlib
@@ -228,6 +233,32 @@ def run(cfg, client=None):
     messages = [{"role": "user", "content": PROMPT.format(task=task)}]
     stop, models, bash, est = None, set(), [], 0.0
     check, rounds = None, 0
+    if cfg.retrieved_examples:  # arm E: the retrieval is made before the first call, from what the agent can see
+        from . import examples
+        summary.update(examples_ids="", examples_bytes=0, examples_withheld_repo=0, examples_withheld_overlap=0,
+                       examples_top_score=0.0)
+        try:
+            raw = open(cfg.examples_bundle, "rb").read()
+            bundle = examples.load_bundle(cfg.examples_bundle)
+            prompt_v, files_v = examples.visible_from_root(cfg.root)
+            got = examples.retrieve(bundle["entries"], prompt_v, files_v, repo_denied_n=bundle["repo_denied_n"])
+        except (OSError, ValueError) as e:
+            summary.update(stop_reason="examples_error", error=redact(f"{type(e).__name__}: {e}")[-500:],
+                           wall_time_s=0)
+            return _write(cfg, summary, tool_log)
+        text_e = examples.block(got["shown"])
+        if text_e:
+            messages[0]["content"] += "\n\n" + text_e
+        summary.update(examples_ids=";".join(got["ids"]), examples_bytes=got["bytes"],
+                       examples_withheld_repo=got["withheld_repo"], examples_withheld_overlap=got["withheld_overlap"],
+                       examples_top_score=round(got["top_score"], 4), examples_pack=bundle.get("pack_tag"),
+                       examples_bundle_sha256=hashlib.sha256(raw).hexdigest(),
+                       examples_block_sha256=hashlib.sha256(text_e.encode()).hexdigest() if text_e else "")
+        tool_log.append({"tool": "examples", "turn": 0, "ids": got["ids"], "bytes": got["bytes"],
+                         "scores": [s for i, s in got["ranked"] if i in got["ids"]],
+                         "withheld_overlap": [list(w) for w in got["withheld"]],
+                         "file_sha256": {f"{e['repo']}@{e['sha'][:8]}:{e['path']}": e["file_sha256"]
+                                         for e in got["shown"]}})
     if cfg.presubmit_iface:  # arm K: the given interface is read now, before any edit
         summary.update(presubmit_findings_n=0, presubmit_rounds=0, presubmit_final_findings_n=0)
         try:

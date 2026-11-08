@@ -13,6 +13,12 @@ the same bytes are in the public benchmark itself. `--public` names text the job
 (the dataset files, the benchmark harness checkout; never anything under work/). A match counts only if at least one
 of its 80-byte windows, normalised, is not found in that public text, normalised. Without `--public`, every match counts.
 
+M3l (`--reference DIR`, the pack's reference/ layer): the secrets are also the layer's own prose: README.md and
+SOURCES.yaml whole, INDEX.jsonl's free text (each entry's title and keywords, one line per entry), and every entry's
+sections other than `## Excerpt` and `## Source` (the Pattern, When to use it and Pitfalls text, each section one
+secret). The excerpts and the Source blocks are upstream code and attribution from public repositories, so they are
+not secrets; the code the job fetched from the public repos goes in with `--public`. `--pack` may then be left out.
+
 M3h withhold rule (`--withhold WORK`): a match in a model-written file of the work dir (the agent's task tree under
 work/seed<k>/<repo>/harness/<n>/, and the harness's report logs work/seed<k>/<repo>/reports/<n>.txt) removes that
 file before the upload instead of failing, and is recorded as data in `--withheld-csv` (id, seed, file, skill,
@@ -58,10 +64,48 @@ def normalise(data):
     return _WS.sub(b" ", data)
 
 
-def secrets(pack):
-    """[(label, bytes, bytes needed for a match)] from a pack directory."""
+def _short_or_window(label, data, out):
+    data = data.strip()
+    if len(data) >= SHORT_MIN:
+        out.append((label, data, min(WINDOW, len(data))))
+
+
+def reference_secrets(ref):
+    """The reference layer's private text (M3l): README.md and SOURCES.yaml, INDEX.jsonl's titles and keywords, and the
+    prose sections of every entry (everything but the Excerpt and Source sections)."""
+    import json
+
     out = []
-    for name in sorted(os.listdir(pack)):
+    for name in ("README.md", "SOURCES.yaml"):
+        path = os.path.join(ref, name)
+        if os.path.isfile(path):
+            _short_or_window(f"reference/{name}", open(path, "rb").read(), out)
+    idx = os.path.join(ref, "INDEX.jsonl")
+    if os.path.isfile(idx):
+        for ln in open(idx, "rb"):
+            if ln.strip():
+                e = json.loads(ln)
+                _short_or_window(f"INDEX.jsonl {e.get('id')}", (e.get("title", "") + " " + " ".join(
+                    e.get("keywords", []))).encode(), out)
+    for d, dirs, names in os.walk(ref):
+        dirs.sort()
+        for n in sorted(names):
+            if not n.endswith(".md") or n == "README.md":
+                continue
+            text = open(os.path.join(d, n), "rb").read()
+            for sec in re.split(rb"(?m)^(?=#{1,2} )", text):
+                head = sec.split(b"\n", 1)[0].strip()
+                if not head or head.startswith((b"## Excerpt", b"## Source")):
+                    continue
+                label = f"reference/{os.path.relpath(os.path.join(d, n), ref)[:-3]} {head.decode(errors='replace')[:40]}"
+                _short_or_window(label, sec, out)
+    return out
+
+
+def secrets(pack, reference=None):
+    """[(label, bytes, bytes needed for a match)] from a pack directory (and, M3l, a reference layer)."""
+    out = reference_secrets(reference) if reference else []
+    for name in sorted(os.listdir(pack)) if pack else []:
         path = os.path.join(pack, name)
         if not name.endswith(".md") or not os.path.isfile(path):
             continue
@@ -74,7 +118,7 @@ def secrets(pack):
         elif data:
             out.append((name[:-3], data, WINDOW))
     if not out:
-        raise SystemExit(f"leak_guard.py: no pack text found in {pack}")
+        raise SystemExit(f"leak_guard.py: no pack text found in {pack or reference}")
     return out
 
 
@@ -138,10 +182,10 @@ class Public:
         return any(m[i:i + need] not in self.corpus for i in range(0, len(m) - need + 1))
 
 
-def scan(pack, paths, public=None):
+def scan(pack, paths, public=None, reference=None):
     """[(file, form, offset, secret label, length)] for every leak."""
     pub = public if isinstance(public, Public) else Public(public)
-    items = secrets(pack)
+    items = secrets(pack, reference)
     raw = Index(items)
     norm_items = [(lab, normalise(d), n) for lab, d, n in items]
     norm_items = [(lab, d, min(n, len(d))) for lab, d, n in norm_items if len(d) >= SHORT_MIN]
@@ -241,7 +285,8 @@ def report(leaks, n, pub):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="M3h leak guard")
-    ap.add_argument("--pack", required=True, help="the pack's generic/ directory")
+    ap.add_argument("--pack", help="the pack's generic/ directory (this or --reference)")
+    ap.add_argument("--reference", help="M3l: the pack's reference/ directory (prose and index text are secrets)")
     ap.add_argument("--public", action="append", default=[],
                     help="public text the job holds (dataset files, harness checkout); repeatable")
     ap.add_argument("--withhold", metavar="WORK",
@@ -251,11 +296,12 @@ def main(argv=None):
     ap.add_argument("--annotate", help="a results.csv to fill skill_text_copied(_skills) in, from the withheld rows")
     ap.add_argument("paths", nargs="+")
     a = ap.parse_args(argv)
-    if not os.path.isdir(a.pack):
-        print(f"leak_guard.py: no pack directory {a.pack}", file=sys.stderr)
+    if not (a.pack or a.reference) or (a.pack and not os.path.isdir(a.pack)) \
+            or (a.reference and not os.path.isdir(a.reference)):
+        print(f"leak_guard.py: no pack directory {a.pack or a.reference}", file=sys.stderr)
         return 2
     pub = Public(a.public)
-    leaks = scan(a.pack, a.paths, pub)
+    leaks = scan(a.pack, a.paths, pub, a.reference)
     rows = []
     if a.withhold:
         rows, other = withhold(leaks, a.withhold)
@@ -269,7 +315,7 @@ def main(argv=None):
         if other:
             report(other, sum(1 for _ in files(a.paths)), pub)
             return 1
-        leaks = scan(a.pack, a.paths, pub)  # the whole remaining set again, the withheld list and the CSV included
+        leaks = scan(a.pack, a.paths, pub, a.reference)  # the whole remaining set again, the withheld list and the CSV included
     n = sum(1 for _ in files(a.paths))
     if leaks:
         report(leaks, n, pub)

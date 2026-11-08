@@ -58,6 +58,8 @@ class Config:
                                     # M3j: "bare" = plain plus --bare (needs an API key: provider claude_api)
     presubmit_iface: bool = False       # M3k arm K (apiloop): one interface/file/compile check when the model finishes
     timing_claims: bool = False         # M3k arm T (apiloop): one extra first turn listing the task's cycle-level claims
+    retrieved_examples: bool = False    # M3l arm E (apiloop): the closest real modules of the private pack, as examples
+    examples_bundle: str = ""           # M3l: the bundle tools/fetch_examples.py built (mounted read-only)
     out_dir: str = ""                   # default <root>/rundir/agent_out
     fake_script: str = ""               # fake provider: a JSON file or inline JSON list of responses
     ledger_dir: str = ""                # whole-run spend guard: shared directory of per-problem costs
@@ -99,6 +101,8 @@ class Config:
             # M3k, likewise only when on
             **({"presubmit_iface": True} if self.presubmit_iface else {}),
             **({"timing_claims": True} if self.timing_claims else {}),
+            # M3l, likewise only when on
+            **({"retrieved_examples": True} if self.retrieved_examples else {}),
             # F1B, likewise only when set
             **({"data_collection": self.data_collection} if self.data_collection else {}),
         }
@@ -108,8 +112,13 @@ class Config:
             self.verify_submit = True
         if self.skills and self.harness != "langgraph":  # M3g: the pack is loaded by the LangGraph graph's nodes
             raise ValueError("CVDP_SKILLS is a step of the LangGraph graph: use CVDP_HARNESS=langgraph")
-        if (self.skill_pack or self.skill_hint) and self.harness != "claudecode":  # M3h: Claude Code's own skills
+        if self.skill_hint and self.harness != "claudecode":
             raise ValueError("CVDP_SKILL_PACK installs Claude Code skills: use CVDP_HARNESS=claudecode")
+        if self.skill_pack and self.harness != "claudecode" and not (self.harness == "apiloop"
+                                                                    and self.retrieved_examples):
+            # M3h: Claude Code's own skills; M3l: an apiloop run names the pack tag only together with its examples
+            raise ValueError("CVDP_SKILL_PACK installs Claude Code skills: use CVDP_HARNESS=claudecode "
+                             "(or CVDP_HARNESS=apiloop with CVDP_RETRIEVED_EXAMPLES=1)")
         if self.skill_hint and not self.skill_pack:
             raise ValueError("CVDP_SKILL_HINT needs CVDP_SKILL_PACK")
         if self.cc_profile not in ("default", "plain", "bare"):
@@ -126,6 +135,12 @@ class Config:
             raise ValueError("CVDP_PRESUBMIT_IFACE and CVDP_TIMING_CLAIMS are steps of the apiloop harness")
         if self.presubmit_iface and self.timing_claims:
             raise ValueError("CVDP_PRESUBMIT_IFACE and CVDP_TIMING_CLAIMS are separate arms")
+        if self.retrieved_examples and self.harness != "apiloop":
+            raise ValueError("CVDP_RETRIEVED_EXAMPLES is a step of the apiloop harness")
+        if self.retrieved_examples and (self.presubmit_iface or self.timing_claims):
+            raise ValueError("CVDP_RETRIEVED_EXAMPLES is its own arm: it cannot take another fixed check")
+        if self.retrieved_examples and not (self.skill_pack and self.examples_bundle):
+            raise ValueError("CVDP_RETRIEVED_EXAMPLES needs CVDP_SKILL_PACK (the pack tag) and CVDP_EXAMPLES_BUNDLE")
 
 
 def _reasoning(name):
@@ -175,6 +190,8 @@ def from_env():
         spec_vectors=_flag("CVDP_SPEC_VECTORS", False),
         presubmit_iface=_flag("CVDP_PRESUBMIT_IFACE", False),
         timing_claims=_flag("CVDP_TIMING_CLAIMS", False),
+        retrieved_examples=_flag("CVDP_RETRIEVED_EXAMPLES", False),
+        examples_bundle=os.environ.get("CVDP_EXAMPLES_BUNDLE", "").strip(),
         skills=os.environ.get("CVDP_SKILLS", "").strip(),
         skills_cap_bytes=_num("CVDP_SKILLS_CAP_BYTES", 13_000, int),
         skill_pack=os.environ.get("CVDP_SKILL_PACK", "").strip(),

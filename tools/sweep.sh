@@ -47,6 +47,7 @@ VERIFY_SUBMIT=${VERIFY_SUBMIT:-0}    # M3d: 1 = a submit is refused until the de
 SPEC_VECTORS=${SPEC_VECTORS:-0}      # M3d: 1 = VERIFY_SUBMIT plus blind reference cases from the spec (langgraph)
 PRESUBMIT_IFACE=${PRESUBMIT_IFACE:-0} # M3k arm K: 1 = one interface/file/compile check when the model finishes (apiloop only)
 TIMING_CLAIMS=${TIMING_CLAIMS:-0}    # M3k arm T: 1 = one extra first turn listing the task's cycle-level claims (apiloop only)
+RETRIEVED_EXAMPLES=${RETRIEVED_EXAMPLES:-0} # M3l arm E: 1 = the closest real modules of the private pack as examples (apiloop only; needs SKILL_PACK)
 DATA_COLLECTION=${DATA_COLLECTION:-} # F1B: deny = OpenRouter routes only to providers that collect no data; blank = as before
 CLAUDE_ENDPOINT=${CLAUDE_ENDPOINT:-plan} # F1B, claudecode only: plan (the owner's plan) | openrouter (any OpenRouter model)
                                      # | api (M3j: Claude models billed to ANTHROPIC_API_KEY, the plan's API credit)
@@ -74,7 +75,7 @@ num BUDGET_USD "$BUDGET_USD"; int MAX_TURNS "$MAX_TURNS"; int THREADS "$THREADS"
 bit SELF_CHECK "$SELF_CHECK"; bit LINT "$LINT"; int SEEDS "$SEEDS"
 bit MUTATION_GATE "$MUTATION_GATE"; bit INTERFACE_CHECK "$INTERFACE_CHECK"
 bit VERIFY_SUBMIT "$VERIFY_SUBMIT"; bit SPEC_VECTORS "$SPEC_VECTORS"
-bit PRESUBMIT_IFACE "$PRESUBMIT_IFACE"; bit TIMING_CLAIMS "$TIMING_CLAIMS"
+bit PRESUBMIT_IFACE "$PRESUBMIT_IFACE"; bit TIMING_CLAIMS "$TIMING_CLAIMS"; bit RETRIEVED_EXAMPLES "$RETRIEVED_EXAMPLES"
 [ "$SPEC_VECTORS" = 0 ] || VERIFY_SUBMIT=1   # S is V plus the spec cases
 [[ "$SEED_OFFSET" =~ ^[0-9]+$ ]] || die "SEED_OFFSET must be a non-negative integer, got '$SEED_OFFSET'"
 case "$REASONING" in
@@ -99,6 +100,12 @@ if [ "$HARNESS" != apiloop ] && { [ "$PRESUBMIT_IFACE" = 1 ] || [ "$TIMING_CLAIM
   die "PRESUBMIT_IFACE and TIMING_CLAIMS are steps of the apiloop harness: use HARNESS=apiloop"
 fi
 if [ "$PRESUBMIT_IFACE" = 1 ] && [ "$TIMING_CLAIMS" = 1 ]; then die "PRESUBMIT_IFACE and TIMING_CLAIMS are separate arms"; fi
+if [ "$RETRIEVED_EXAMPLES" = 1 ]; then  # M3l: its own arm, on the apiloop, with the pack tag
+  [ "$HARNESS" = apiloop ] || die "RETRIEVED_EXAMPLES is a step of the apiloop harness: use HARNESS=apiloop"
+  { [ "$PRESUBMIT_IFACE" = 0 ] && [ "$TIMING_CLAIMS" = 0 ] && [ "$MUTATION_GATE" = 0 ] && [ "$INTERFACE_CHECK" = 0 ] \
+    && [ "$VERIFY_SUBMIT" = 0 ]; } || die "RETRIEVED_EXAMPLES is its own arm: it cannot take another fixed check"
+  [ -n "$SKILL_PACK" ] || die "RETRIEVED_EXAMPLES needs SKILL_PACK (the private pack's tag, such as v4.0)"
+fi
 if [ "$VERIFY_SUBMIT" = 1 ] && [ "$MUTATION_GATE" = 1 ]; then die "VERIFY_SUBMIT and MUTATION_GATE are separate arms"; fi
 if [ "$VERIFY_SUBMIT" = 1 ] && [ "$SELF_CHECK" = 0 ]; then die "VERIFY_SUBMIT needs SELF_CHECK=1 (it needs a testbench)"; fi
 if [ -n "$SKILLS" ]; then
@@ -110,12 +117,21 @@ bit SKILL_HINT "$SKILL_HINT"
 SKILL_PACK_SHA=""
 if [ -n "$SKILL_PACK" ]; then
   [[ "$SKILL_PACK" =~ ^v[0-9]+\.[0-9]+$ ]] || die "SKILL_PACK must be a pack tag such as v2.0, got '$SKILL_PACK'"
-  [ "$HARNESS" = claudecode ] || die "SKILL_PACK installs Claude Code skills: use HARNESS=claudecode"
+  if [ "$RETRIEVED_EXAMPLES" = 1 ]; then  # M3l: the pack's reference/ layer, not its generic/ skills
+    [ "$HARNESS" = apiloop ] || die "SKILL_PACK with RETRIEVED_EXAMPLES needs HARNESS=apiloop"
+  else
+    [ "$HARNESS" = claudecode ] || die "SKILL_PACK installs Claude Code skills: use HARNESS=claudecode"
+  fi
   [ -z "$SKILLS" ] || die "SKILL_PACK and SKILLS are separate arms"
   [[ "$SKILL_PACK_DIR" =~ ^[A-Za-z0-9._/-]+$ ]] || die "SKILL_PACK_DIR has unexpected characters: '$SKILL_PACK_DIR'"
   # the pinned commit, every file against the manifest, the manifest's own hash: before any model call
-  python3 "$(dirname "$0")/skill_pack.py" verify "$SKILL_PACK_DIR" "$SKILL_PACK" >&2 || die "SKILL_PACK: the pack was refused"
-  SKILL_PACK_SHA=$(sha256sum "$SKILL_PACK_DIR/generic/MANIFEST.sha256" | cut -d' ' -f1)
+  if [ "$RETRIEVED_EXAMPLES" = 1 ]; then
+    python3 "$(dirname "$0")/skill_pack.py" verify-reference "$SKILL_PACK_DIR" "$SKILL_PACK" >&2 || die "SKILL_PACK: the pack was refused"
+    SKILL_PACK_SHA=$(sha256sum "$SKILL_PACK_DIR/reference/MANIFEST.sha256" | cut -d' ' -f1)
+  else
+    python3 "$(dirname "$0")/skill_pack.py" verify "$SKILL_PACK_DIR" "$SKILL_PACK" >&2 || die "SKILL_PACK: the pack was refused"
+    SKILL_PACK_SHA=$(sha256sum "$SKILL_PACK_DIR/generic/MANIFEST.sha256" | cut -d' ' -f1)
+  fi
 elif [ "$SKILL_HINT" = 1 ]; then
   die "SKILL_HINT needs SKILL_PACK"
 fi
@@ -126,6 +142,8 @@ if [ "$CC_PROFILE" != default ]; then
 fi
 if [ "$CC_PROFILE" = bare ] && [ "$CLAUDE_ENDPOINT" != api ]; then die "CC_PROFILE=bare needs an API key: use CLAUDE_ENDPOINT=api"; fi
 CC_PROFILE_FLAG=""; [ "$CC_PROFILE" = default ] || CC_PROFILE_FLAG=1   # collect.py appends the profile columns
+M3L_FLAG=""; [ "$RETRIEVED_EXAMPLES" = 1 ] && M3L_FLAG=1   # collect.py appends M3l's columns
+SKILL_PACK_FLAG=""; { [ -n "$SKILL_PACK" ] && [ -z "$M3L_FLAG" ]; } && SKILL_PACK_FLAG=1   # M3h's columns: not for arm E
 M3K_FLAG=""; { [ "$PRESUBMIT_IFACE" = 1 ] || [ "$TIMING_CLAIMS" = 1 ]; } && M3K_FLAG=1   # collect.py appends M3k's columns
 API_FLAG=""   # M3j: an API-key arm; collect.py appends the token and estimate columns (and the profile columns)
 if [ "$HARNESS" = apiloop ] || { [ "$HARNESS" = claudecode ] && [ "$CLAUDE_ENDPOINT" = api ]; }; then
@@ -179,7 +197,7 @@ run_phase() {
   printf '{"problems": %s, "seeds": %s, "seed_offset": %s, "run_budget_usd": %s, "model": "%s", "reasoning": "%s", "provider_order": "%s"}\n' \
     "$n" "$SEEDS" "$SEED_OFFSET" "$guard" "$MODEL" "$REASONING" "$PROVIDER_ORDER" > "$work.run.json"
   python3 - "$work.run.json" "$HARNESS" "$MEMORY" "$MUTATION_GATE" "$INTERFACE_CHECK" "$VERIFY_SUBMIT" \
-    "$SPEC_VECTORS" "$SKILLS" "$SPLIT" "$SKILL_PACK" "$SKILL_PACK_SHA" "$SKILL_HINT" "$CC_PROFILE" "$DATA_COLLECTION" "$CLAUDE_ENDPOINT" "$WALL_S" "$HARNESS_AGENT_TIMEOUT_S" "$PRESUBMIT_IFACE" "$TIMING_CLAIMS" <<'EOF'
+    "$SPEC_VECTORS" "$SKILLS" "$SPLIT" "$SKILL_PACK" "$SKILL_PACK_SHA" "$SKILL_HINT" "$CC_PROFILE" "$DATA_COLLECTION" "$CLAUDE_ENDPOINT" "$WALL_S" "$HARNESS_AGENT_TIMEOUT_S" "$PRESUBMIT_IFACE" "$TIMING_CLAIMS" "$RETRIEVED_EXAMPLES" <<'EOF'
 import json, sys
 run = json.load(open(sys.argv[1]))
 run.update(harness=sys.argv[2], memory=sys.argv[3])
@@ -203,8 +221,24 @@ if sys.argv[16]:  # a wall cap other than the default, likewise: the agent's cap
     run.update(wall_s=int(sys.argv[16]), harness_agent_timeout_s=int(sys.argv[17]))
 if sys.argv[18] == "1" or sys.argv[19] == "1":  # M3k, likewise
     run.update(presubmit_iface=sys.argv[18] == "1", timing_claims=sys.argv[19] == "1")
+if sys.argv[20] == "1":  # M3l, likewise
+    run.update(retrieved_examples=True)
 json.dump(run, open(sys.argv[1], "w"))
 EOF
+  if [ "$RETRIEVED_EXAMPLES" = 1 ]; then  # M3l: fetch the upstream files once, build the bundle outside work*, record sums
+    bundle_dir=$(cd "$(dirname "$work")" && pwd)/examples_bundle
+    rm -rf "$bundle_dir"; mkdir -p "$bundle_dir"
+    python3 "$repo/tools/fetch_examples.py" "$SKILL_PACK_DIR/reference" "$SKILL_PACK" "$bundle_dir/bundle.json" \
+      --upstream-dir "$bundle_dir/upstream" >&2 || die "RETRIEVED_EXAMPLES: could not build the examples bundle"
+    python3 - "$work.run.json" "$bundle_dir/bundle.json" <<'EOF'
+import hashlib, json, sys
+run = json.load(open(sys.argv[1]))
+b = json.load(open(sys.argv[2]))
+run.update(examples_pack=b["pack_tag"], examples_bundle_sha256=hashlib.sha256(open(sys.argv[2], "rb").read()).hexdigest(),
+           examples_files=b["files"], examples_repo_denied_n=b["repo_denied_n"], examples_kept_n=len(b["entries"]))
+json.dump(run, open(sys.argv[1], "w"), indent=1)
+EOF
+  fi
 
   if [ "$MODEL" = fake ]; then export CVDP_PROVIDER=fake; elif [ "$HARNESS" = claudecode ] && [ "$CLAUDE_ENDPOINT" = openrouter ]; then
     export CVDP_PROVIDER=claude_openrouter
@@ -227,7 +261,11 @@ EOF
     export CVDP_AGENT_MOUNTS="$CVDP_AGENT_MOUNTS;$(cd "$SKILLS" && pwd):$CVDP_SKILLS:ro"
     export CVDP_AGENT_ENV="$CVDP_AGENT_ENV,CVDP_SKILLS"
   fi
-  if [ -n "$SKILL_PACK" ]; then  # M3h: the verified generic/ dir, read-only, at /skill_pack; named only when set
+  if [ "$RETRIEVED_EXAMPLES" = 1 ]; then  # M3l: the bundle (index fields and public code, no pack prose), read-only
+    export CVDP_RETRIEVED_EXAMPLES=1 CVDP_SKILL_PACK="$SKILL_PACK" CVDP_EXAMPLES_BUNDLE=/examples/bundle.json
+    export CVDP_AGENT_MOUNTS="$CVDP_AGENT_MOUNTS;$bundle_dir/bundle.json:/examples/bundle.json:ro"
+    export CVDP_AGENT_ENV="$CVDP_AGENT_ENV,CVDP_RETRIEVED_EXAMPLES,CVDP_SKILL_PACK,CVDP_EXAMPLES_BUNDLE"
+  elif [ -n "$SKILL_PACK" ]; then  # M3h: the verified generic/ dir, read-only, at /skill_pack; named only when set
     export CVDP_SKILL_PACK="$SKILL_PACK" CVDP_SKILL_PACK_DIR=/skill_pack CVDP_SKILL_HINT="$SKILL_HINT"
     export CVDP_AGENT_MOUNTS="$CVDP_AGENT_MOUNTS;$(cd "$SKILL_PACK_DIR/generic" && pwd):/skill_pack:ro"
     export CVDP_AGENT_ENV="$CVDP_AGENT_ENV,CVDP_SKILL_PACK,CVDP_SKILL_PACK_DIR,CVDP_SKILL_HINT"
@@ -299,8 +337,8 @@ collect_phase() {
     seed=${d##*/seed}
     if [ -f "$d/raw_result.json" ]; then
       python3 "$repo/tools/collect.py" "$d" --dataset "$work.problems.jsonl" --runner "${RUNNER:-local}" \
-        --model "$MODEL" --seed "$seed" --reasoning "$REASONING" $hdr ${SKILL_PACK:+--skill-pack} \
-        ${CC_PROFILE_FLAG:+--cc-profile} ${API_FLAG:+--api} ${M3K_FLAG:+--m3k} >> "$work/results.csv"
+        --model "$MODEL" --seed "$seed" --reasoning "$REASONING" $hdr ${SKILL_PACK_FLAG:+--skill-pack} \
+        ${CC_PROFILE_FLAG:+--cc-profile} ${API_FLAG:+--api} ${M3K_FLAG:+--m3k} ${M3L_FLAG:+--m3l} >> "$work/results.csv"
       hdr=--no-header
       collected=$((collected + 1))
     else
