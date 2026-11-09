@@ -1,0 +1,53 @@
+# Packs the run records of scored sweeps into one .tar.gz per milestone and attaches them to a GitHub release, because
+# Actions artifacts are deleted after their retention period. Runs in the cloud: nothing is downloaded locally.
+# Only public uploads are packed: an artifact named sweep-<split>-<run id>, which the sweep workflow uploads after the
+# secret check and the leak guard pass. Smoke artifacts and anything else are refused. The list of runs is
+# docs/reports/m4/run_index.csv (rows with packed = yes).
+name: Pack runs
+
+on:
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: 'Space-separated milestone:run_id pairs, e.g. "m3b:40126423704 m3c:40257040625"'
+        required: true
+      release:
+        description: Release tag and name
+        default: run-records-2026-11
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  pack:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Download, pack and attach
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUNS: ${{ inputs.runs }}
+          RELEASE: ${{ inputs.release }}
+        run: |
+          set -euo pipefail
+          mkdir -p packs
+          for pair in $RUNS; do
+            ms="${pair%%:*}"; id="${pair##*:}"
+            case "$ms" in (*[!a-z0-9_]*|"") echo "::error::bad milestone $ms"; exit 1;; esac
+            case "$id" in (*[!0-9]*|"") echo "::error::bad run id $id"; exit 1;; esac
+            name=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id/artifacts" -q '.artifacts[]|select(.expired==false)|.name' \
+                   | grep -E "^sweep-[a-z0-9_]+-$id\$" | grep -v smoke | head -n 1 || true)
+            if [ -z "$name" ]; then echo "::warning::run $id has no public sweep artifact, skipped"; continue; fi
+            mkdir -p "packs/$ms/$id"
+            gh run download "$id" -n "$name" -D "packs/$ms/$id"
+            echo "$ms $id $name"
+          done
+          for d in packs/*/; do
+            ms=$(basename "$d")
+            (cd "$d" && find . -type f ! -name MANIFEST.sha256 -print0 | sort -z | xargs -0 sha256sum > MANIFEST.sha256)
+            tar -C "$d" -czf "packs/run-records-$ms.tar.gz" .
+            echo "$ms: $(wc -l < "$d/MANIFEST.sha256") files, $(du -h "packs/run-records-$ms.tar.gz" | cut -f1)"
+          done
+          gh release view "$RELEASE" >/dev/null 2>&1 || gh release create "$RELEASE" --title "$RELEASE" \
+            --notes "Run records (CSVs, per-problem reports, agent outputs, exactly as uploaded) of the scored sweeps, one archive per milestone, each with a MANIFEST.sha256. Index: docs/reports/m4/run_index.csv."
+          gh release upload "$RELEASE" packs/run-records-*.tar.gz --clobber
