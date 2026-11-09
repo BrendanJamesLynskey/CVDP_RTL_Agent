@@ -25,7 +25,8 @@ is easy or hard. Data in [`docs/problems.json`](docs/problems.json), built by
 [`docs/reports/m4/categories.md`](docs/reports/m4/categories.md) gives failures by task category (script
 [`categories.py`](docs/reports/m4/categories.py), cells in [`categories_groups.csv`](docs/reports/m4/categories_groups.csv)): no category is uniformly hard,
 held-out RTL completion is weakest, and the free split has no verification-writing categories, so it cannot test the CVDP paper's
-verification-versus-RTL finding. Run records: [`docs/reports/m4/run_index.csv`](docs/reports/m4/run_index.csv) lists every scored run with its
+verification-versus-RTL finding. Which problems were attempted, and which were left out and why: [`docs/reports/m4/coverage.md`](docs/reports/m4/coverage.md) (script
+[`coverage.py`](docs/reports/m4/coverage.py), counts and ids in [`coverage.json`](docs/reports/m4/coverage.json)). Run records: [`docs/reports/m4/run_index.csv`](docs/reports/m4/run_index.csv) lists every scored run with its
 artifact and expiry date; the [`pack_runs`](.github/workflows/pack_runs.yml) workflow (list in
 [`pack_runs_input.txt`](docs/reports/m4/pack_runs_input.txt)) packs them into one archive per milestone on the release
 [`run-records-2026-11`](https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent/releases/tag/run-records-2026-11) (created when the workflow is dispatched from `main`).
@@ -214,8 +215,14 @@ The free (open-source tools only) agentic splits of CVDP 1.1.0, frozen by hash:
 | `agentic_code_generation_no_commercial` | `2007f4311ed731a9` | 92 | spec to RTL (cid003) 34; RTL modification (cid004) 25; spec to RTL with module reuse (cid005) 22; bug fixing (cid016) 11 |
 | `agentic_heavy_code_generation_no_commercial` | `809916fa3248a4b2` | 75 | cid003 6; cid004 6; cid005 7; bug fixing in large real repositories (cid016) 56 |
 
+Only the agentic 92 and, in M3g to M3k (3 of them again in M3l), a held-out 100 drawn from the free non-agentic file were scored; the free
+non-agentic file also holds code improvement (cid007, 40 problems) and bug fixing (cid016, 35), and the free comprehension
+file holds 123 correspondence and question-answering problems, none of which was run. The agentic heavy split was run only with a null agent.
+[`docs/reports/m4/coverage.md`](docs/reports/m4/coverage.md) lists every file of the release, what was attempted and the
+reason for each omission.
+
 The verification-writing categories (testbench stimulus, checkers and assertions; cid012–014) are all in the
-commercial split, which needs Cadence Xcelium. Two things stand in for them:
+commercial files, which need Cadence Xcelium. Two things stand in for them:
 
 - **The agent's own check-before-submit loop.** Whether it pays for itself is the main ablation.
 - **An open verification track on AMBA IP (M5).** Permissively licensed AXI4-Lite, AXI-Stream and APB blocks with

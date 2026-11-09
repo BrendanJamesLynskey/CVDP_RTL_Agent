@@ -13,7 +13,8 @@ Rules:
 - Pilots (M1's 10, reasoning_pick, M2a), smoke runs, M3b's excluded-problem runs and M3l's 13-problem subset are
   not groups. Fable's wall-cap reruns are a 30-problem top-up of the Claude Code run and are left out.
 - Categories: cid002 RTL completion, cid003 spec to RTL, cid004 RTL modification, cid005 spec to RTL with module
-  reuse, cid016 bug fixing. These are the only ones in the free split.
+  reuse, cid016 bug fixing. These are the ones we ran. The free split also holds cid007 and the comprehension
+  categories, which were not run (docs/reports/m4/coverage.md says which problems were attempted and why).
 """
 import csv, glob, json, math, os, sys, collections
 
@@ -152,6 +153,13 @@ def fmt(c):
     return '%d/%d = %.1f%% [%.1f, %.1f]' % (c['k'], c['n'], 100 * c['k'] / c['n'], 100 * c['lo'], 100 * c['hi'])
 
 
+HELDOUT_NOTE = (
+    "Only two models ran on the held-out 100: `gpt-6-luna` in our LangGraph agent (M3g) and Haiku 5.5, in Claude Code and "
+    "in a plain API loop of our own (M3h to M3k); the site table shows each model's base arm. Opus 5.5, Sonnet 5.5 and "
+    "Fable 5.1 were not run on the held-out 100, so they have no row here. The reports record no reason for that. They do "
+    "record that Claude Code runs draw on the Max plan's weekly limit (`claude_code_ladder.md`: about 25 points for the Opus, "
+    "Sonnet and Haiku sweeps on 86 problems, Fable metered separately), and M3g lists Opus with the pack as a possible later "
+    "arm, not run.")
 HEAD = """# M4: failures by task category
 
 **Status: done (2026-11-09).** Analysis only: no sweep, no model call. Every number is computed by
@@ -172,8 +180,8 @@ HEAD = """# M4: failures by task category
   LangGraph agent, the agent's own testbench had passed in 22 of 49 failed bug-fixing rows. In spec to RTL, the
   hidden build failed on an interface mismatch in 28 of 119 failed rows. Everywhere else the biggest label is
   that the agent never ran a testbench.
-- **This split cannot test the paper's central category finding.** It has no verification-writing categories
-  (testbench stimulus, checkers, assertions: cid012 to cid014). See "What is missing".
+- **This split cannot test the paper's central category finding.** The free files have no verification-writing
+  categories (testbench stimulus, checkers, assertions: cid012 to cid014). See "What is missing".
 
 ## Method
 
@@ -189,9 +197,10 @@ HEAD = """# M4: failures by task category
 - **Cells.** passed/n = rate [Wilson 95% interval]. n counts problem-runs, so a three-seed group has three times
   the problems. Seeds of one problem are not independent, so the interval for a pooled cell is narrower than the
   truth.
-- **Categories in the free split.** cid002 RTL completion (held-out only), cid003 spec to RTL, cid004 RTL
+- **Categories we ran.** cid002 RTL completion (held-out only), cid003 spec to RTL, cid004 RTL
   modification, cid005 spec to RTL with module reuse (agentic only), cid016 bug fixing (agentic only). The
-  paper writes these as cid02, cid03 and so on.
+  free split also holds code improvement (cid007) and the comprehension categories, which we did not run: see
+  `coverage.md`. The paper writes these as cid02, cid03 and so on.
 - **Labels.** `failure_label` from `tools/taxonomy.py`: deterministic rules on the logs, no model reads anything.
   M2 CSVs predate the labels, so label tables use the groups from M3 on.
 
@@ -201,11 +210,17 @@ HEAD = """# M4: failures by task category
 TAIL = """
 ## What is missing
 
-The free split of the benchmark contains **no verification-writing categories**: testbench stimulus generation
-(cid012), testbench checker generation (cid013) and assertion generation (cid014) are not in it, nor are code
-improvement (cid007), the correspondence tasks or question answering. Our five categories are RTL completion,
-spec to RTL, RTL modification, module reuse and bug fixing. So nothing here can confirm or contradict the paper's
-finding that verification categories are harder than RTL categories.
+The free files of the benchmark contain **no verification-writing categories**: testbench stimulus generation
+(cid012), testbench checker generation (cid013) and assertion generation (cid014) are in the commercial files
+only, which need Cadence Xcelium (`coverage.md` lists every file).
+
+Code improvement (cid007) **is** in the free split: the non-agentic code-generation file has 40 such problems, and
+the correspondence and question-answering categories (cid006, cid008 to cid010) are in the free comprehension
+file. We ran none of these. `coverage.md` gives, for every problem file, what was attempted and why the rest was
+left out.
+
+Our five categories are RTL completion, spec to RTL, RTL modification, module reuse and bug fixing. So nothing
+here can confirm or contradict the paper's finding that verification categories are harder than RTL categories.
 
 ## The paper, beside ours
 
@@ -291,6 +306,11 @@ def main():
                 continue
             o.append('| %s | %s | %s | ' % (d['ms'], d['model'], d['arm']) + ' | '.join(fmt(d['cells'].get(c, dict(n=0))) for c in cats) + ' | ' + fmt(d['all']) + ' |')
         o.append('')
+        if st == 'dev86':
+            o.append('The Claude Code row for `claude-opus-5-5` (63/86 = 73.3%) is the Claude Code figure the site headline gives; '
+                     'the same model in our LangGraph agent is the M3e row (62/86 = 72.1%).\n')
+        if st == 'heldout100':
+            o.append(HELDOUT_NOTE + '\n')
     o.append('### Failed rows by label and category (reference groups)\n')
     for key in REFS:
         d = next(x for x in data['groups'] if x['key'] == key)
