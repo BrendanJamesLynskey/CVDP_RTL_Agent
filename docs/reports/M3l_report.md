@@ -26,7 +26,7 @@ ran to `completed/success`. Console cost reading: TODO (Console after).
   anything alone (E 6/15, R 3/15, all of the difference on one problem).
 - **No win is claimed.** Three problems moved by 2 or more runs of 5, one of them (ethernet_mii_0006) the wrong way, and
   R's own pass counts are spread across 0 to 5 on several problems.
-- **Cost:** estimated **$0.92 for E and $0.94 for R** (`api_cost_estimate_usd`, list price), $1.85 for the four dispatches.
+- **Cost:** estimated **$0.92 for E and $0.93 for R** (`api_cost_estimate_usd`, list price), $1.85 for the four dispatches.
   Examples cost nothing measurable: E used 7% fewer prompt tokens than R (13.46 M against 14.47 M) because it needed
   slightly fewer turns. Console reading: TODO (Console after).
 - **Two E rows are `llm_error`** (`hdbn_codec_0001`, seeds 3 and 4, `agent_status=completed_no_patch`). Under the

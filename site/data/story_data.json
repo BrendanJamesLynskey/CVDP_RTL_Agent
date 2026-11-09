@@ -1874,7 +1874,33 @@
    "k_usd_dT": "1.17",
    "k_usd_dK": "0.84",
    "k_usd_scored": "5.75",
-   "k_usd_r": "1.44"
+   "k_usd_r": "1.44",
+   "l_e": "+6.2",
+   "l_ci": "[\u22123.8, +16.2]",
+   "l_p": "0.375",
+   "l_bws": "4 / 1 / 11",
+   "l_e15": "+6.7",
+   "l_ci15": "[\u22124.0, +18.7]",
+   "l_k_E": "58",
+   "l_n_E": "80",
+   "l_rate_E": "72.5",
+   "l_k_R": "53",
+   "l_n_R": "80",
+   "l_rate_R": "66.2",
+   "l_cov_ho": "3",
+   "l_cov_dev": "13",
+   "l_cov_ho_pct": "3",
+   "l_cov_dev_pct": "15",
+   "l_kept": "37",
+   "l_pool": "86",
+   "l_removed": "49",
+   "l_ptok_E": "13.46",
+   "l_ptok_R": "14.47",
+   "l_usd_E": "0.92",
+   "l_usd_R": "0.93",
+   "l_usd_scored": "1.85",
+   "l_same": "7",
+   "l_llm_error": "2"
   }
  },
  "m3b_confirm": {
@@ -3854,5 +3880,239 @@
   },
   "llm_error": 3,
   "claims_med": 21.0
+ },
+ "m3l": {
+  "effect": {
+   "finding": "no detectable effect",
+   "eff": 6.2,
+   "lo": -3.8,
+   "hi": 16.2,
+   "better": 4,
+   "worse": 1,
+   "same": 11,
+   "p": 0.375
+  },
+  "effect15": {
+   "finding": "no detectable effect",
+   "eff": 6.7,
+   "lo": -4.0,
+   "hi": 18.7,
+   "better": 4,
+   "worse": 1,
+   "same": 10,
+   "p": 0.375
+  },
+  "n": 16,
+  "arms": {
+   "E": {
+    "k": 58,
+    "n": 80,
+    "rate": 72.5
+   },
+   "R": {
+    "k": 53,
+    "n": 80,
+    "rate": 66.2
+   }
+  },
+  "per_problem": [
+   {
+    "id": "cvdp_agentic_AES_encryption_decryption_0003",
+    "set": "dev",
+    "R": 5,
+    "E": 5,
+    "n": 5,
+    "ex": [
+     "ot-aes-shift-rows"
+    ]
+   },
+   {
+    "id": "cvdp_agentic_AES_encryption_decryption_0005",
+    "set": "dev",
+    "R": 5,
+    "E": 5,
+    "n": 5,
+    "ex": [
+     "ot-aes-mix-columns",
+     "ot-aes-shift-rows"
+    ]
+   },
+   {
+    "id": "cvdp_agentic_async_fifo_compute_ram_application_0001",
+    "set": "dev",
+    "R": 3,
+    "E": 5,
+    "n": 5,
+    "ex": [
+     "ot-prim-fifo-async-gray-pointers"
+    ]
+   },
+   {
+    "id": "cvdp_agentic_async_fifo_compute_ram_application_0006",
+    "set": "dev",
+    "R": 5,
+    "E": 5,
+    "n": 5,
+    "ex": [
+     "ot-prim-fifo-async-gray-pointers"
+    ]
+   },
+   {
+    "id": "cvdp_agentic_async_filo_0001",
+    "set": "dev",
+    "R": 5,
+    "E": 5,
+    "n": 5,
+    "ex": [
+     "ot-prim-fifo-async-gray-pointers"
+    ]
+   },
+   {
+    "id": "cvdp_agentic_axi4lite_to_pcie_config_0003",
+    "set": "dev",
+    "R": 0,
+    "E": 1,
+    "n": 5,
+    "ex": [
+     "ot-prim-subreg"
+    ]
+   },
+   {
+    "id": "cvdp_agentic_axis_to_uart_0004",
+    "set": "dev",
+    "R": 5,
+    "E": 5,
+    "n": 5,
+    "ex": [
+     "ot-uart-rx"
+    ]
+   },
+   {
+    "id": "cvdp_agentic_byte_enable_ram_0002",
+    "set": "dev",
+    "R": 5,
+    "E": 5,
+    "n": 5,
+    "ex": [
+     "ot-prim-ram-1p"
+    ]
+   },
+   {
+    "id": "cvdp_agentic_dual_port_memory_0004",
+    "set": "dev",
+    "R": 4,
+    "E": 5,
+    "n": 5,
+    "ex": [
+     "ot-prim-ram-1p"
+    ]
+   },
+   {
+    "id": "cvdp_agentic_ethernet_mii_0004",
+    "set": "dev",
+    "R": 4,
+    "E": 4,
+    "n": 5,
+    "ex": [
+     "ot-prim-fifo-async-gray-pointers"
+    ]
+   },
+   {
+    "id": "cvdp_agentic_ethernet_mii_0006",
+    "set": "dev",
+    "R": 4,
+    "E": 2,
+    "n": 5,
+    "ex": [
+     "ot-prim-ram-1p"
+    ]
+   },
+   {
+    "id": "cvdp_agentic_hdbn_codec_0001",
+    "set": "dev",
+    "R": 0,
+    "E": 0,
+    "n": 5,
+    "ex": [
+     "ot-prim-pulse-sync"
+    ]
+   },
+   {
+    "id": "cvdp_agentic_low_power_channel_0001",
+    "set": "dev",
+    "R": 5,
+    "E": 5,
+    "n": 5,
+    "ex": [
+     "opennic-request-queue",
+     "ot-prim-clock-gating"
+    ]
+   },
+   {
+    "id": "cvdp_copilot_MSHR_0001",
+    "set": "held-out",
+    "R": 0,
+    "E": 0,
+    "n": 5,
+    "ex": [
+     "ot-prim-ram-1p"
+    ]
+   },
+   {
+    "id": "cvdp_copilot_apb_dsp_unit_0001",
+    "set": "held-out",
+    "R": 0,
+    "E": 3,
+    "n": 5,
+    "ex": [
+     "caliptra-ahb-to-reg-adapter"
+    ]
+   },
+   {
+    "id": "cvdp_copilot_axi_register_0001",
+    "set": "held-out",
+    "R": 3,
+    "E": 3,
+    "n": 5,
+    "ex": [
+     "ot-prim-subreg"
+    ]
+   }
+  ],
+  "cov": {
+   "heldout100": [
+    3,
+    100
+   ],
+   "dev86": [
+    13,
+    86
+   ]
+  },
+  "pool_kept": 37,
+  "pool": 86,
+  "ptok_M": {
+   "E": 13.46,
+   "R": 14.47
+  },
+  "usd": {
+   "E": 0.92,
+   "R": 0.93
+  },
+  "llm_error": 2,
+  "overlap_withheld": 0,
+  "same_5_5": 7,
+  "split": {
+   "held-out": {
+    "R": 3,
+    "E": 6,
+    "n": 15
+   },
+   "dev": {
+    "R": 50,
+    "E": 52,
+    "n": 65
+   }
+  }
  }
 }
