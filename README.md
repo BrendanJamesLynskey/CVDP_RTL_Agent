@@ -215,7 +215,7 @@ The free (open-source tools only) agentic splits of CVDP 1.1.0, frozen by hash:
 | `agentic_code_generation_no_commercial` | `2007f4311ed731a9` | 92 | spec to RTL (cid003) 34; RTL modification (cid004) 25; spec to RTL with module reuse (cid005) 22; bug fixing (cid016) 11 |
 | `agentic_heavy_code_generation_no_commercial` | `809916fa3248a4b2` | 75 | cid003 6; cid004 6; cid005 7; bug fixing in large real repositories (cid016) 56 |
 
-Only the agentic 92 and, in M3g to M3k, a held-out 100 drawn from the free non-agentic file were scored; the free
+Only the agentic 92 and, in M3g to M3k (3 of them again in M3l), a held-out 100 drawn from the free non-agentic file were scored; the free
 non-agentic file also holds code improvement (cid007, 40 problems) and bug fixing (cid016, 35), and the free comprehension
 file holds 123 correspondence and question-answering problems, none of which was run. The agentic heavy split was run only with a null agent.
 [`docs/reports/m4/coverage.md`](docs/reports/m4/coverage.md) lists every file of the release, what was attempted and the

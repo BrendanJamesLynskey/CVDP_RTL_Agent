@@ -175,7 +175,7 @@ def table_rows(c):
                    "the design tree is a git workspace volume, not a bind mount, so no agent run was tried; 3 i2c problems produced no test output under the null agent (docs/reports/M1_report.md, Known gaps)"},
         {"file": "nonagentic_code_generation_no_commercial", "part": "the held-out 100", "n": n("copilot_heldout100"),
          "by_category": p["copilot_heldout100"]["by_category"], "status": "attempted",
-         "where": "M3g to M3k (tools/m3g_heldout_ids.txt; counted here, never named on the site)", "reason": ""},
+         "where": "M3g to M3k, and 3 of them in M3l (tools/m3g_heldout_ids.txt; counted here, never named on the site)", "reason": ""},
         {"file": "nonagentic_code_generation_no_commercial", "part": "3 smoke problems", "n": n("copilot_smoke3"),
          "by_category": p["copilot_smoke3"]["by_category"], "status": "smoke only",
          "where": "M3g smoke runs, not scored (tools/m3g_smoke_ids.txt)", "reason": "kept apart from the 100 on purpose"},
