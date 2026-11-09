@@ -187,3 +187,23 @@ Claude Haiku 5.5 on this loop, not that retrieved examples never help.
 `m3g_smoke` problems (no example) and $0.0396 for 3 dev problems with examples. Expected cost per scored dispatch: **about
 $0.5 for a held-out dispatch, $0.85 to $0.9 for the 86**; guards at about 3x: **`run_budget_usd` 1.6 for each held-out
 dispatch, 2.6 for the 86**. No constant or rule above was changed.
+
+**2026-11-09 01:30 London, planner amendment with the owner's agreement, before any scored dispatch: test where the
+examples are shown.** The dry run shows an example on only 3 of the 100 held-out problems and 13 of the 86 dev problems
+(see "Known limitation"). The held-out comparison above cannot detect an effect, so it is **replaced** by the
+following. Nothing in the retrieval rule, its constants, the lead-in or the deny-lists changes.
+
+- **Set:** the 16 problems that receive an example under the frozen rule: the 3 held-out problems
+  (`tools/m3l_fires_heldout_ids.txt`) and the 13 dev problems (`tools/m3l_fires_dev_ids.txt`), taken straight from
+  `retrieval.csv`. The dev constants were chosen from coverage counts only, never from pass results; the set is still
+  partly the development set, and the report says so.
+- **Arms and runs:** E and a **fresh R** (`fixed_checks=none`, same settings) run in parallel, 5 seeds each
+  (`seeds=5`, `seed_offset=0`), one dispatch per arm per split (4 dispatches), `threads=2`. Guards: `run_budget_usd`
+  0.6 for each held-out dispatch, 2.6 for each dev dispatch. M3j's R runs are not used in the primary.
+- **Primary (the only one):** E − R over the 16 problems, paired by problem (each problem's pass rate over its 5 runs
+  per arm), with `tools/ablate.py`: the mean difference, a paired bootstrap 95% interval (2,000 resamples) and the exact
+  two-sided sign test. Decision rule as above. With 16 problems only a large effect (about 15 points or more) can show;
+  a null here means "no large effect where examples are shown".
+- **Descriptive:** coverage itself (3% of held-out, 15% of dev problems get an example after decontamination) is
+  reported as a main finding, with the deny-list counts; per-problem E and R pass counts; tokens; turns.
+- `rate_limited` or `llm_error` rows count as not run and are reported; no reruns.
