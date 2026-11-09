@@ -1087,6 +1087,35 @@ l_new["l_same"] = str(m3l["same_5_5"]); l_new["l_llm_error"] = str(m3l["llm_erro
 l_clash = sorted(set(l_new) & l_before)
 prose.update(l_new)
 
+# ---- M4: pass rate by category (docs/reports/m4/categories.py writes categories_data.json) ----
+cat_src = json.load(open(os.path.join(REP, "m4", "categories_data.json")))
+CAT_CHART = [("dev86", "m3b_A", "gpt-6-luna, our LangGraph agent"), ("dev86", "m3e_opus", "Opus 5.5, our LangGraph agent"),
+             ("dev86", "cc_haiku", "Haiku 5.5, Claude Code"), ("dev86", "cc_sonnet", "Sonnet 5.5, Claude Code"),
+             ("dev86", "cc_opus", "Opus 5.5, Claude Code"), ("dev86", "cc_fable", "Fable 5.1, Claude Code"),
+             ("heldout100", "m3g_ho_A", "gpt-6-luna, our LangGraph agent"), ("heldout100", "m3h_ho_A", "Haiku 5.5, Claude Code")]
+cat_by_key = {g["key"]: g for g in cat_src["groups"]}
+cat = {"names": cat_src["cats"], "sets": {"dev86": [], "heldout100": []}, "never": {}}
+for st, key, lab in CAT_CHART:
+    g = cat_by_key[key]
+    cat["sets"][st].append({"label": lab, "ms": g["ms"], "arm": g["arm"], "cells": {c: {"k": v["k"], "n": v["n"], "lo": round(100 * v["lo"], 1), "hi": round(100 * v["hi"], 1)} for c, v in g["cells"].items()}})
+for st in ("dev86", "heldout100"):
+    cat["never"][st] = {c: {k: v[k] for k in ("problems", "never", "limited")} for c, v in cat_src["never"][st].items()}
+cat_before = set(prose)
+def _tot(st, k): return sum(v[k] for v in cat["never"][st].values())
+def _rng(st, c):
+    r = [100 * g["cells"][c]["k"] / g["cells"][c]["n"] for g in cat_src["groups"] if g["set"] == st and c in g["cells"]]
+    return f"{min(r):.0f}", f"{max(r):.0f}"
+cat_new = {
+    "cat_dev_never": str(_tot("dev86", "never")), "cat_dev_never_lim": str(_tot("dev86", "limited")),
+    "cat_ho_never": str(_tot("heldout100", "never")), "cat_ho_c2_never": str(cat["never"]["heldout100"]["cid002"]["never"]),
+    "cat_ho_c2_n": str(cat["never"]["heldout100"]["cid002"]["problems"]),
+    "cat_ho_c2_lo": _rng("heldout100", "cid002")[0], "cat_ho_c2_hi": _rng("heldout100", "cid002")[1],
+    "cat_ho_c3_lo": _rng("heldout100", "cid003")[0], "cat_ho_c3_hi": _rng("heldout100", "cid003")[1],
+    "cat_n_groups": str(len(cat_src["groups"])),
+}
+cat_clash = sorted(set(cat_new) & cat_before)
+prose.update(cat_new)
+
 m3b["prose"] = prose
 
 data = {
@@ -1106,7 +1135,7 @@ data = {
     "external": ext,
     "m3b": m3b,
     "m3b_confirm": m3b_conf, "m3c": m3c, "ladder": claude_ladder,
-    "unsolved": unsolved, "m3d": m3d, "m3e": m3e, "m3g": m3g, "m3h": m3h, "m3i": m3i, "m3j": m3j, "m3k": m3k, "m3l": m3l,
+    "unsolved": unsolved, "m3d": m3d, "m3e": m3e, "m3g": m3g, "m3h": m3h, "m3i": m3i, "m3j": m3j, "m3k": m3k, "m3l": m3l, "cat": cat,
 }
 
 # ---- checks against the reports ----
@@ -1513,6 +1542,13 @@ check(f"estimated **${prose['l_usd_E']} for E and ${prose['l_usd_R']} for R**" i
 check(f"{prose['l_ptok_E']} M against {prose['l_ptok_R']} M" in rep3l_1 and m3l["llm_error"] == 2 and m3l["overlap_withheld"] == 0, "M3l tokens, llm_error and overlap in report")
 check(f"+6.7 [−4.0, +18.7] (4 / 1 / 10" in rep3l_1 and (prose["l_e15"], prose["l_ci15"]) == ("+6.7", "[−4.0, +18.7]"), "M3l 15-problem sensitivity in report")
 check("**Status: DONE (2026-11-09). Decision: no detectable effect" in rep3l, "M3l status in report")
+# M4 (docs/reports/m4/categories.md)
+rep4 = open(os.path.join(REP, "m4", "categories.md")).read()
+check(not cat_clash, f"M4 prose keys clash with existing ones: {cat_clash}")
+check(f"| **All** | 86 | {prose['cat_dev_never']} | {prose['cat_dev_never_lim']} |" in rep4
+      and f"| cid002 RTL completion | {prose['cat_ho_c2_n']} | {prose['cat_ho_c2_never']} | 0 |" in rep4, "M4 never-solved counts in the categories report")
+check(f"{prose['cat_ho_c2_lo']}% to {prose['cat_ho_c2_hi']}%\n  against {prose['cat_ho_c3_lo']}% to {prose['cat_ho_c3_hi']}%" in rep4, "M4 held-out category ranges in the categories report")
+check(all(cat_by_key[k]["cells"] for _, k, _ in CAT_CHART) and sum(c["n"] for c in cat_by_key["cc_opus"]["cells"].values()) == 86, "M4 chart groups")
 check(78.5 < spend_all < 79.5, f"spend M1 to M3g {spend_all}")
 check(prose["proc_null"] == prose["proc_n"] == "11" and prose["proc_det"] == "0", f"process changes null {prose['proc_null']} of {prose['proc_n']}")
 

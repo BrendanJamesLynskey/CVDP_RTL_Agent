@@ -43,7 +43,7 @@ STORY = [
 DATA = [os.path.join("docs", "problems.json")]
 # short names for the breadcrumb's "on this page" links
 SHORT = {"intro": "One failure, replayed", "how": "How it works", "milestones": "Milestones", "m2": "M2", "m3": "M3", "m3b": "M3b",
-         "m3c": "M3c", "ladder": "Claude Code ladder", "m3d": "M3d", "m3e": "M3e", "m3g": "M3g", "m3h": "M3h", "m3i": "M3i", "m3j": "M3j", "m3k": "M3k", "m3l": "M3l", "cc-api": "Stripping it down", "cc-api-loop": "A plain API loop", "cc-api-use": "Which to use", "fail": "Why it fails",
+         "m3c": "M3c", "ladder": "Claude Code ladder", "m3d": "M3d", "m3e": "M3e", "m3g": "M3g", "m3h": "M3h", "m3i": "M3i", "m3j": "M3j", "m3k": "M3k", "m3l": "M3l", "closing": "What CVDP found", "cc-api": "Stripping it down", "cc-api-loop": "A plain API loop", "cc-api-use": "Which to use", "fail": "Why it fails",
          "dv": "Verification view", "compare": "Comparison", "validity": "Validity", "next": "What's next", "faq": "FAQ",
          "glossary": "Glossary"}
 # ids the story's script builds at run time, by page

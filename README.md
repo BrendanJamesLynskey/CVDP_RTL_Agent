@@ -21,7 +21,16 @@ is easy or hard. Data in [`docs/problems.json`](docs/problems.json), built by
 [`site/data/problems.py`](site/data/problems.py) from the committed CSVs; hand-written notes in
 [`site/data/problem_notes.json`](site/data/problem_notes.json).
 
-**Status:** milestone 2 done ([`docs/reports/M2_report.md`](docs/reports/M2_report.md), 23 October 2026). On all
+**Status: complete (M4, 9 November 2026).** The study is finished: milestones M0 to M4 are done, M5 and a third-party leaderboard submission are not planned. The write-up
+[`docs/reports/m4/categories.md`](docs/reports/m4/categories.md) gives failures by task category (script
+[`categories.py`](docs/reports/m4/categories.py), cells in [`categories_groups.csv`](docs/reports/m4/categories_groups.csv)): no category is uniformly hard,
+held-out RTL completion is weakest, and the free split has no verification-writing categories, so it cannot test the CVDP paper's
+verification-versus-RTL finding. Run records: [`docs/reports/m4/run_index.csv`](docs/reports/m4/run_index.csv) lists every scored run with its
+artifact and expiry date; the [`pack_runs`](.github/workflows/pack_runs.yml) workflow (list in
+[`pack_runs_input.txt`](docs/reports/m4/pack_runs_input.txt)) packs them into one archive per milestone on the release
+[`run-records-2026-11`](https://github.com/BrendanJamesLynskey/CVDP_RTL_Agent/releases/tag/run-records-2026-11) (created when the workflow is dispatched from `main`).
+
+**Earlier status:** milestone 2 done ([`docs/reports/M2_report.md`](docs/reports/M2_report.md), 23 October 2026). On all
 92 problems of the free agentic split, run once on x86-64 and once on Arm64: `anthropic/claude-haiku-5.5`
 (reasoning low) passed 52 and 56, `openai/gpt-6-luna` (default) 52 and 53, and the open-weights
 `deepseek/deepseek-v4.1-flash-1017` (off) 43 and 41. Haiku and Luna tie on pass rate; Luna costs half as much per
@@ -550,8 +559,8 @@ empty (an old ledger and the harness's reuse of `raw_result.json` would make the
 | M3j | Lean Claude Code against a plain Messages API loop, and what `--bare` changes, billed to the API key, same model |
 | M3k | A pre-submit interface check and a timing-claims first turn on the plain API loop, same model |
 | M3l | Retrieved real-RTL modules as examples in the first user message, on the plain API loop, same model |
-| M4 | Write-up, logs packed for the Si2 LBC-bench leaderboard |
-| M5 | Open AMBA verification track: test plan, cocotb testbench with coverage, SVA with SymbiYosys; scored by seeded-bug kill rate and false alarms |
+| M4 | Done: write-up (failures by task category, the closing story section) and the run records packed per milestone for release. No third-party leaderboard submission |
+| M5 | Not planned. (Was: open AMBA verification track, scored by seeded-bug kill rate and false alarms) |
 
 ## Licence
 
