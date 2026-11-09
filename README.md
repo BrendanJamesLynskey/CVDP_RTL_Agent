@@ -169,7 +169,8 @@ deterministic interface, file-name and compile check when the model says it is f
 `fixed_checks=timing_claims` (arm T: one extra first turn listing the task's cycle-level claims). The apiloop's guard
 now prices fresh input, cache writes and cache reads apart. Result: T − R = +0.3 points [−4.7, +5.3] (primary, no detectable effect); K − R = +1.3 [−0.7, +3.7] (exploratory, no detectable effect, and none of the problems that differ is one where the check fired); T used 61% more input tokens; about $5.75 of API credit.
 
-**M3l** (built and pre-registered, no scored sweep yet; report skeleton [`docs/reports/M3l_report.md`](docs/reports/M3l_report.md), pre-registered in
+**M3l** (done, no detectable effect; report [`docs/reports/M3l_report.md`](docs/reports/M3l_report.md), analysis
+[`docs/reports/m3l/analyze.sh`](docs/reports/m3l/analyze.sh), pre-registered in
 [`docs/reports/m3l/preregistration.md`](docs/reports/m3l/preregistration.md), retriever dry run
 [`docs/reports/m3l/dry_run.md`](docs/reports/m3l/dry_run.md), smoke runs [`docs/reports/m3l/smoke.md`](docs/reports/m3l/smoke.md), made with
 [`tools/m3l_dry_run.py`](tools/m3l_dry_run.py) and [`tools/fetch_examples.py`](tools/fetch_examples.py)): real, well-reviewed modules shown as
@@ -177,7 +178,7 @@ examples instead of written advice. Sweep input `fixed_checks=retrieved_examples
 [`agent/cvdp_agent/examples.py`](agent/cvdp_agent/examples.py), apiloop only): the one or two closest modules of the private
 pack's reference layer, fetched from the public repositories at pinned commits, are appended to the first user message;
 the benchmark's own source projects are never shown (repo deny-list), nor a module that overlaps the problem's visible files;
-the leak guard also covers the pack's prose.
+the leak guard also covers the pack's prose. Result: after the deny-lists 37 of 86 entries remain and an example reaches 3% of held-out and 15% of dev problems; on the 16 problems that get one, E − R = +6.2 points [−3.8, +16.2] (4 / 1 / 11, p = 0.375), no detectable effect; about $1.85 of API credit (estimate).
 
 **M2a** (merged, [`docs/reports/M2a_report.md`](docs/reports/M2a_report.md)): reasoning limits, a retry on empty
 replies and unreadable decisions, and seeds. On the same 10 problems on Arm64, DeepSeek at `reasoning=off` passed
