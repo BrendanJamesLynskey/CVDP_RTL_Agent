@@ -791,7 +791,9 @@ l_eff = parse_sections(os.path.join(M3L, "paired16.md"))["E-R"]
 l_eff15 = parse_sections(os.path.join(M3L, "paired15.md"))["E-R"]
 l_d = [l_rate["E"][i] - l_rate["R"][i] for i in L_IDS16]
 l_chk = (round(100 * sum(l_d) / len(l_d), 1), sum(1 for d in l_d if d > 0), sum(1 for d in l_d if d < 0), sum(1 for d in l_d if d == 0))
-l_pp = [{"id": i, "set": "held-out" if i in set(L_HO_IDS) else "dev",
+# held-out problems are never named on the site (tests/test_site.py): they show as "held-out problem A/B/C"
+l_ho_label = {i: "held-out problem " + "ABCDEFGH"[k] for k, i in enumerate(sorted(L_HO_IDS))}
+l_pp = [{"id": l_ho_label.get(i, i), "set": "held-out" if i in set(L_HO_IDS) else "dev",
          "R": sum(int(x["pass"]) for x in l_rows["R"] if x["id"] == i), "E": sum(int(x["pass"]) for x in l_rows["E"] if x["id"] == i),
          "n": sum(1 for x in l_rows["E"] if x["id"] == i),
          "ex": sorted({e for x in l_rows["E"] if x["id"] == i for e in x["examples_ids"].split(";") if e})} for i in sorted(L_IDS16)]

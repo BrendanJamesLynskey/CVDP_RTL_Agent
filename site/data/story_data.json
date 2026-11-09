@@ -4049,7 +4049,7 @@
     ]
    },
    {
-    "id": "cvdp_copilot_MSHR_0001",
+    "id": "held-out problem A",
     "set": "held-out",
     "R": 0,
     "E": 0,
@@ -4059,7 +4059,7 @@
     ]
    },
    {
-    "id": "cvdp_copilot_apb_dsp_unit_0001",
+    "id": "held-out problem B",
     "set": "held-out",
     "R": 0,
     "E": 3,
@@ -4069,7 +4069,7 @@
     ]
    },
    {
-    "id": "cvdp_copilot_axi_register_0001",
+    "id": "held-out problem C",
     "set": "held-out",
     "R": 3,
     "E": 3,
