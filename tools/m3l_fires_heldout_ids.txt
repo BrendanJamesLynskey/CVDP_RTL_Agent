@@ -1,0 +1,3 @@
+cvdp_copilot_MSHR_0001
+cvdp_copilot_apb_dsp_unit_0001
+cvdp_copilot_axi_register_0001
