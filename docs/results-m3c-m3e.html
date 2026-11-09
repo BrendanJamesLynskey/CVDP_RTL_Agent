@@ -707,7 +707,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
     </div>
     <h3>Each of the 16 problems</h3>
     <!-- src: docs/reports/M3l_report.md "Per problem"; docs/reports/m3l/tables16.md -->
-    <div class="tw"><table id="t-m3l"><thead><tr><th>Problem</th><th>Set</th><th>R, of 5</th><th>E, of 5</th><th>Entry shown</th></tr></thead><tbody></tbody></table></div>
+    <div class="tw"><table id="t-m3l"><thead><tr><th>Problem, set and entry shown</th><th>R of 5</th><th>E of 5</th></tr></thead><tbody></tbody></table></div>
     <h3>Keeping the examples clean</h3>
     <!-- src: docs/reports/M3l_report.md "Keeping the examples clean" -->
     <p>Every example is real upstream code with its source: the reference layer cites the repository, commit and licence, and the run fetches each file from the public repository at that commit and checks the excerpt byte for byte. The projects the benchmark&rsquo;s tasks are drawn from (CV32E40P, CVA6, Ibex and every PULP Platform repository) are never shown, which removed <span data-d="l_removed">49</span> of <span data-d="l_pool">86</span> entries; a second rule withholds, per problem, any entry whose source shares a module name or 10% of its code lines with the problem&rsquo;s visible files, and it bound on no problem. A leak guard scans every output for the pack&rsquo;s own prose, and each run logs what it withheld.</p>
@@ -1543,7 +1543,9 @@ function m3lDraw() {
   const tb = document.querySelector("#t-m3l tbody");
   if (tb && !tb.children.length) L3.per_problem.forEach(q => {
     const tr = document.createElement("tr");
-    [q.id.replace(/^cvdp_(agentic_|copilot_)?/, ""), q.set, q.R, q.E, q.ex.join(", ")].forEach(t => { const td = document.createElement("td"); td.textContent = t; tr.appendChild(td); });
+    const c0 = document.createElement("td"); c0.textContent = q.id.replace(/^cvdp_(agentic_|copilot_)?/, "");
+    const sm = document.createElement("small"); sm.style.display = "block"; sm.textContent = q.set + " · " + q.ex.join(", "); c0.appendChild(sm); tr.appendChild(c0);
+    [q.R, q.E].forEach(t => { const td = document.createElement("td"); td.textContent = t; tr.appendChild(td); });
     tb.appendChild(tr);
   });
 }

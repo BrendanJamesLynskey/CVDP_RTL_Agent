@@ -1278,7 +1278,9 @@ function m3lDraw() {
   const tb = document.querySelector("#t-m3l tbody");
   if (tb && !tb.children.length) L3.per_problem.forEach(q => {
     const tr = document.createElement("tr");
-    [q.id.replace(/^cvdp_(agentic_|copilot_)?/, ""), q.set, q.R, q.E, q.ex.join(", ")].forEach(t => { const td = document.createElement("td"); td.textContent = t; tr.appendChild(td); });
+    const c0 = document.createElement("td"); c0.textContent = q.id.replace(/^cvdp_(agentic_|copilot_)?/, "");
+    const sm = document.createElement("small"); sm.style.display = "block"; sm.textContent = q.set + " · " + q.ex.join(", "); c0.appendChild(sm); tr.appendChild(c0);
+    [q.R, q.E].forEach(t => { const td = document.createElement("td"); td.textContent = t; tr.appendChild(td); });
     tb.appendChild(tr);
   });
 }
