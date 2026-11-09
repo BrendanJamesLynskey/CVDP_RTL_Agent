@@ -1,7 +1,7 @@
 # M3l report: retrieved real-RTL examples in the agent's context, on our own API loop
 
 **Status: DONE (2026-11-09). Decision: no detectable effect; coverage is the main finding.** All four scored dispatches
-ran to `completed/success`. Console cost reading: TODO (Console after).
+ran to `completed/success`. Console (owner's reading): $13.74 before, $15.64 after, so $1.90 billed for the two smokes and four scored dispatches.
 
 - **Pre-registration:** [`m3l/preregistration.md`](m3l/preregistration.md), including its 2026-11-09 amendment, which
   replaced the held-out primary. **Dry run of the retriever:** [`m3l/dry_run.md`](m3l/dry_run.md). **Smoke runs:**
@@ -28,7 +28,7 @@ ran to `completed/success`. Console cost reading: TODO (Console after).
   R's own pass counts are spread across 0 to 5 on several problems.
 - **Cost:** estimated **$0.92 for E and $0.93 for R** (`api_cost_estimate_usd`, list price), $1.85 for the four dispatches.
   Examples cost nothing measurable: E used 7% fewer prompt tokens than R (13.46 M against 14.47 M) because it needed
-  slightly fewer turns. Console reading: TODO (Console after).
+  slightly fewer turns. Console (owner's reading): $13.74 before M3l, $15.64 after, so **$1.90 billed**, matching the $1.85 + $0.05 (smokes) estimate.
 - **Two E rows are `llm_error`** (`hdbn_codec_0001`, seeds 3 and 4, `agent_status=completed_no_patch`). Under the
   pre-registration they are not runs of the model; the primary table counts them as failures, as `ablate.py` does. The
   problem fails 0/5 in both arms, and leaving it out gives +6.7 [−4.0, +18.7] (4 / 1 / 10, p = 0.375,
@@ -150,5 +150,5 @@ benchmark, one retrieval rule and threshold, a pool of 37 modules.
 
 - 13 of the 16 problems are the development set; the 3 held-out problems alone are too few to read.
 - Copying of the shown code into the final `rtl/` (shingles shared with the example) was not computed.
-- The Console credit reading is TODO (Console after).
+- The Console reading ($1.90) covers the smokes and scored dispatches together; it is not split per arm.
 - Two E rows (`hdbn_codec_0001`) are `llm_error` and were not rerun.
