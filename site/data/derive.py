@@ -778,6 +778,40 @@ m3k = {
     "claims_med": statistics.median(float(x["timing_claims_n"]) for x in k_rows["hT"]),
 }
 
+# ---- M3l (retrieved real-RTL examples E against a fresh R, on the 16 problems that get an example) ----
+# docs/reports/M3l_report.md and m3l/. Prefix l_. The one pre-registered comparison (2026-11-09 amendment) is E - R over the 16.
+M3L = os.path.join(REP, "m3l")
+L_IDS16 = ids_file(os.path.join(M3L, "ids16.txt"))
+L_HO_IDS = ids_file(os.path.join(ROOT, "tools", "m3l_fires_heldout_ids.txt"))
+def l_load(stem):
+    return [x for f in sorted(glob.glob(os.path.join(M3L, "runs", stem + "_*.csv"))) for x in rows(f) if x["id"] in set(L_IDS16)]
+l_rows = {"E": l_load("dev_E") + l_load("heldout_E"), "R": l_load("dev_R") + l_load("heldout_R")}
+l_rate = {a: {i: sum(int(x["pass"]) for x in v if x["id"] == i) / sum(1 for x in v if x["id"] == i) for i in L_IDS16} for a, v in l_rows.items()}
+l_eff = parse_sections(os.path.join(M3L, "paired16.md"))["E-R"]
+l_eff15 = parse_sections(os.path.join(M3L, "paired15.md"))["E-R"]
+l_d = [l_rate["E"][i] - l_rate["R"][i] for i in L_IDS16]
+l_chk = (round(100 * sum(l_d) / len(l_d), 1), sum(1 for d in l_d if d > 0), sum(1 for d in l_d if d < 0), sum(1 for d in l_d if d == 0))
+# held-out problems are never named on the site (tests/test_site.py): they show as "held-out problem A/B/C"
+l_ho_label = {i: "held-out problem " + "ABCDEFGH"[k] for k, i in enumerate(sorted(L_HO_IDS))}
+l_pp = [{"id": l_ho_label.get(i, i), "set": "held-out" if i in set(L_HO_IDS) else "dev",
+         "R": sum(int(x["pass"]) for x in l_rows["R"] if x["id"] == i), "E": sum(int(x["pass"]) for x in l_rows["E"] if x["id"] == i),
+         "n": sum(1 for x in l_rows["E"] if x["id"] == i),
+         "ex": sorted({e for x in l_rows["E"] if x["id"] == i for e in x["examples_ids"].split(";") if e})} for i in sorted(L_IDS16)]
+l_ret = list(csv.DictReader(open(os.path.join(M3L, "retrieval.csv"))))
+l_cov = {s: [sum(1 for r in l_ret if r["set"] == s and int(r["n"]) > 0), sum(1 for r in l_ret if r["set"] == s)] for s in ("heldout100", "dev86")}
+m3l = {
+    "effect": l_eff, "effect15": l_eff15, "n": len(L_IDS16),
+    "arms": {a: {"k": sum(int(x["pass"]) for x in v), "n": len(v), "rate": round(100 * sum(int(x["pass"]) for x in v) / len(v), 1)} for a, v in l_rows.items()},
+    "per_problem": l_pp, "cov": l_cov, "pool_kept": 37, "pool": 86,
+    "ptok_M": {a: round(sum(float(x["prompt_tokens"] or 0) for x in v) / 1e6, 2) for a, v in l_rows.items()},
+    "usd": {a: round(sum(float(x["api_cost_estimate_usd"] or 0) for x in v), 2) for a, v in l_rows.items()},
+    "llm_error": sum(1 for x in l_rows["E"] if x["stop_reason"] == "llm_error"),
+    "overlap_withheld": sum(int(x["examples_withheld_overlap"] or 0) for x in l_rows["E"]),
+    "same_5_5": sum(1 for q in l_pp if q["R"] == q["n"] and q["E"] == q["n"]),
+    "split": {st: {"R": sum(q["R"] for q in l_pp if q["set"] == st), "E": sum(q["E"] for q in l_pp if q["set"] == st),
+                   "n": sum(q["n"] for q in l_pp if q["set"] == st)} for st in ("held-out", "dev")},
+}
+
 spend_all = round(spend_all + conf_cost + m3c_scored + m3c_smoke + m3d_scored + m3d_smoke + e_scored + e_smoke + e_finish + g_scored + g_smoke, 2)  # + confirming run, M3c, M3d, M3e (with brief 14b's two) and M3g scored sweeps and smoke runs
 
 # Prose numbers in story.html: <span data-d="key">value</span>; --inject rewrites the value from here.
@@ -1035,6 +1069,24 @@ k_new["k_usd_scored"] = f"{sum(m3k['usd'].values()):.2f}"
 k_new["k_usd_r"] = f"{m3j['usd']['hR']:.2f}"
 k_clash = sorted(set(k_new) & k_before)
 prose.update(k_new)
+# M3l (prefix l_)
+l_before = set(prose)
+l_new = {}
+l_new["l_e"] = sg(l_eff["eff"]); l_new["l_ci"] = ci(l_eff); l_new["l_p"] = f"{l_eff['p']:.3f}"
+l_new["l_bws"] = f"{l_eff['better']} / {l_eff['worse']} / {l_eff['same']}"
+l_new["l_e15"] = sg(l_eff15["eff"]); l_new["l_ci15"] = ci(l_eff15)
+for a, v in m3l["arms"].items():
+    l_new[f"l_k_{a}"] = str(v["k"]); l_new[f"l_n_{a}"] = str(v["n"]); l_new[f"l_rate_{a}"] = f"{v['rate']:.1f}"
+l_new["l_cov_ho"] = str(l_cov["heldout100"][0]); l_new["l_cov_dev"] = str(l_cov["dev86"][0])
+l_new["l_cov_ho_pct"] = str(round(100 * l_cov["heldout100"][0] / l_cov["heldout100"][1])); l_new["l_cov_dev_pct"] = str(round(100 * l_cov["dev86"][0] / l_cov["dev86"][1]))
+l_new["l_kept"] = str(m3l["pool_kept"]); l_new["l_pool"] = str(m3l["pool"]); l_new["l_removed"] = str(m3l["pool"] - m3l["pool_kept"])
+l_new["l_ptok_E"] = f"{m3l['ptok_M']['E']:.2f}"; l_new["l_ptok_R"] = f"{m3l['ptok_M']['R']:.2f}"
+l_new["l_usd_E"] = f"{m3l['usd']['E']:.2f}"; l_new["l_usd_R"] = f"{m3l['usd']['R']:.2f}"
+l_new["l_usd_scored"] = f"{sum(m3l['usd'].values()):.2f}"
+l_new["l_same"] = str(m3l["same_5_5"]); l_new["l_llm_error"] = str(m3l["llm_error"])
+l_clash = sorted(set(l_new) & l_before)
+prose.update(l_new)
+
 m3b["prose"] = prose
 
 data = {
@@ -1054,7 +1106,7 @@ data = {
     "external": ext,
     "m3b": m3b,
     "m3b_confirm": m3b_conf, "m3c": m3c, "ladder": claude_ladder,
-    "unsolved": unsolved, "m3d": m3d, "m3e": m3e, "m3g": m3g, "m3h": m3h, "m3i": m3i, "m3j": m3j, "m3k": m3k,
+    "unsolved": unsolved, "m3d": m3d, "m3e": m3e, "m3g": m3g, "m3h": m3h, "m3i": m3i, "m3j": m3j, "m3k": m3k, "m3l": m3l,
 }
 
 # ---- checks against the reports ----
@@ -1446,6 +1498,21 @@ check(f"| Held-out (300 problem-runs) | $1.44 | ${prose['k_usd_hT']} | ${prose['
       and f"| The 86 (92 problems run) | $0.81 | ${prose['k_usd_dT']} | ${prose['k_usd_dK']} |" in rep3k
       and f"about **${float(prose['k_usd_scored']):.2f} of API credit**" in rep3k, "M3k cost in report")
 check("**Status: DONE (2026-11-04). Decision: null.**" in rep3k, "M3k status in report")
+# M3l (docs/reports/M3l_report.md and the ablate.py outputs beside it)
+rep3l = open(os.path.join(REP, "M3l_report.md")).read()
+rep3l_1 = " ".join(rep3l.split())
+check(not l_clash, f"M3l prose keys clash with existing ones: {l_clash}")
+check(len(L_IDS16) == 16 and len(L_HO_IDS) == 3 and all(len(l_rows[a]) == 80 for a in l_rows), "M3l: 16 problems, 5 runs per arm each")
+check((l_eff["eff"], l_eff["better"], l_eff["worse"], l_eff["same"]) == l_chk, f"M3l effect {l_eff} vs recomputed {l_chk}")
+check(f"**Primary: E − R over the 16 problems that receive an example = {prose['l_e']} points {prose['l_ci']}**" in rep3l_1
+      and f"({l_eff['better']} problems better, {l_eff['worse']} worse, {l_eff['same']} the same; sign test p = {prose['l_p']})" in rep3l_1, "M3l primary in report")
+check(f"R passed {prose['l_k_R']}/80 ({prose['l_rate_R']}%) and E {prose['l_k_E']}/80 ({prose['l_rate_E']}%)" in rep3l_1, "M3l pooled pass@1 in report")
+check(f"**{prose['l_kept']} of the pack's {prose['l_pool']} reference entries** remain" in rep3l_1
+      and f"**{prose['l_cov_ho']} of 100 held-out problems ({prose['l_cov_ho_pct']}%) and {prose['l_cov_dev']} of the 86 development problems ({prose['l_cov_dev_pct']}%)**" in rep3l_1, "M3l coverage in report")
+check(f"estimated **${prose['l_usd_E']} for E and ${prose['l_usd_R']} for R**" in rep3l_1 and f"${prose['l_usd_scored']} for the four dispatches" in rep3l_1, "M3l cost in report")
+check(f"{prose['l_ptok_E']} M against {prose['l_ptok_R']} M" in rep3l_1 and m3l["llm_error"] == 2 and m3l["overlap_withheld"] == 0, "M3l tokens, llm_error and overlap in report")
+check(f"+6.7 [−4.0, +18.7] (4 / 1 / 10" in rep3l_1 and (prose["l_e15"], prose["l_ci15"]) == ("+6.7", "[−4.0, +18.7]"), "M3l 15-problem sensitivity in report")
+check("**Status: DONE (2026-11-09). Decision: no detectable effect" in rep3l, "M3l status in report")
 check(78.5 < spend_all < 79.5, f"spend M1 to M3g {spend_all}")
 check(prose["proc_null"] == prose["proc_n"] == "11" and prose["proc_det"] == "0", f"process changes null {prose['proc_null']} of {prose['proc_n']}")
 
