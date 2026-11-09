@@ -216,8 +216,9 @@ footer .row { display: flex; flex-wrap: wrap; gap: 6px 18px; }
   <a class="back" href="./">&larr; Back to the story: what was built, what was measured, what we found</a>
   <div class="edge">CVDP 1.1.0 &middot; agentic, free split &middot; the evaluation set of M3b onwards</div>
   <h1>The problems, <span>one by one</span></h1>
-  <p class="dek">Every problem our agent was scored on: the task as the agent saw it, how each arm did on it, why the failures failed, and a short note on what makes it easy or hard. Click a row, or link to one as <code>problems.html#&lt;id&gt;</code>.</p>
+  <p class="dek">Every agentic problem our agent was scored on: the task as the agent saw it, how each arm did on it, why the failures failed, and a short note on what makes it easy or hard. Click a row, or link to one as <code>problems.html#&lt;id&gt;</code>.</p>
   <div class="ios"><span class="k">WHAT IS AND IS NOT HERE</span>
+    <p><b>Covered:</b> the agentic 92 of the free split: the 86 of the evaluation set, and the 6 left out of it from M3b on, each with its reason. <b>Not listed:</b> the held-out 100 non-agentic problems, which cannot be named here because nobody on this project has inspected them; the other problems we left out or could not run are counted, with a reason for each, under <a href="./#coverage">Which problems</a> on the front page.</p>
     <p><b>Shown:</b> the prompt and the <code>docs/</code> specifications exactly as the dataset gives them (rendered from Markdown), and the names and sizes of the given RTL and testbench files. <b>Not shown:</b> the hidden tests and harness files, which would make contamination worse, the contents of the given code files, and the files the reference solution writes, which the agent is never told.</p>
     <p id="attrib" class="small"></p>
   </div>

@@ -18,8 +18,8 @@
   LangGraph agent, the agent's own testbench had passed in 22 of 49 failed bug-fixing rows. In spec to RTL, the
   hidden build failed on an interface mismatch in 28 of 119 failed rows. Everywhere else the biggest label is
   that the agent never ran a testbench.
-- **This split cannot test the paper's central category finding.** It has no verification-writing categories
-  (testbench stimulus, checkers, assertions: cid012 to cid014). See "What is missing".
+- **This split cannot test the paper's central category finding.** The free files have no verification-writing
+  categories (testbench stimulus, checkers, assertions: cid012 to cid014). See "What is missing".
 
 ## Method
 
@@ -35,9 +35,10 @@
 - **Cells.** passed/n = rate [Wilson 95% interval]. n counts problem-runs, so a three-seed group has three times
   the problems. Seeds of one problem are not independent, so the interval for a pooled cell is narrower than the
   truth.
-- **Categories in the free split.** cid002 RTL completion (held-out only), cid003 spec to RTL, cid004 RTL
+- **Categories we ran.** cid002 RTL completion (held-out only), cid003 spec to RTL, cid004 RTL
   modification, cid005 spec to RTL with module reuse (agentic only), cid016 bug fixing (agentic only). The
-  paper writes these as cid02, cid03 and so on.
+  free split also holds code improvement (cid007) and the comprehension categories, which we did not run: see
+  `coverage.md`. The paper writes these as cid02, cid03 and so on.
 - **Labels.** `failure_label` from `tools/taxonomy.py`: deterministic rules on the logs, no model reads anything.
   M2 CSVs predate the labels, so label tables use the groups from M3 on.
 
@@ -73,6 +74,8 @@
 | M3k | Anthropic claude-haiku-5-5, Claude Code harness | T | 20/33 = 60.6% [43.7, 75.3] | 14/24 = 58.3% [38.8, 75.5] | 13/18 = 72.2% [49.1, 87.5] | 10/11 = 90.9% [62.3, 98.4] | 57/86 = 66.3% [55.8, 75.4] |
 | M3k | Anthropic claude-haiku-5-5, Claude Code harness | K | 21/33 = 63.6% [46.6, 77.8] | 15/24 = 62.5% [42.7, 78.8] | 14/18 = 77.8% [54.8, 91.0] | 9/11 = 81.8% [52.3, 94.9] | 59/86 = 68.6% [58.2, 77.4] |
 
+The Claude Code row for `claude-opus-5-5` (63/86 = 73.3%) is the Claude Code figure the site headline gives; the same model in our LangGraph agent is the M3e row (62/86 = 72.1%).
+
 ### Pass rate by category: held-out 100
 
 | Milestone | Model and harness | Arm | cid002 RTL completion | cid003 spec to RTL | cid004 RTL modification | All |
@@ -89,6 +92,8 @@
 | M3j | Anthropic claude-haiku-5-5, Claude Code harness | R | 57/126 = 45.2% [36.8, 53.9] | 80/123 = 65.0% [56.3, 72.9] | 27/51 = 52.9% [39.5, 65.9] | 164/300 = 54.7% [49.0, 60.2] |
 | M3k | Anthropic claude-haiku-5-5, Claude Code harness | T | 52/126 = 41.3% [33.1, 50.0] | 85/123 = 69.1% [60.5, 76.6] | 28/51 = 54.9% [41.4, 67.7] | 165/300 = 55.0% [49.3, 60.5] |
 | M3k | Anthropic claude-haiku-5-5, Claude Code harness | K | 59/126 = 46.8% [38.3, 55.5] | 82/123 = 66.7% [57.9, 74.4] | 27/51 = 52.9% [39.5, 65.9] | 168/300 = 56.0% [50.3, 61.5] |
+
+Only two models ran on the held-out 100: `gpt-6-luna` in our LangGraph agent (M3g) and Haiku 5.5, in Claude Code and in a plain API loop of our own (M3h to M3k); the site table shows each model's base arm. Opus 5.5, Sonnet 5.5 and Fable 5.1 were not run on the held-out 100, so they have no row here. The reports record no reason for that. They do record that Claude Code runs draw on the Max plan's weekly limit (`claude_code_ladder.md`: about 25 points for the Opus, Sonnet and Haiku sweeps on 86 problems, Fable metered separately), and M3g lists Opus with the pack as a possible later arm, not run.
 
 ### Pass rate by category: M2 92
 
@@ -243,11 +248,17 @@
 
 ## What is missing
 
-The free split of the benchmark contains **no verification-writing categories**: testbench stimulus generation
-(cid012), testbench checker generation (cid013) and assertion generation (cid014) are not in it, nor are code
-improvement (cid007), the correspondence tasks or question answering. Our five categories are RTL completion,
-spec to RTL, RTL modification, module reuse and bug fixing. So nothing here can confirm or contradict the paper's
-finding that verification categories are harder than RTL categories.
+The free files of the benchmark contain **no verification-writing categories**: testbench stimulus generation
+(cid012), testbench checker generation (cid013) and assertion generation (cid014) are in the commercial files
+only, which need Cadence Xcelium (`coverage.md` lists every file).
+
+Code improvement (cid007) **is** in the free split: the non-agentic code-generation file has 40 such problems, and
+the correspondence and question-answering categories (cid006, cid008 to cid010) are in the free comprehension
+file. We ran none of these. `coverage.md` gives, for every problem file, what was attempted and why the rest was
+left out.
+
+Our five categories are RTL completion, spec to RTL, RTL modification, module reuse and bug fixing. So nothing
+here can confirm or contradict the paper's finding that verification categories are harder than RTL categories.
 
 ## The paper, beside ours
 

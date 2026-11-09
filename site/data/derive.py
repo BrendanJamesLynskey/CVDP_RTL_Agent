@@ -1089,15 +1089,20 @@ prose.update(l_new)
 
 # ---- M4: pass rate by category (docs/reports/m4/categories.py writes categories_data.json) ----
 cat_src = json.load(open(os.path.join(REP, "m4", "categories_data.json")))
-CAT_CHART = [("dev86", "m3b_A", "gpt-6-luna, our LangGraph agent"), ("dev86", "m3e_opus", "Opus 5.5, our LangGraph agent"),
-             ("dev86", "cc_haiku", "Haiku 5.5, Claude Code"), ("dev86", "cc_sonnet", "Sonnet 5.5, Claude Code"),
-             ("dev86", "cc_opus", "Opus 5.5, Claude Code"), ("dev86", "cc_fable", "Fable 5.1, Claude Code"),
-             ("heldout100", "m3g_ho_A", "gpt-6-luna, our LangGraph agent"), ("heldout100", "m3h_ho_A", "Haiku 5.5, Claude Code")]
+# (set, group key in categories_data.json, harness group, row label: harness first, then maker and model, as the headline writes it)
+CAT_CHART = [("dev86", "cc_opus", "Claude Code", "Claude Code, Anthropic Claude Opus 5.5"),
+             ("dev86", "cc_sonnet", "Claude Code", "Claude Code, Anthropic Claude Sonnet 5.5"),
+             ("dev86", "cc_fable", "Claude Code", "Claude Code, Anthropic Claude Fable 5.1"),
+             ("dev86", "cc_haiku", "Claude Code", "Claude Code, Anthropic Claude Haiku 5.5"),
+             ("dev86", "m3e_opus", "Our LangGraph agent", "our LangGraph agent, Anthropic Claude Opus 5.5"),
+             ("dev86", "m3b_A", "Our LangGraph agent", "our LangGraph agent, OpenAI gpt-6-luna"),
+             ("heldout100", "m3h_ho_A", "Claude Code", "Claude Code, Anthropic Claude Haiku 5.5"),
+             ("heldout100", "m3g_ho_A", "Our LangGraph agent", "our LangGraph agent, OpenAI gpt-6-luna")]
 cat_by_key = {g["key"]: g for g in cat_src["groups"]}
 cat = {"names": cat_src["cats"], "sets": {"dev86": [], "heldout100": []}, "never": {}}
-for st, key, lab in CAT_CHART:
+for st, key, grp, lab in CAT_CHART:
     g = cat_by_key[key]
-    cat["sets"][st].append({"label": lab, "ms": g["ms"], "arm": g["arm"], "cells": {c: {"k": v["k"], "n": v["n"], "lo": round(100 * v["lo"], 1), "hi": round(100 * v["hi"], 1)} for c, v in g["cells"].items()}})
+    cat["sets"][st].append({"label": lab, "group": grp, "ms": g["ms"], "arm": g["arm"], "cells": {c: {"k": v["k"], "n": v["n"], "lo": round(100 * v["lo"], 1), "hi": round(100 * v["hi"], 1)} for c, v in g["cells"].items()}})
 for st in ("dev86", "heldout100"):
     cat["never"][st] = {c: {k: v[k] for k in ("problems", "never", "limited")} for c, v in cat_src["never"][st].items()}
 cat_before = set(prose)
@@ -1115,6 +1120,35 @@ cat_new = {
 }
 cat_clash = sorted(set(cat_new) & cat_before)
 prose.update(cat_new)
+
+# ---- M4: which problems were attempted (docs/reports/m4/coverage.py writes coverage.json) ----
+cov_src = json.load(open(os.path.join(REP, "m4", "coverage.json")))
+cov_row = {(r["file"], r["part"]): r for r in cov_src["table"]}
+def _cv(f, part): return cov_row[(f, part)]
+_ag, _co = "agentic_code_generation_no_commercial", "nonagentic_code_generation_no_commercial"
+cov_before = set(prose)
+cov_new = {
+    "cov_total": str(cov_src["total_problems"]), "cov_files": str(len(cov_src["files"])),
+    "cov_dev": str(_cv(_ag, "the 86 development problems")["n"]), "cov_ex6": str(_cv(_ag, "the 6 problems excluded from the development set")["n"]),
+    "cov_ho": str(_cv(_co, "the held-out 100")["n"]), "cov_smoke": str(_cv(_co, "3 smoke problems")["n"]),
+    "cov_unsampled": str(_cv(_co, "eligible, not sampled")["n"]), "cov_shared": str(_cv(_co, "design name shared with an agentic problem")["n"]),
+    "cov_c007_16": str(_cv(_co, "code improvement and bug fixing")["n"]),
+    "cov_c007": str(_cv(_co, "code improvement and bug fixing")["by_category"]["cid007"]),
+    "cov_c016": str(_cv(_co, "code improvement and bug fixing")["by_category"]["cid016"]),
+    "cov_would": str(cov_src["table"][7]["reason"].split("Under the rule's other conditions ")[1].split(" of these")[0]),
+    "cov_heavy": str(_cv("agentic_heavy_code_generation_no_commercial", "all")["n"]),
+    "cov_comp": str(_cv("nonagentic_code_comprehension", "all")["n"]),
+    "cov_com_a": str(next(f["problems"] for f in cov_src["files"] if f["key"] == "agentic_commercial")),
+    "cov_com_h": str(next(f["problems"] for f in cov_src["files"] if f["key"] == "heavy_commercial")),
+    "cov_com_n": str(next(f["problems"] for f in cov_src["files"] if f["key"] == "copilot_commercial")),
+    "cov_com": str(cov_src["summary"]["cannot be run"]), "cov_scored": str(cov_src["summary"]["attempted"]),
+    "cov_left": str(cov_src["summary"]["left out by rule"]), "cov_never": str(cov_src["summary"]["never run"]),
+    "cov_eligible": str(cov_src["copilot_rule"]["eligible"]),
+    "cov_cc_opus": f"{100 * cat_by_key['cc_opus']['all']['k'] / cat_by_key['cc_opus']['all']['n']:.1f}",
+    "cov_lg_opus": f"{100 * cat_by_key['m3e_opus']['all']['k'] / cat_by_key['m3e_opus']['all']['n']:.1f}",
+}
+cov_clash = sorted(set(cov_new) & cov_before)
+prose.update(cov_new)
 
 m3b["prose"] = prose
 
@@ -1548,7 +1582,20 @@ check(not cat_clash, f"M4 prose keys clash with existing ones: {cat_clash}")
 check(f"| **All** | 86 | {prose['cat_dev_never']} | {prose['cat_dev_never_lim']} |" in rep4
       and f"| cid002 RTL completion | {prose['cat_ho_c2_n']} | {prose['cat_ho_c2_never']} | 0 |" in rep4, "M4 never-solved counts in the categories report")
 check(f"{prose['cat_ho_c2_lo']}% to {prose['cat_ho_c2_hi']}%\n  against {prose['cat_ho_c3_lo']}% to {prose['cat_ho_c3_hi']}%" in rep4, "M4 held-out category ranges in the categories report")
-check(all(cat_by_key[k]["cells"] for _, k, _ in CAT_CHART) and sum(c["n"] for c in cat_by_key["cc_opus"]["cells"].values()) == 86, "M4 chart groups")
+check(all(cat_by_key[k]["cells"] for _, k, _, _ in CAT_CHART) and sum(c["n"] for c in cat_by_key["cc_opus"]["cells"].values()) == 86, "M4 chart groups")
+# M4 coverage (docs/reports/m4/coverage.md) and the category table's rows
+rep4c = open(os.path.join(REP, "m4", "coverage.md")).read()
+check(not cov_clash, f"M4 coverage prose keys clash with existing ones: {cov_clash}")
+check(int(prose["cov_total"]) == 872 and int(prose["cov_dev"]) + int(prose["cov_ex6"]) == 92 and int(prose["cov_scored"]) == 92 + int(prose["cov_ho"]), "coverage: scored = agentic 92 + held-out 100")
+check(int(prose["cov_ho"]) + int(prose["cov_smoke"]) + int(prose["cov_unsampled"]) == int(prose["cov_eligible"]) == 193, "coverage: 100 + 3 + not sampled = 193 eligible")
+check(int(prose["cov_ho"]) + int(prose["cov_smoke"]) + int(prose["cov_unsampled"]) + int(prose["cov_shared"]) + int(prose["cov_c007_16"]) == 302, "coverage: the non-agentic free file adds up")
+check(sum(int(prose[k]) for k in ("cov_scored", "cov_smoke", "cov_left", "cov_never", "cov_com")) == int(prose["cov_total"]), "coverage: every problem has a status")
+check(int(prose["cov_c007"]) + int(prose["cov_c016"]) == int(prose["cov_c007_16"]) and prose["cov_c007"] == "40", "coverage: cid007 has 40 problems in the free split")
+check(f"**{prose['cov_total']} problems in the {prose['cov_files']} files.** {prose['cov_scored']} were scored" in rep4c and f"| `{_co}` | code improvement and bug fixing | {prose['cov_c007_16']} |" in rep4c, "coverage numbers in the coverage report")
+check("nor are code improvement (cid007)" not in rep4 and "Code improvement (cid007) **is** in the free split" in rep4 and f"has {prose['cov_c007']} such problems" in rep4, "categories report says cid007 is in the free split")
+check(prose["cov_cc_opus"] == prose["e3f_rate_cc"] == "73.3" and prose["cov_lg_opus"] == prose["e3f_rate_opus"] == "72.1", "category table's Opus rows match the headline figures")
+check(any(r["label"] == "Claude Code, Anthropic Claude Opus 5.5" and (r["cells"]["cid003"]["k"], r["cells"]["cid003"]["n"]) == (28, 33) for r in cat["sets"]["dev86"]), "category table has the Claude Code Opus 5.5 row")
+check(sum(c["k"] for r in cat["sets"]["dev86"] if r["label"] == "Claude Code, Anthropic Claude Opus 5.5" for c in r["cells"].values()) == 63, "Claude Code Opus 5.5 row is 63 of 86")
 check(78.5 < spend_all < 79.5, f"spend M1 to M3g {spend_all}")
 check(prose["proc_null"] == prose["proc_n"] == "11" and prose["proc_det"] == "0", f"process changes null {prose['proc_null']} of {prose['proc_n']}")
 

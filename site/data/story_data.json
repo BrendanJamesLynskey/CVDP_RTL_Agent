@@ -1910,7 +1910,31 @@
    "cat_ho_c2_hi": "50",
    "cat_ho_c3_lo": "60",
    "cat_ho_c3_hi": "72",
-   "cat_n_groups": "50"
+   "cat_n_groups": "50",
+   "cov_total": "872",
+   "cov_files": "7",
+   "cov_dev": "86",
+   "cov_ex6": "6",
+   "cov_ho": "100",
+   "cov_smoke": "3",
+   "cov_unsampled": "90",
+   "cov_shared": "34",
+   "cov_c007_16": "75",
+   "cov_c007": "40",
+   "cov_c016": "35",
+   "cov_would": "56",
+   "cov_heavy": "75",
+   "cov_comp": "123",
+   "cov_com_a": "68",
+   "cov_com_h": "25",
+   "cov_com_n": "187",
+   "cov_com": "280",
+   "cov_scored": "192",
+   "cov_left": "199",
+   "cov_never": "198",
+   "cov_eligible": "193",
+   "cov_cc_opus": "73.3",
+   "cov_lg_opus": "72.1"
   }
  },
  "m3b_confirm": {
@@ -4136,131 +4160,8 @@
   "sets": {
    "dev86": [
     {
-     "label": "gpt-6-luna, our LangGraph agent",
-     "ms": "M3b",
-     "arm": "A LangGraph, no memory",
-     "cells": {
-      "cid003": {
-       "k": 178,
-       "n": 297,
-       "lo": 54.3,
-       "hi": 65.3
-      },
-      "cid004": {
-       "k": 116,
-       "n": 216,
-       "lo": 47.0,
-       "hi": 60.2
-      },
-      "cid005": {
-       "k": 104,
-       "n": 162,
-       "lo": 56.6,
-       "hi": 71.2
-      },
-      "cid016": {
-       "k": 50,
-       "n": 99,
-       "lo": 40.8,
-       "hi": 60.1
-      }
-     }
-    },
-    {
-     "label": "Opus 5.5, our LangGraph agent",
-     "ms": "M3e",
-     "arm": "LG, run refused by guard counted as fail",
-     "cells": {
-      "cid003": {
-       "k": 24,
-       "n": 33,
-       "lo": 55.8,
-       "hi": 84.9
-      },
-      "cid004": {
-       "k": 16,
-       "n": 24,
-       "lo": 46.7,
-       "hi": 82.0
-      },
-      "cid005": {
-       "k": 12,
-       "n": 18,
-       "lo": 43.7,
-       "hi": 83.7
-      },
-      "cid016": {
-       "k": 10,
-       "n": 11,
-       "lo": 62.3,
-       "hi": 98.4
-      }
-     }
-    },
-    {
-     "label": "Haiku 5.5, Claude Code",
-     "ms": "Claude Code ladder",
-     "arm": "plan-signed-in",
-     "cells": {
-      "cid003": {
-       "k": 20,
-       "n": 33,
-       "lo": 43.7,
-       "hi": 75.3
-      },
-      "cid004": {
-       "k": 14,
-       "n": 24,
-       "lo": 38.8,
-       "hi": 75.5
-      },
-      "cid005": {
-       "k": 14,
-       "n": 18,
-       "lo": 54.8,
-       "hi": 91.0
-      },
-      "cid016": {
-       "k": 9,
-       "n": 11,
-       "lo": 52.3,
-       "hi": 94.9
-      }
-     }
-    },
-    {
-     "label": "Sonnet 5.5, Claude Code",
-     "ms": "Claude Code ladder",
-     "arm": "plan-signed-in",
-     "cells": {
-      "cid003": {
-       "k": 24,
-       "n": 33,
-       "lo": 55.8,
-       "hi": 84.9
-      },
-      "cid004": {
-       "k": 14,
-       "n": 24,
-       "lo": 38.8,
-       "hi": 75.5
-      },
-      "cid005": {
-       "k": 13,
-       "n": 18,
-       "lo": 49.1,
-       "hi": 87.5
-      },
-      "cid016": {
-       "k": 9,
-       "n": 11,
-       "lo": 52.3,
-       "hi": 94.9
-      }
-     }
-    },
-    {
-     "label": "Opus 5.5, Claude Code",
+     "label": "Claude Code, Anthropic Claude Opus 5.5",
+     "group": "Claude Code",
      "ms": "Claude Code ladder",
      "arm": "plan-signed-in",
      "cells": {
@@ -4291,7 +4192,40 @@
      }
     },
     {
-     "label": "Fable 5.1, Claude Code",
+     "label": "Claude Code, Anthropic Claude Sonnet 5.5",
+     "group": "Claude Code",
+     "ms": "Claude Code ladder",
+     "arm": "plan-signed-in",
+     "cells": {
+      "cid003": {
+       "k": 24,
+       "n": 33,
+       "lo": 55.8,
+       "hi": 84.9
+      },
+      "cid004": {
+       "k": 14,
+       "n": 24,
+       "lo": 38.8,
+       "hi": 75.5
+      },
+      "cid005": {
+       "k": 13,
+       "n": 18,
+       "lo": 49.1,
+       "hi": 87.5
+      },
+      "cid016": {
+       "k": 9,
+       "n": 11,
+       "lo": 52.3,
+       "hi": 94.9
+      }
+     }
+    },
+    {
+     "label": "Claude Code, Anthropic Claude Fable 5.1",
+     "group": "Claude Code",
      "ms": "Claude Code ladder",
      "arm": "plan-signed-in",
      "cells": {
@@ -4320,36 +4254,108 @@
        "hi": 84.8
       }
      }
-    }
-   ],
-   "heldout100": [
+    },
     {
-     "label": "gpt-6-luna, our LangGraph agent",
-     "ms": "M3g",
-     "arm": "A base",
+     "label": "Claude Code, Anthropic Claude Haiku 5.5",
+     "group": "Claude Code",
+     "ms": "Claude Code ladder",
+     "arm": "plan-signed-in",
      "cells": {
-      "cid002": {
-       "k": 52,
-       "n": 126,
-       "lo": 33.1,
-       "hi": 50.0
-      },
       "cid003": {
-       "k": 74,
-       "n": 123,
-       "lo": 51.3,
-       "hi": 68.4
+       "k": 20,
+       "n": 33,
+       "lo": 43.7,
+       "hi": 75.3
       },
       "cid004": {
-       "k": 27,
-       "n": 51,
-       "lo": 39.5,
-       "hi": 65.9
+       "k": 14,
+       "n": 24,
+       "lo": 38.8,
+       "hi": 75.5
+      },
+      "cid005": {
+       "k": 14,
+       "n": 18,
+       "lo": 54.8,
+       "hi": 91.0
+      },
+      "cid016": {
+       "k": 9,
+       "n": 11,
+       "lo": 52.3,
+       "hi": 94.9
       }
      }
     },
     {
-     "label": "Haiku 5.5, Claude Code",
+     "label": "our LangGraph agent, Anthropic Claude Opus 5.5",
+     "group": "Our LangGraph agent",
+     "ms": "M3e",
+     "arm": "LG, run refused by guard counted as fail",
+     "cells": {
+      "cid003": {
+       "k": 24,
+       "n": 33,
+       "lo": 55.8,
+       "hi": 84.9
+      },
+      "cid004": {
+       "k": 16,
+       "n": 24,
+       "lo": 46.7,
+       "hi": 82.0
+      },
+      "cid005": {
+       "k": 12,
+       "n": 18,
+       "lo": 43.7,
+       "hi": 83.7
+      },
+      "cid016": {
+       "k": 10,
+       "n": 11,
+       "lo": 62.3,
+       "hi": 98.4
+      }
+     }
+    },
+    {
+     "label": "our LangGraph agent, OpenAI gpt-6-luna",
+     "group": "Our LangGraph agent",
+     "ms": "M3b",
+     "arm": "A LangGraph, no memory",
+     "cells": {
+      "cid003": {
+       "k": 178,
+       "n": 297,
+       "lo": 54.3,
+       "hi": 65.3
+      },
+      "cid004": {
+       "k": 116,
+       "n": 216,
+       "lo": 47.0,
+       "hi": 60.2
+      },
+      "cid005": {
+       "k": 104,
+       "n": 162,
+       "lo": 56.6,
+       "hi": 71.2
+      },
+      "cid016": {
+       "k": 50,
+       "n": 99,
+       "lo": 40.8,
+       "hi": 60.1
+      }
+     }
+    }
+   ],
+   "heldout100": [
+    {
+     "label": "Claude Code, Anthropic Claude Haiku 5.5",
+     "group": "Claude Code",
      "ms": "M3h",
      "arm": "A base",
      "cells": {
@@ -4364,6 +4370,32 @@
        "n": 123,
        "lo": 62.2,
        "hi": 78.0
+      },
+      "cid004": {
+       "k": 27,
+       "n": 51,
+       "lo": 39.5,
+       "hi": 65.9
+      }
+     }
+    },
+    {
+     "label": "our LangGraph agent, OpenAI gpt-6-luna",
+     "group": "Our LangGraph agent",
+     "ms": "M3g",
+     "arm": "A base",
+     "cells": {
+      "cid002": {
+       "k": 52,
+       "n": 126,
+       "lo": 33.1,
+       "hi": 50.0
+      },
+      "cid003": {
+       "k": 74,
+       "n": 123,
+       "lo": 51.3,
+       "hi": 68.4
       },
       "cid004": {
        "k": 27,
