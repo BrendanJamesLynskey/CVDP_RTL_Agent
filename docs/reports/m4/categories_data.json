@@ -1,0 +1,3092 @@
+{
+ "cats": {
+  "cid002": "RTL completion",
+  "cid003": "spec to RTL",
+  "cid004": "RTL modification",
+  "cid005": "spec to RTL, module reuse",
+  "cid016": "bug fixing"
+ },
+ "groups": [
+  {
+   "key": "m2x86_haiku",
+   "set": "m2_92",
+   "ms": "M2",
+   "model": "Anthropic claude-haiku-5.5 (low), LangGraph agent, x86",
+   "arm": "base",
+   "cells": {
+    "cid003": {
+     "k": 19,
+     "n": 34,
+     "lo": 0.3945361778918369,
+     "hi": 0.7111675978470325
+    },
+    "cid004": {
+     "k": 13,
+     "n": 25,
+     "lo": 0.334982179531473,
+     "hi": 0.6996899607103998
+    },
+    "cid005": {
+     "k": 13,
+     "n": 22,
+     "lo": 0.38734477382893806,
+     "hi": 0.7674444033117963
+    },
+    "cid016": {
+     "k": 7,
+     "n": 11,
+     "lo": 0.35379677689163724,
+     "hi": 0.8483377638586862
+    }
+   },
+   "labels": {
+    "cid003": {
+     "": 15
+    },
+    "cid004": {
+     "": 12
+    },
+    "cid005": {
+     "": 9
+    },
+    "cid016": {
+     "": 4
+    }
+   },
+   "all": {
+    "k": 52,
+    "n": 92,
+    "lo": 0.46332061916830214,
+    "hi": 0.6618859717066414
+   }
+  },
+  {
+   "key": "m2x86_ds",
+   "set": "m2_92",
+   "ms": "M2",
+   "model": "DeepSeek deepseek-v4.1-flash-1017 (off), LangGraph agent, x86",
+   "arm": "base",
+   "cells": {
+    "cid003": {
+     "k": 19,
+     "n": 34,
+     "lo": 0.3945361778918369,
+     "hi": 0.7111675978470325
+    },
+    "cid004": {
+     "k": 11,
+     "n": 25,
+     "lo": 0.2666537494700256,
+     "hi": 0.6293298298043557
+    },
+    "cid005": {
+     "k": 7,
+     "n": 22,
+     "lo": 0.1636038735469248,
+     "hi": 0.5268177721716065
+    },
+    "cid016": {
+     "k": 6,
+     "n": 11,
+     "lo": 0.28008775568998817,
+     "hi": 0.7872904245601196
+    }
+   },
+   "labels": {
+    "cid003": {
+     "": 15
+    },
+    "cid004": {
+     "": 14
+    },
+    "cid005": {
+     "": 15
+    },
+    "cid016": {
+     "": 5
+    }
+   },
+   "all": {
+    "k": 43,
+    "n": 92,
+    "lo": 0.36879946305290146,
+    "hi": 0.5685972415096268
+   }
+  },
+  {
+   "key": "m2x86_luna",
+   "set": "m2_92",
+   "ms": "M2",
+   "model": "OpenAI gpt-6-luna, LangGraph agent, x86",
+   "arm": "base",
+   "cells": {
+    "cid003": {
+     "k": 20,
+     "n": 34,
+     "lo": 0.42221304146519273,
+     "hi": 0.7363426221431113
+    },
+    "cid004": {
+     "k": 15,
+     "n": 25,
+     "lo": 0.40739127785127344,
+     "hi": 0.7659694233580909
+    },
+    "cid005": {
+     "k": 12,
+     "n": 22,
+     "lo": 0.34659473289041554,
+     "hi": 0.7307998556799515
+    },
+    "cid016": {
+     "k": 5,
+     "n": 11,
+     "lo": 0.21270957543988045,
+     "hi": 0.7199122443100118
+    }
+   },
+   "labels": {
+    "cid003": {
+     "": 14
+    },
+    "cid004": {
+     "": 10
+    },
+    "cid005": {
+     "": 10
+    },
+    "cid016": {
+     "": 6
+    }
+   },
+   "all": {
+    "k": 52,
+    "n": 92,
+    "lo": 0.46332061916830214,
+    "hi": 0.6618859717066414
+   }
+  },
+  {
+   "key": "m2a64_haiku",
+   "set": "m2_92",
+   "ms": "M2",
+   "model": "Anthropic claude-haiku-5.5 (low), LangGraph agent, Arm64",
+   "arm": "base",
+   "cells": {
+    "cid003": {
+     "k": 21,
+     "n": 34,
+     "lo": 0.4504071999938267,
+     "hi": 0.7610003514839122
+    },
+    "cid004": {
+     "k": 14,
+     "n": 25,
+     "lo": 0.37067017019564436,
+     "hi": 0.7333462505299744
+    },
+    "cid005": {
+     "k": 12,
+     "n": 22,
+     "lo": 0.34659473289041554,
+     "hi": 0.7307998556799515
+    },
+    "cid016": {
+     "k": 9,
+     "n": 11,
+     "lo": 0.5230138624217553,
+     "hi": 0.9486333993289995
+    }
+   },
+   "labels": {
+    "cid003": {
+     "": 13
+    },
+    "cid004": {
+     "": 11
+    },
+    "cid005": {
+     "": 10
+    },
+    "cid016": {
+     "": 2
+    }
+   },
+   "all": {
+    "k": 56,
+    "n": 92,
+    "lo": 0.5065323092393207,
+    "hi": 0.7021453422189189
+   }
+  },
+  {
+   "key": "m2a64_ds",
+   "set": "m2_92",
+   "ms": "M2",
+   "model": "DeepSeek deepseek-v4.1-flash-1017 (off), LangGraph agent, Arm64",
+   "arm": "base",
+   "cells": {
+    "cid003": {
+     "k": 18,
+     "n": 34,
+     "lo": 0.3673644042005483,
+     "hi": 0.6854874836688863
+    },
+    "cid004": {
+     "k": 10,
+     "n": 25,
+     "lo": 0.23403057664190918,
+     "hi": 0.5926087221487266
+    },
+    "cid005": {
+     "k": 7,
+     "n": 22,
+     "lo": 0.1636038735469248,
+     "hi": 0.5268177721716065
+    },
+    "cid016": {
+     "k": 6,
+     "n": 11,
+     "lo": 0.28008775568998817,
+     "hi": 0.7872904245601196
+    }
+   },
+   "labels": {
+    "cid003": {
+     "": 16
+    },
+    "cid004": {
+     "": 15
+    },
+    "cid005": {
+     "": 15
+    },
+    "cid016": {
+     "": 5
+    }
+   },
+   "all": {
+    "k": 41,
+    "n": 92,
+    "lo": 0.34829640062529765,
+    "hi": 0.5473647736455826
+   }
+  },
+  {
+   "key": "m2a64_luna",
+   "set": "m2_92",
+   "ms": "M2",
+   "model": "OpenAI gpt-6-luna, LangGraph agent, Arm64",
+   "arm": "base",
+   "cells": {
+    "cid003": {
+     "k": 20,
+     "n": 34,
+     "lo": 0.42221304146519273,
+     "hi": 0.7363426221431113
+    },
+    "cid004": {
+     "k": 14,
+     "n": 25,
+     "lo": 0.37067017019564436,
+     "hi": 0.7333462505299744
+    },
+    "cid005": {
+     "k": 13,
+     "n": 22,
+     "lo": 0.38734477382893806,
+     "hi": 0.7674444033117963
+    },
+    "cid016": {
+     "k": 6,
+     "n": 11,
+     "lo": 0.28008775568998817,
+     "hi": 0.7872904245601196
+    }
+   },
+   "labels": {
+    "cid003": {
+     "": 14
+    },
+    "cid004": {
+     "": 11
+    },
+    "cid005": {
+     "": 9
+    },
+    "cid016": {
+     "": 5
+    }
+   },
+   "all": {
+    "k": 53,
+    "n": 92,
+    "lo": 0.47405256502938276,
+    "hi": 0.6720217909913848
+   }
+  },
+  {
+   "key": "m3_A",
+   "set": "m2_92",
+   "ms": "M3",
+   "model": "OpenAI gpt-6-luna, LangGraph agent",
+   "arm": "A base",
+   "cells": {
+    "cid003": {
+     "k": 38,
+     "n": 68,
+     "lo": 0.44081654438286205,
+     "hi": 0.670539550136191
+    },
+    "cid004": {
+     "k": 28,
+     "n": 50,
+     "lo": 0.4230578680014353,
+     "hi": 0.6883801278976466
+    },
+    "cid005": {
+     "k": 25,
+     "n": 44,
+     "lo": 0.42223890740554393,
+     "hi": 0.7031749583514542
+    },
+    "cid016": {
+     "k": 13,
+     "n": 22,
+     "lo": 0.38734477382893806,
+     "hi": 0.7674444033117963
+    }
+   },
+   "labels": {
+    "cid003": {
+     "stopped_by_cap": 3,
+     "compile_fail_hidden": 6,
+     "signal_missing_hidden": 6,
+     "tests_failed_no_selfcheck": 12,
+     "tests_failed_selfcheck_passed": 3
+    },
+    "cid004": {
+     "tests_failed_selfcheck_failed": 2,
+     "tests_failed_no_selfcheck": 15,
+     "stopped_by_cap": 2,
+     "sim_incomplete": 1,
+     "signal_missing_hidden": 2
+    },
+    "cid005": {
+     "tests_failed_no_selfcheck": 6,
+     "signal_missing_hidden": 6,
+     "tests_failed_selfcheck_passed": 2,
+     "compile_fail_hidden": 5
+    },
+    "cid016": {
+     "tests_failed_no_selfcheck": 3,
+     "tests_failed_selfcheck_passed": 4,
+     "stopped_by_cap": 1,
+     "no_edit": 1
+    }
+   },
+   "all": {
+    "k": 104,
+    "n": 184,
+    "lo": 0.49297795796165755,
+    "hi": 0.6347892671897466
+   }
+  },
+  {
+   "key": "m3_B",
+   "set": "m2_92",
+   "ms": "M3",
+   "model": "OpenAI gpt-6-luna, LangGraph agent",
+   "arm": "B self-check off",
+   "cells": {
+    "cid003": {
+     "k": 39,
+     "n": 68,
+     "lo": 0.455165693769645,
+     "hi": 0.6840294243791712
+    },
+    "cid004": {
+     "k": 26,
+     "n": 50,
+     "lo": 0.3851151225880844,
+     "hi": 0.6520308760449429
+    },
+    "cid005": {
+     "k": 26,
+     "n": 44,
+     "lo": 0.44409492646606574,
+     "hi": 0.7231235612099317
+    },
+    "cid016": {
+     "k": 11,
+     "n": 22,
+     "lo": 0.3072180469247956,
+     "hi": 0.6927819530752044
+    }
+   },
+   "labels": {
+    "cid003": {
+     "tests_failed_no_selfcheck": 19,
+     "compile_fail_hidden": 7,
+     "signal_missing_hidden": 3
+    },
+    "cid004": {
+     "tests_failed_no_selfcheck": 19,
+     "sim_incomplete": 2,
+     "signal_missing_hidden": 2,
+     "no_edit": 1
+    },
+    "cid005": {
+     "tests_failed_no_selfcheck": 7,
+     "compile_fail_hidden": 5,
+     "sim_incomplete": 1,
+     "signal_missing_hidden": 3,
+     "stopped_by_cap": 2
+    },
+    "cid016": {
+     "tests_failed_no_selfcheck": 8,
+     "no_edit": 2,
+     "stopped_by_cap": 1
+    }
+   },
+   "all": {
+    "k": 102,
+    "n": 184,
+    "lo": 0.48214733476573146,
+    "hi": 0.6243253528604387
+   }
+  },
+  {
+   "key": "m3_C",
+   "set": "m2_92",
+   "ms": "M3",
+   "model": "OpenAI gpt-6-luna, LangGraph agent",
+   "arm": "C lint off",
+   "cells": {
+    "cid003": {
+     "k": 39,
+     "n": 68,
+     "lo": 0.455165693769645,
+     "hi": 0.6840294243791712
+    },
+    "cid004": {
+     "k": 26,
+     "n": 50,
+     "lo": 0.3851151225880844,
+     "hi": 0.6520308760449429
+    },
+    "cid005": {
+     "k": 23,
+     "n": 44,
+     "lo": 0.379352201361717,
+     "hi": 0.6624524205572824
+    },
+    "cid016": {
+     "k": 13,
+     "n": 22,
+     "lo": 0.38734477382893806,
+     "hi": 0.7674444033117963
+    }
+   },
+   "labels": {
+    "cid003": {
+     "stopped_by_cap": 4,
+     "compile_fail_hidden": 5,
+     "tests_failed_no_selfcheck": 10,
+     "signal_missing_hidden": 5,
+     "tests_failed_selfcheck_passed": 5
+    },
+    "cid004": {
+     "tests_failed_no_selfcheck": 6,
+     "stopped_by_cap": 7,
+     "tests_failed_selfcheck_passed": 7,
+     "signal_missing_hidden": 2,
+     "tests_failed_selfcheck_failed": 2
+    },
+    "cid005": {
+     "tests_failed_selfcheck_passed": 6,
+     "stopped_by_cap": 2,
+     "tests_failed_selfcheck_failed": 1,
+     "compile_fail_hidden": 5,
+     "signal_missing_hidden": 4,
+     "tests_failed_no_selfcheck": 3
+    },
+    "cid016": {
+     "stopped_by_cap": 1,
+     "tests_failed_selfcheck_failed": 1,
+     "tests_failed_selfcheck_passed": 7
+    }
+   },
+   "all": {
+    "k": 101,
+    "n": 184,
+    "lo": 0.4767446706411454,
+    "hi": 0.6190807482224077
+   }
+  },
+  {
+   "key": "m3_D",
+   "set": "m2_92",
+   "ms": "M3",
+   "model": "OpenAI gpt-6-luna, LangGraph agent",
+   "arm": "D self-check and lint off",
+   "cells": {
+    "cid003": {
+     "k": 38,
+     "n": 68,
+     "lo": 0.44081654438286205,
+     "hi": 0.670539550136191
+    },
+    "cid004": {
+     "k": 26,
+     "n": 50,
+     "lo": 0.3851151225880844,
+     "hi": 0.6520308760449429
+    },
+    "cid005": {
+     "k": 24,
+     "n": 44,
+     "lo": 0.4006593217065349,
+     "hi": 0.6829499221314639
+    },
+    "cid016": {
+     "k": 13,
+     "n": 22,
+     "lo": 0.38734477382893806,
+     "hi": 0.7674444033117963
+    }
+   },
+   "labels": {
+    "cid003": {
+     "tests_failed_no_selfcheck": 19,
+     "compile_fail_hidden": 7,
+     "signal_missing_hidden": 4
+    },
+    "cid004": {
+     "sim_incomplete": 2,
+     "tests_failed_no_selfcheck": 18,
+     "stopped_by_cap": 3,
+     "signal_missing_hidden": 1
+    },
+    "cid005": {
+     "tests_failed_no_selfcheck": 10,
+     "stopped_by_cap": 2,
+     "signal_missing_hidden": 6,
+     "compile_fail_hidden": 2
+    },
+    "cid016": {
+     "tests_failed_no_selfcheck": 8,
+     "stopped_by_cap": 1
+    }
+   },
+   "all": {
+    "k": 101,
+    "n": 184,
+    "lo": 0.4767446706411454,
+    "hi": 0.6190807482224077
+   }
+  },
+  {
+   "key": "m3_E",
+   "set": "m2_92",
+   "ms": "M3",
+   "model": "OpenAI gpt-6-luna, LangGraph agent",
+   "arm": "E 5 turns",
+   "cells": {
+    "cid003": {
+     "k": 40,
+     "n": 68,
+     "lo": 0.4696125189030847,
+     "hi": 0.6974216228754949
+    },
+    "cid004": {
+     "k": 27,
+     "n": 50,
+     "lo": 0.40398634328388083,
+     "hi": 0.6703056539821737
+    },
+    "cid005": {
+     "k": 25,
+     "n": 44,
+     "lo": 0.42223890740554393,
+     "hi": 0.7031749583514542
+    },
+    "cid016": {
+     "k": 11,
+     "n": 22,
+     "lo": 0.3072180469247956,
+     "hi": 0.6927819530752044
+    }
+   },
+   "labels": {
+    "cid003": {
+     "stopped_by_cap": 3,
+     "compile_fail_hidden": 6,
+     "tests_failed_no_selfcheck": 13,
+     "signal_missing_hidden": 5,
+     "tests_failed_selfcheck_passed": 1
+    },
+    "cid004": {
+     "stopped_by_cap": 7,
+     "sim_incomplete": 2,
+     "tests_failed_no_selfcheck": 11,
+     "signal_missing_hidden": 2,
+     "no_edit": 1
+    },
+    "cid005": {
+     "stopped_by_cap": 4,
+     "tests_failed_no_selfcheck": 7,
+     "compile_fail_hidden": 4,
+     "signal_missing_hidden": 3,
+     "tests_failed_selfcheck_passed": 1
+    },
+    "cid016": {
+     "tests_failed_selfcheck_passed": 5,
+     "tests_failed_no_selfcheck": 4,
+     "stopped_by_cap": 1,
+     "tests_failed_selfcheck_failed": 1
+    }
+   },
+   "all": {
+    "k": 103,
+    "n": 184,
+    "lo": 0.487558420152931,
+    "hi": 0.6295615362358562
+   }
+  },
+  {
+   "key": "m3_F",
+   "set": "m2_92",
+   "ms": "M3",
+   "model": "OpenAI gpt-6-luna, LangGraph agent",
+   "arm": "F 20 turns",
+   "cells": {
+    "cid003": {
+     "k": 42,
+     "n": 68,
+     "lo": 0.49880494200915176,
+     "hi": 0.7239072470289543
+    },
+    "cid004": {
+     "k": 30,
+     "n": 50,
+     "lo": 0.4618118910275937,
+     "hi": 0.7239181021375425
+    },
+    "cid005": {
+     "k": 25,
+     "n": 44,
+     "lo": 0.42223890740554393,
+     "hi": 0.7031749583514542
+    },
+    "cid016": {
+     "k": 14,
+     "n": 22,
+     "lo": 0.4295134934371804,
+     "hi": 0.802670272273921
+    }
+   },
+   "labels": {
+    "cid003": {
+     "stopped_by_cap": 2,
+     "compile_fail_hidden": 7,
+     "tests_failed_selfcheck_passed": 2,
+     "tests_failed_no_selfcheck": 11,
+     "signal_missing_hidden": 4
+    },
+    "cid004": {
+     "tests_failed_no_selfcheck": 14,
+     "tests_failed_selfcheck_passed": 1,
+     "signal_missing_hidden": 2,
+     "sim_incomplete": 1,
+     "stopped_by_cap": 1,
+     "tests_failed_selfcheck_failed": 1
+    },
+    "cid005": {
+     "tests_failed_selfcheck_passed": 2,
+     "tests_failed_no_selfcheck": 7,
+     "compile_fail_hidden": 4,
+     "signal_missing_hidden": 6
+    },
+    "cid016": {
+     "tests_failed_selfcheck_passed": 5,
+     "stopped_by_cap": 1,
+     "tests_failed_no_selfcheck": 2
+    }
+   },
+   "all": {
+    "k": 111,
+    "n": 184,
+    "lo": 0.5311546946266298,
+    "hi": 0.6711434118630936
+   }
+  },
+  {
+   "key": "m3_G",
+   "set": "m2_92",
+   "ms": "M3",
+   "model": "OpenAI gpt-6-luna, LangGraph agent",
+   "arm": "G $0.02 budget",
+   "cells": {
+    "cid003": {
+     "k": 39,
+     "n": 68,
+     "lo": 0.455165693769645,
+     "hi": 0.6840294243791712
+    },
+    "cid004": {
+     "k": 27,
+     "n": 50,
+     "lo": 0.40398634328388083,
+     "hi": 0.6703056539821737
+    },
+    "cid005": {
+     "k": 23,
+     "n": 44,
+     "lo": 0.379352201361717,
+     "hi": 0.6624524205572824
+    },
+    "cid016": {
+     "k": 12,
+     "n": 22,
+     "lo": 0.34659473289041554,
+     "hi": 0.7307998556799515
+    }
+   },
+   "labels": {
+    "cid003": {
+     "tests_failed_selfcheck_failed": 2,
+     "compile_fail_hidden": 7,
+     "tests_failed_no_selfcheck": 13,
+     "signal_missing_hidden": 3,
+     "stopped_by_cap": 2,
+     "tests_failed_selfcheck_passed": 2
+    },
+    "cid004": {
+     "stopped_by_cap": 3,
+     "sim_incomplete": 3,
+     "tests_failed_no_selfcheck": 17
+    },
+    "cid005": {
+     "tests_failed_selfcheck_passed": 5,
+     "tests_failed_no_selfcheck": 7,
+     "compile_fail_hidden": 4,
+     "signal_missing_hidden": 4,
+     "stopped_by_cap": 1
+    },
+    "cid016": {
+     "sim_incomplete": 1,
+     "stopped_by_cap": 2,
+     "tests_failed_no_selfcheck": 2,
+     "tests_failed_selfcheck_passed": 3,
+     "tests_failed_selfcheck_failed": 2
+    }
+   },
+   "all": {
+    "k": 101,
+    "n": 184,
+    "lo": 0.4767446706411454,
+    "hi": 0.6190807482224077
+   }
+  },
+  {
+   "key": "m3b_A",
+   "set": "dev86",
+   "ms": "M3b",
+   "model": "OpenAI gpt-6-luna, LangGraph agent",
+   "arm": "A LangGraph, no memory",
+   "cells": {
+    "cid003": {
+     "k": 178,
+     "n": 297,
+     "lo": 0.5426686699977685,
+     "hi": 0.6534478245295843
+    },
+    "cid004": {
+     "k": 116,
+     "n": 216,
+     "lo": 0.47047285565903335,
+     "hi": 0.602306818433586
+    },
+    "cid005": {
+     "k": 104,
+     "n": 162,
+     "lo": 0.5656457294141239,
+     "hi": 0.7117273784188927
+    },
+    "cid016": {
+     "k": 50,
+     "n": 99,
+     "lo": 0.4082299868548984,
+     "hi": 0.6014937047251627
+    }
+   },
+   "labels": {
+    "cid003": {
+     "stopped_by_cap": 10,
+     "compile_fail_hidden": 28,
+     "tests_failed_selfcheck_passed": 8,
+     "tests_failed_no_selfcheck": 60,
+     "signal_missing_hidden": 10,
+     "tests_failed_selfcheck_failed": 3
+    },
+    "cid004": {
+     "tests_failed_selfcheck_passed": 9,
+     "tests_failed_no_selfcheck": 61,
+     "sim_incomplete": 7,
+     "stopped_by_cap": 16,
+     "no_edit": 3,
+     "compile_fail_hidden": 1,
+     "tests_failed_selfcheck_failed": 3
+    },
+    "cid005": {
+     "tests_failed_no_selfcheck": 41,
+     "signal_missing_hidden": 1,
+     "tests_failed_selfcheck_passed": 9,
+     "compile_fail_hidden": 3,
+     "stopped_by_cap": 2,
+     "sim_incomplete": 2
+    },
+    "cid016": {
+     "tests_failed_no_selfcheck": 17,
+     "tests_failed_selfcheck_passed": 22,
+     "tests_failed_selfcheck_failed": 6,
+     "sim_incomplete": 1,
+     "stopped_by_cap": 3
+    }
+   },
+   "all": {
+    "k": 448,
+    "n": 774,
+    "lo": 0.5437209232857719,
+    "hi": 0.6131233493784826
+   }
+  },
+  {
+   "key": "m3b_B",
+   "set": "dev86",
+   "ms": "M3b",
+   "model": "OpenAI gpt-6-luna, Deep Agents harness",
+   "arm": "B Deep Agents, no memory",
+   "cells": {
+    "cid003": {
+     "k": 184,
+     "n": 297,
+     "lo": 0.5631181636891825,
+     "hi": 0.6728864314200044
+    },
+    "cid004": {
+     "k": 128,
+     "n": 216,
+     "lo": 0.5260022673636633,
+     "hi": 0.6559469178678852
+    },
+    "cid005": {
+     "k": 111,
+     "n": 162,
+     "lo": 0.6100782454939574,
+     "hi": 0.751712764723021
+    },
+    "cid016": {
+     "k": 60,
+     "n": 99,
+     "lo": 0.5075782136685492,
+     "hi": 0.6966193095127315
+    }
+   },
+   "labels": {
+    "cid003": {
+     "stopped_by_cap": 34,
+     "compile_fail_hidden": 26,
+     "tests_failed_no_selfcheck": 48,
+     "signal_missing_hidden": 4,
+     "tests_failed_selfcheck_passed": 1
+    },
+    "cid004": {
+     "compile_fail_hidden": 3,
+     "stopped_by_cap": 34,
+     "tests_failed_no_selfcheck": 38,
+     "tests_failed_selfcheck_passed": 7,
+     "sim_incomplete": 5,
+     "llm_error": 1
+    },
+    "cid005": {
+     "tests_failed_selfcheck_passed": 5,
+     "stopped_by_cap": 25,
+     "compile_fail_hidden": 4,
+     "signal_missing_hidden": 3,
+     "tests_failed_no_selfcheck": 14
+    },
+    "cid016": {
+     "tests_failed_no_selfcheck": 18,
+     "tests_failed_selfcheck_passed": 20,
+     "killed": 1
+    }
+   },
+   "all": {
+    "k": 483,
+    "n": 774,
+    "lo": 0.5893729300147081,
+    "hi": 0.6574639581126434
+   }
+  },
+  {
+   "key": "m3b_C",
+   "set": "dev86",
+   "ms": "M3b",
+   "model": "OpenAI gpt-6-luna, LangGraph agent",
+   "arm": "C LangGraph, lessons memory",
+   "cells": {
+    "cid003": {
+     "k": 60,
+     "n": 99,
+     "lo": 0.5075782136685492,
+     "hi": 0.6966193095127315
+    },
+    "cid004": {
+     "k": 41,
+     "n": 72,
+     "lo": 0.4544309920240597,
+     "hi": 0.6774227663354686
+    },
+    "cid005": {
+     "k": 35,
+     "n": 54,
+     "lo": 0.5148458381779774,
+     "hi": 0.7617716827757998
+    },
+    "cid016": {
+     "k": 17,
+     "n": 33,
+     "lo": 0.3521810458621024,
+     "hi": 0.6749621835307578
+    }
+   },
+   "labels": {
+    "cid003": {
+     "stopped_by_cap": 4,
+     "compile_fail_hidden": 10,
+     "tests_failed_selfcheck_failed": 3,
+     "tests_failed_no_selfcheck": 20,
+     "tests_failed_selfcheck_passed": 1,
+     "signal_missing_hidden": 1
+    },
+    "cid004": {
+     "tests_failed_selfcheck_failed": 1,
+     "tests_failed_no_selfcheck": 23,
+     "stopped_by_cap": 1,
+     "no_edit": 1,
+     "tests_failed_selfcheck_passed": 4,
+     "sim_incomplete": 1
+    },
+    "cid005": {
+     "tests_failed_selfcheck_passed": 4,
+     "compile_fail_hidden": 2,
+     "signal_missing_hidden": 1,
+     "sim_incomplete": 3,
+     "tests_failed_no_selfcheck": 8,
+     "stopped_by_cap": 1
+    },
+    "cid016": {
+     "tests_failed_selfcheck_passed": 12,
+     "tests_failed_no_selfcheck": 4
+    }
+   },
+   "all": {
+    "k": 153,
+    "n": 258,
+    "lo": 0.532137278456835,
+    "hi": 0.6511796581949425
+   }
+  },
+  {
+   "key": "m3b_D",
+   "set": "dev86",
+   "ms": "M3b",
+   "model": "OpenAI gpt-6-luna, Deep Agents harness",
+   "arm": "D Deep Agents, lessons memory",
+   "cells": {
+    "cid003": {
+     "k": 60,
+     "n": 99,
+     "lo": 0.5075782136685492,
+     "hi": 0.6966193095127315
+    },
+    "cid004": {
+     "k": 46,
+     "n": 72,
+     "lo": 0.5235226614759323,
+     "hi": 0.740184855243124
+    },
+    "cid005": {
+     "k": 39,
+     "n": 54,
+     "lo": 0.5910930359127778,
+     "hi": 0.823833245517888
+    },
+    "cid016": {
+     "k": 23,
+     "n": 33,
+     "lo": 0.5266154602526555,
+     "hi": 0.8262465218545277
+    }
+   },
+   "labels": {
+    "cid003": {
+     "stopped_by_cap": 10,
+     "compile_fail_hidden": 11,
+     "tests_failed_no_selfcheck": 15,
+     "tests_failed_selfcheck_passed": 1,
+     "signal_missing_hidden": 2
+    },
+    "cid004": {
+     "stopped_by_cap": 15,
+     "sim_incomplete": 2,
+     "tests_failed_selfcheck_passed": 1,
+     "tests_failed_no_selfcheck": 8
+    },
+    "cid005": {
+     "stopped_by_cap": 7,
+     "tests_failed_no_selfcheck": 6,
+     "compile_fail_hidden": 1,
+     "tests_failed_selfcheck_passed": 1
+    },
+    "cid016": {
+     "tests_failed_no_selfcheck": 4,
+     "tests_failed_selfcheck_passed": 5,
+     "stopped_by_cap": 1
+    }
+   },
+   "all": {
+    "k": 168,
+    "n": 258,
+    "lo": 0.5911735720908755,
+    "hi": 0.7067164499682626
+   }
+  },
+  {
+   "key": "m3c_A",
+   "set": "dev86",
+   "ms": "M3c",
+   "model": "OpenAI gpt-6-luna, LangGraph agent",
+   "arm": "A base",
+   "cells": {
+    "cid003": {
+     "k": 60,
+     "n": 99,
+     "lo": 0.5075782136685492,
+     "hi": 0.6966193095127315
+    },
+    "cid004": {
+     "k": 42,
+     "n": 72,
+     "lo": 0.4680748922563983,
+     "hi": 0.6901496177750356
+    },
+    "cid005": {
+     "k": 36,
+     "n": 54,
+     "lo": 0.5336071462745029,
+     "hi": 0.7775875647984964
+    },
+    "cid016": {
+     "k": 21,
+     "n": 33,
+     "lo": 0.46615872621534094,
+     "hi": 0.7781303383204013
+    }
+   },
+   "labels": {
+    "cid003": {
+     "stopped_by_cap": 2,
+     "compile_fail_hidden": 10,
+     "tests_failed_no_selfcheck": 20,
+     "signal_missing_hidden": 4,
+     "tests_failed_selfcheck_failed": 1,
+     "tests_failed_selfcheck_passed": 2
+    },
+    "cid004": {
+     "tests_failed_no_selfcheck": 23,
+     "stopped_by_cap": 2,
+     "sim_incomplete": 2,
+     "tests_failed_selfcheck_passed": 2,
+     "llm_error": 1
+    },
+    "cid005": {
+     "tests_failed_selfcheck_passed": 3,
+     "tests_failed_no_selfcheck": 11,
+     "signal_missing_hidden": 1,
+     "compile_fail_hidden": 1,
+     "sim_incomplete": 2
+    },
+    "cid016": {
+     "tests_failed_no_selfcheck": 2,
+     "tests_failed_selfcheck_failed": 2,
+     "tests_failed_selfcheck_passed": 7,
+     "sim_incomplete": 1
+    }
+   },
+   "all": {
+    "k": 159,
+    "n": 258,
+    "lo": 0.5556459568299125,
+    "hi": 0.6735002139848091
+   }
+  },
+  {
+   "key": "m3c_I",
+   "set": "dev86",
+   "ms": "M3c",
+   "model": "OpenAI gpt-6-luna, LangGraph agent",
+   "arm": "I interface check",
+   "cells": {
+    "cid003": {
+     "k": 64,
+     "n": 99,
+     "lo": 0.5484341356971444,
+     "hi": 0.7335529201246244
+    },
+    "cid004": {
+     "k": 40,
+     "n": 72,
+     "lo": 0.44087185773467513,
+     "hi": 0.6646111489529475
+    },
+    "cid005": {
+     "k": 34,
+     "n": 54,
+     "lo": 0.49627222791081016,
+     "hi": 0.745768102923745
+    },
+    "cid016": {
+     "k": 17,
+     "n": 33,
+     "lo": 0.3521810458621024,
+     "hi": 0.6749621835307578
+    }
+   },
+   "labels": {
+    "cid003": {
+     "stopped_by_cap": 7,
+     "compile_fail_hidden": 11,
+     "tests_failed_no_selfcheck": 12,
+     "signal_missing_hidden": 2,
+     "tests_failed_selfcheck_passed": 3
+    },
+    "cid004": {
+     "tests_failed_selfcheck_passed": 4,
+     "sim_incomplete": 4,
+     "tests_failed_no_selfcheck": 18,
+     "tests_failed_selfcheck_failed": 4,
+     "stopped_by_cap": 2
+    },
+    "cid005": {
+     "tests_failed_selfcheck_passed": 3,
+     "tests_failed_no_selfcheck": 11,
+     "sim_incomplete": 1,
+     "compile_fail_hidden": 2,
+     "tests_failed_selfcheck_failed": 2,
+     "signal_missing_hidden": 1
+    },
+    "cid016": {
+     "tests_failed_no_selfcheck": 4,
+     "tests_failed_selfcheck_passed": 8,
+     "tests_failed_selfcheck_failed": 1,
+     "stopped_by_cap": 3
+    }
+   },
+   "all": {
+    "k": 155,
+    "n": 258,
+    "lo": 0.5399582018648503,
+    "hi": 0.658635146174575
+   }
+  },
+  {
+   "key": "m3c_M",
+   "set": "dev86",
+   "ms": "M3c",
+   "model": "OpenAI gpt-6-luna, LangGraph agent",
+   "arm": "M mutation gate",
+   "cells": {
+    "cid003": {
+     "k": 61,
+     "n": 99,
+     "lo": 0.5177298522759499,
+     "hi": 0.7059150540654526
+    },
+    "cid004": {
+     "k": 44,
+     "n": 72,
+     "lo": 0.4956214320752605,
+     "hi": 0.7153445812999848
+    },
+    "cid005": {
+     "k": 38,
+     "n": 54,
+     "lo": 0.5717217482621142,
+     "hi": 0.8086273430493296
+    },
+    "cid016": {
+     "k": 18,
+     "n": 33,
+     "lo": 0.3798565794374957,
+     "hi": 0.701573108741085
+    }
+   },
+   "labels": {
+    "cid003": {
+     "stopped_by_cap": 7,
+     "compile_fail_hidden": 10,
+     "tests_failed_selfcheck_passed": 15,
+     "tests_failed_selfcheck_failed": 3,
+     "signal_missing_hidden": 2,
+     "llm_error": 1
+    },
+    "cid004": {
+     "sim_incomplete": 1,
+     "tests_failed_selfcheck_failed": 5,
+     "tests_failed_selfcheck_passed": 14,
+     "stopped_by_cap": 8
+    },
+    "cid005": {
+     "tests_failed_selfcheck_passed": 9,
+     "signal_missing_hidden": 2,
+     "stopped_by_cap": 3,
+     "llm_error": 1,
+     "compile_fail_hidden": 1
+    },
+    "cid016": {
+     "stopped_by_cap": 1,
+     "tests_failed_selfcheck_passed": 12,
+     "tests_failed_selfcheck_failed": 2
+    }
+   },
+   "all": {
+    "k": 161,
+    "n": 258,
+    "lo": 0.5635131101000036,
+    "hi": 0.6809094721023662
+   }
+  },
+  {
+   "key": "m3d_A",
+   "set": "dev86",
+   "ms": "M3d",
+   "model": "OpenAI gpt-6-luna, LangGraph agent",
+   "arm": "A base",
+   "cells": {
+    "cid003": {
+     "k": 61,
+     "n": 99,
+     "lo": 0.5177298522759499,
+     "hi": 0.7059150540654526
+    },
+    "cid004": {
+     "k": 41,
+     "n": 72,
+     "lo": 0.4544309920240597,
+     "hi": 0.6774227663354686
+    },
+    "cid005": {
+     "k": 35,
+     "n": 54,
+     "lo": 0.5148458381779774,
+     "hi": 0.7617716827757998
+    },
+    "cid016": {
+     "k": 20,
+     "n": 33,
+     "lo": 0.4368314280651038,
+     "hi": 0.7531711776849179
+    }
+   },
+   "labels": {
+    "cid003": {
+     "llm_error": 1,
+     "compile_fail_hidden": 9,
+     "tests_failed_no_selfcheck": 20,
+     "stopped_by_cap": 1,
+     "signal_missing_hidden": 4,
+     "tests_failed_selfcheck_passed": 3
+    },
+    "cid004": {
+     "sim_incomplete": 3,
+     "tests_failed_no_selfcheck": 18,
+     "stopped_by_cap": 4,
+     "tests_failed_selfcheck_passed": 4,
+     "tests_failed_selfcheck_failed": 2
+    },
+    "cid005": {
+     "tests_failed_selfcheck_passed": 3,
+     "tests_failed_no_selfcheck": 13,
+     "stopped_by_cap": 1,
+     "sim_incomplete": 1,
+     "compile_fail_hidden": 1
+    },
+    "cid016": {
+     "tests_failed_selfcheck_passed": 6,
+     "llm_error": 1,
+     "stopped_by_cap": 1,
+     "tests_failed_no_selfcheck": 4,
+     "sim_incomplete": 1
+    }
+   },
+   "all": {
+    "k": 157,
+    "n": 258,
+    "lo": 0.5477943767510287,
+    "hi": 0.6660753826760448
+   }
+  },
+  {
+   "key": "m3d_V",
+   "set": "dev86",
+   "ms": "M3d",
+   "model": "OpenAI gpt-6-luna, LangGraph agent",
+   "arm": "V verify before submit",
+   "cells": {
+    "cid003": {
+     "k": 58,
+     "n": 99,
+     "lo": 0.48739617763471826,
+     "hi": 0.6779065792263185
+    },
+    "cid004": {
+     "k": 41,
+     "n": 72,
+     "lo": 0.4544309920240597,
+     "hi": 0.6774227663354686
+    },
+    "cid005": {
+     "k": 36,
+     "n": 54,
+     "lo": 0.5336071462745029,
+     "hi": 0.7775875647984964
+    },
+    "cid016": {
+     "k": 17,
+     "n": 33,
+     "lo": 0.3521810458621024,
+     "hi": 0.6749621835307578
+    }
+   },
+   "labels": {
+    "cid003": {
+     "llm_error": 4,
+     "compile_fail_hidden": 9,
+     "tests_failed_selfcheck_passed": 15,
+     "stopped_by_cap": 11,
+     "signal_missing_hidden": 2
+    },
+    "cid004": {
+     "stopped_by_cap": 9,
+     "tests_failed_selfcheck_failed": 2,
+     "tests_failed_selfcheck_passed": 12,
+     "llm_error": 6,
+     "sim_incomplete": 2
+    },
+    "cid005": {
+     "tests_failed_selfcheck_passed": 9,
+     "signal_missing_hidden": 1,
+     "stopped_by_cap": 3,
+     "llm_error": 4,
+     "tests_failed_selfcheck_failed": 1
+    },
+    "cid016": {
+     "tests_failed_selfcheck_passed": 12,
+     "stopped_by_cap": 4
+    }
+   },
+   "all": {
+    "k": 152,
+    "n": 258,
+    "lo": 0.5282324917702123,
+    "hi": 0.6474462391877412
+   }
+  },
+  {
+   "key": "m3d_S",
+   "set": "dev86",
+   "ms": "M3d",
+   "model": "OpenAI gpt-6-luna, LangGraph agent",
+   "arm": "S verify plus spec cases",
+   "cells": {
+    "cid003": {
+     "k": 60,
+     "n": 99,
+     "lo": 0.5075782136685492,
+     "hi": 0.6966193095127315
+    },
+    "cid004": {
+     "k": 36,
+     "n": 72,
+     "lo": 0.38746896004724257,
+     "hi": 0.6125310399527575
+    },
+    "cid005": {
+     "k": 33,
+     "n": 54,
+     "lo": 0.47788056581508337,
+     "hi": 0.7295825749002496
+    },
+    "cid016": {
+     "k": 16,
+     "n": 33,
+     "lo": 0.32503781646924224,
+     "hi": 0.6478189541378976
+    }
+   },
+   "labels": {
+    "cid003": {
+     "compile_fail_hidden": 8,
+     "stopped_by_cap": 18,
+     "tests_failed_selfcheck_failed": 2,
+     "tests_failed_selfcheck_passed": 7,
+     "llm_error": 4
+    },
+    "cid004": {
+     "llm_error": 5,
+     "tests_failed_selfcheck_passed": 10,
+     "stopped_by_cap": 19,
+     "tests_failed_no_selfcheck": 1,
+     "sim_incomplete": 1
+    },
+    "cid005": {
+     "tests_failed_selfcheck_failed": 1,
+     "tests_failed_selfcheck_passed": 14,
+     "compile_fail_hidden": 2,
+     "stopped_by_cap": 3,
+     "tests_failed_no_selfcheck": 1
+    },
+    "cid016": {
+     "tests_failed_selfcheck_passed": 13,
+     "stopped_by_cap": 3,
+     "tests_failed_selfcheck_failed": 1
+    }
+   },
+   "all": {
+    "k": 145,
+    "n": 258,
+    "lo": 0.5010034917302626,
+    "hi": 0.6212077993709224
+   }
+  },
+  {
+   "key": "m3e_opus",
+   "set": "dev86",
+   "ms": "M3e",
+   "model": "Anthropic claude-opus-5.5 (low), LangGraph agent",
+   "arm": "LG, run refused by guard counted as fail",
+   "cells": {
+    "cid003": {
+     "k": 24,
+     "n": 33,
+     "lo": 0.5578211674561319,
+     "hi": 0.849327273436772
+    },
+    "cid004": {
+     "k": 16,
+     "n": 24,
+     "lo": 0.4670595949408046,
+     "hi": 0.8202802131162036
+    },
+    "cid005": {
+     "k": 12,
+     "n": 18,
+     "lo": 0.4374906934425036,
+     "hi": 0.8372144563633714
+    },
+    "cid016": {
+     "k": 10,
+     "n": 11,
+     "lo": 0.6226353745137962,
+     "hi": 0.9837682477371741
+    }
+   },
+   "labels": {
+    "cid003": {
+     "compile_fail_hidden": 3,
+     "tests_failed_selfcheck_passed": 5,
+     "signal_missing_hidden": 1
+    },
+    "cid004": {
+     "compile_fail_hidden": 1,
+     "tests_failed_selfcheck_passed": 5,
+     "gave_up": 1,
+     "tests_failed_selfcheck_failed": 1
+    },
+    "cid005": {
+     "tests_failed_selfcheck_passed": 6
+    },
+    "cid016": {
+     "tests_failed_selfcheck_passed": 1
+    }
+   },
+   "all": {
+    "k": 62,
+    "n": 86,
+    "lo": 0.6182520968201862,
+    "hi": 0.8047145466946218
+   }
+  },
+  {
+   "key": "cc_haiku",
+   "set": "dev86",
+   "ms": "Claude Code ladder",
+   "model": "Anthropic claude-haiku-5-5 (low), Claude Code",
+   "arm": "plan-signed-in",
+   "cells": {
+    "cid003": {
+     "k": 20,
+     "n": 33,
+     "lo": 0.4368314280651038,
+     "hi": 0.7531711776849179
+    },
+    "cid004": {
+     "k": 14,
+     "n": 24,
+     "lo": 0.3883433764938864,
+     "hi": 0.7553265275346177
+    },
+    "cid005": {
+     "k": 14,
+     "n": 18,
+     "lo": 0.5478497354769452,
+     "hi": 0.90999218086618
+    },
+    "cid016": {
+     "k": 9,
+     "n": 11,
+     "lo": 0.5230138624217553,
+     "hi": 0.9486333993289995
+    }
+   },
+   "labels": {
+    "cid003": {
+     "compile_fail_own": 6,
+     "tests_failed_no_selfcheck": 5,
+     "signal_missing_hidden": 2
+    },
+    "cid004": {
+     "tests_failed_no_selfcheck": 10
+    },
+    "cid005": {
+     "tests_failed_no_selfcheck": 4
+    },
+    "cid016": {
+     "tests_failed_no_selfcheck": 2
+    }
+   },
+   "all": {
+    "k": 57,
+    "n": 86,
+    "lo": 0.5578236301352326,
+    "hi": 0.7538360019283099
+   }
+  },
+  {
+   "key": "cc_sonnet",
+   "set": "dev86",
+   "ms": "Claude Code ladder",
+   "model": "Anthropic claude-sonnet-5-5 (low), Claude Code",
+   "arm": "plan-signed-in",
+   "cells": {
+    "cid003": {
+     "k": 24,
+     "n": 33,
+     "lo": 0.5578211674561319,
+     "hi": 0.849327273436772
+    },
+    "cid004": {
+     "k": 14,
+     "n": 24,
+     "lo": 0.3883433764938864,
+     "hi": 0.7553265275346177
+    },
+    "cid005": {
+     "k": 13,
+     "n": 18,
+     "lo": 0.49126922453805477,
+     "hi": 0.8750043085364452
+    },
+    "cid016": {
+     "k": 9,
+     "n": 11,
+     "lo": 0.5230138624217553,
+     "hi": 0.9486333993289995
+    }
+   },
+   "labels": {
+    "cid003": {
+     "compile_fail_own": 4,
+     "tests_failed_no_selfcheck": 3,
+     "stopped_by_cap": 1,
+     "signal_missing_hidden": 1
+    },
+    "cid004": {
+     "tests_failed_no_selfcheck": 10
+    },
+    "cid005": {
+     "tests_failed_no_selfcheck": 4,
+     "signal_missing_hidden": 1
+    },
+    "cid016": {
+     "tests_failed_no_selfcheck": 2
+    }
+   },
+   "all": {
+    "k": 60,
+    "n": 86,
+    "lo": 0.5938776628562396,
+    "hi": 0.7845661760780623
+   }
+  },
+  {
+   "key": "cc_opus",
+   "set": "dev86",
+   "ms": "Claude Code ladder",
+   "model": "Anthropic claude-opus-5-5 (low), Claude Code",
+   "arm": "plan-signed-in",
+   "cells": {
+    "cid003": {
+     "k": 28,
+     "n": 33,
+     "lo": 0.6907978686153953,
+     "hi": 0.9334964074203904
+    },
+    "cid004": {
+     "k": 16,
+     "n": 24,
+     "lo": 0.4670595949408046,
+     "hi": 0.8202802131162036
+    },
+    "cid005": {
+     "k": 11,
+     "n": 18,
+     "lo": 0.3861866858065617,
+     "hi": 0.7969500807306884
+    },
+    "cid016": {
+     "k": 8,
+     "n": 11,
+     "lo": 0.4343497069897537,
+     "hi": 0.9025411942607853
+    }
+   },
+   "labels": {
+    "cid003": {
+     "tests_failed_no_selfcheck": 3,
+     "compile_fail_own": 2
+    },
+    "cid004": {
+     "sim_incomplete": 1,
+     "compile_fail_own": 1,
+     "tests_failed_no_selfcheck": 6
+    },
+    "cid005": {
+     "tests_failed_no_selfcheck": 6,
+     "sim_incomplete": 1
+    },
+    "cid016": {
+     "tests_failed_no_selfcheck": 3
+    }
+   },
+   "all": {
+    "k": 63,
+    "n": 86,
+    "lo": 0.6305476035519365,
+    "hi": 0.8146804422531247
+   }
+  },
+  {
+   "key": "cc_fable",
+   "set": "dev86",
+   "ms": "Claude Code ladder",
+   "model": "Anthropic claude-fable-5-1 (low), Claude Code",
+   "arm": "plan-signed-in",
+   "cells": {
+    "cid003": {
+     "k": 22,
+     "n": 33,
+     "lo": 0.4960758179994997,
+     "hi": 0.8024997053219629
+    },
+    "cid004": {
+     "k": 16,
+     "n": 24,
+     "lo": 0.4670595949408046,
+     "hi": 0.8202802131162036
+    },
+    "cid005": {
+     "k": 13,
+     "n": 18,
+     "lo": 0.49126922453805477,
+     "hi": 0.8750043085364452
+    },
+    "cid016": {
+     "k": 7,
+     "n": 11,
+     "lo": 0.35379677689163724,
+     "hi": 0.8483377638586862
+    }
+   },
+   "labels": {
+    "cid003": {
+     "compile_fail_own": 3,
+     "tests_failed_no_selfcheck": 1,
+     "stopped_by_cap": 6,
+     "signal_missing_hidden": 1
+    },
+    "cid004": {
+     "sim_incomplete": 1,
+     "tests_failed_no_selfcheck": 6,
+     "stopped_by_cap": 1
+    },
+    "cid005": {
+     "tests_failed_no_selfcheck": 1,
+     "stopped_by_cap": 3,
+     "signal_missing_hidden": 1
+    },
+    "cid016": {
+     "tests_failed_no_selfcheck": 4
+    }
+   },
+   "all": {
+    "k": 58,
+    "n": 86,
+    "lo": 0.5697765718056292,
+    "hi": 0.7641444625481665
+   }
+  },
+  {
+   "key": "m3g_dev_K",
+   "set": "dev86",
+   "ms": "M3g",
+   "model": "OpenAI gpt-6-luna, LangGraph agent",
+   "arm": "K knowledge pack",
+   "cells": {
+    "cid003": {
+     "k": 57,
+     "n": 99,
+     "lo": 0.4773648481449719,
+     "hi": 0.6684905255559431
+    },
+    "cid004": {
+     "k": 41,
+     "n": 72,
+     "lo": 0.4544309920240597,
+     "hi": 0.6774227663354686
+    },
+    "cid005": {
+     "k": 34,
+     "n": 54,
+     "lo": 0.49627222791081016,
+     "hi": 0.745768102923745
+    },
+    "cid016": {
+     "k": 19,
+     "n": 33,
+     "lo": 0.4080697369146003,
+     "hi": 0.7276464100497011
+    }
+   },
+   "labels": {
+    "cid003": {
+     "tests_failed_selfcheck_failed": 3,
+     "compile_fail_hidden": 7,
+     "signal_missing_hidden": 6,
+     "tests_failed_no_selfcheck": 20,
+     "tests_failed_selfcheck_passed": 2,
+     "stopped_by_cap": 1,
+     "llm_error": 3
+    },
+    "cid004": {
+     "tests_failed_selfcheck_failed": 3,
+     "tests_failed_no_selfcheck": 17,
+     "sim_incomplete": 3,
+     "tests_failed_selfcheck_passed": 4,
+     "no_edit": 1,
+     "stopped_by_cap": 3
+    },
+    "cid005": {
+     "tests_failed_no_selfcheck": 10,
+     "signal_missing_hidden": 3,
+     "sim_incomplete": 2,
+     "llm_error": 2,
+     "stopped_by_cap": 1,
+     "tests_failed_selfcheck_passed": 1,
+     "compile_fail_hidden": 1
+    },
+    "cid016": {
+     "tests_failed_no_selfcheck": 5,
+     "tests_failed_selfcheck_passed": 7,
+     "tests_failed_selfcheck_failed": 1,
+     "stopped_by_cap": 1
+    }
+   },
+   "all": {
+    "k": 151,
+    "n": 258,
+    "lo": 0.5243314664645916,
+    "hi": 0.6437090587995379
+   }
+  },
+  {
+   "key": "m3g_ho_A",
+   "set": "heldout100",
+   "ms": "M3g",
+   "model": "OpenAI gpt-6-luna, LangGraph agent",
+   "arm": "A base",
+   "cells": {
+    "cid002": {
+     "k": 52,
+     "n": 126,
+     "lo": 0.3305590263103976,
+     "hi": 0.5000037517206803
+    },
+    "cid003": {
+     "k": 74,
+     "n": 123,
+     "lo": 0.5132936289239914,
+     "hi": 0.6838025918742326
+    },
+    "cid004": {
+     "k": 27,
+     "n": 51,
+     "lo": 0.3952307134472659,
+     "hi": 0.6594722857358359
+    }
+   },
+   "labels": {
+    "cid002": {
+     "tests_failed_no_selfcheck": 52,
+     "compile_fail_hidden": 7,
+     "tests_failed_selfcheck_failed": 2,
+     "signal_missing_hidden": 3,
+     "sim_incomplete": 5,
+     "tests_failed_selfcheck_passed": 5
+    },
+    "cid003": {
+     "signal_missing_hidden": 7,
+     "tests_failed_no_selfcheck": 34,
+     "compile_fail_hidden": 3,
+     "sim_incomplete": 3,
+     "tests_failed_selfcheck_failed": 1,
+     "llm_error": 1
+    },
+    "cid004": {
+     "tests_failed_no_selfcheck": 17,
+     "signal_missing_hidden": 6,
+     "sim_incomplete": 1
+    }
+   },
+   "all": {
+    "k": 153,
+    "n": 300,
+    "lo": 0.45366316504261445,
+    "hi": 0.5660839663574307
+   }
+  },
+  {
+   "key": "m3g_ho_K",
+   "set": "heldout100",
+   "ms": "M3g",
+   "model": "OpenAI gpt-6-luna, LangGraph agent",
+   "arm": "K knowledge pack",
+   "cells": {
+    "cid002": {
+     "k": 51,
+     "n": 126,
+     "lo": 0.32310316968139846,
+     "hi": 0.4920562245343229
+    },
+    "cid003": {
+     "k": 78,
+     "n": 123,
+     "lo": 0.5461600852628291,
+     "hi": 0.7140069261908265
+    },
+    "cid004": {
+     "k": 27,
+     "n": 51,
+     "lo": 0.3952307134472659,
+     "hi": 0.6594722857358359
+    }
+   },
+   "labels": {
+    "cid002": {
+     "tests_failed_no_selfcheck": 51,
+     "tests_failed_selfcheck_passed": 8,
+     "compile_fail_hidden": 7,
+     "signal_missing_hidden": 3,
+     "sim_incomplete": 5,
+     "stopped_by_cap": 1
+    },
+    "cid003": {
+     "tests_failed_no_selfcheck": 30,
+     "signal_missing_hidden": 7,
+     "compile_fail_hidden": 3,
+     "stopped_by_cap": 1,
+     "sim_incomplete": 3,
+     "tests_failed_selfcheck_passed": 1
+    },
+    "cid004": {
+     "tests_failed_no_selfcheck": 14,
+     "signal_missing_hidden": 6,
+     "tests_failed_selfcheck_passed": 2,
+     "sim_incomplete": 2
+    }
+   },
+   "all": {
+    "k": 156,
+    "n": 300,
+    "lo": 0.46357005360167935,
+    "hi": 0.5759242091984114
+   }
+  },
+  {
+   "key": "m3h_dev_A",
+   "set": "dev86",
+   "ms": "M3h",
+   "model": "Anthropic claude-haiku-5-5, Claude Code harness",
+   "arm": "A base",
+   "cells": {
+    "cid003": {
+     "k": 21,
+     "n": 33,
+     "lo": 0.46615872621534094,
+     "hi": 0.7781303383204013
+    },
+    "cid004": {
+     "k": 16,
+     "n": 24,
+     "lo": 0.4670595949408046,
+     "hi": 0.8202802131162036
+    },
+    "cid005": {
+     "k": 13,
+     "n": 18,
+     "lo": 0.49126922453805477,
+     "hi": 0.8750043085364452
+    },
+    "cid016": {
+     "k": 8,
+     "n": 11,
+     "lo": 0.4343497069897537,
+     "hi": 0.9025411942607853
+    }
+   },
+   "labels": {
+    "cid003": {
+     "tests_failed_no_selfcheck": 6,
+     "compile_fail_own": 5,
+     "signal_missing_hidden": 1
+    },
+    "cid004": {
+     "tests_failed_no_selfcheck": 8
+    },
+    "cid005": {
+     "tests_failed_no_selfcheck": 5
+    },
+    "cid016": {
+     "tests_failed_no_selfcheck": 3
+    }
+   },
+   "all": {
+    "k": 58,
+    "n": 86,
+    "lo": 0.5697765718056292,
+    "hi": 0.7641444625481665
+   }
+  },
+  {
+   "key": "m3h_dev_S1c",
+   "set": "dev86",
+   "ms": "M3h",
+   "model": "Anthropic claude-haiku-5-5, Claude Code harness",
+   "arm": "S1c skills v1.0 + hint",
+   "cells": {
+    "cid003": {
+     "k": 21,
+     "n": 33,
+     "lo": 0.46615872621534094,
+     "hi": 0.7781303383204013
+    },
+    "cid004": {
+     "k": 16,
+     "n": 24,
+     "lo": 0.4670595949408046,
+     "hi": 0.8202802131162036
+    },
+    "cid005": {
+     "k": 13,
+     "n": 18,
+     "lo": 0.49126922453805477,
+     "hi": 0.8750043085364452
+    },
+    "cid016": {
+     "k": 7,
+     "n": 11,
+     "lo": 0.35379677689163724,
+     "hi": 0.8483377638586862
+    }
+   },
+   "labels": {
+    "cid003": {
+     "tests_failed_no_selfcheck": 6,
+     "compile_fail_own": 5,
+     "signal_missing_hidden": 1
+    },
+    "cid004": {
+     "sim_incomplete": 2,
+     "stopped_by_cap": 1,
+     "tests_failed_no_selfcheck": 5
+    },
+    "cid005": {
+     "tests_failed_no_selfcheck": 4,
+     "stopped_by_cap": 1
+    },
+    "cid016": {
+     "tests_failed_no_selfcheck": 4
+    }
+   },
+   "all": {
+    "k": 57,
+    "n": 86,
+    "lo": 0.5578236301352326,
+    "hi": 0.7538360019283099
+   }
+  },
+  {
+   "key": "m3h_dev_S2c",
+   "set": "dev86",
+   "ms": "M3h",
+   "model": "Anthropic claude-haiku-5-5, Claude Code harness",
+   "arm": "S2c skills v2.0 + hint",
+   "cells": {
+    "cid003": {
+     "k": 22,
+     "n": 33,
+     "lo": 0.4960758179994997,
+     "hi": 0.8024997053219629
+    },
+    "cid004": {
+     "k": 15,
+     "n": 24,
+     "lo": 0.42709619037907065,
+     "hi": 0.7884086656636855
+    },
+    "cid005": {
+     "k": 14,
+     "n": 18,
+     "lo": 0.5478497354769452,
+     "hi": 0.90999218086618
+    },
+    "cid016": {
+     "k": 10,
+     "n": 11,
+     "lo": 0.6226353745137962,
+     "hi": 0.9837682477371741
+    }
+   },
+   "labels": {
+    "cid003": {
+     "tests_failed_no_selfcheck": 6,
+     "compile_fail_own": 4,
+     "signal_missing_hidden": 1
+    },
+    "cid004": {
+     "tests_failed_no_selfcheck": 9
+    },
+    "cid005": {
+     "stopped_by_cap": 1,
+     "signal_missing_hidden": 1,
+     "tests_failed_no_selfcheck": 2
+    },
+    "cid016": {
+     "tests_failed_no_selfcheck": 1
+    }
+   },
+   "all": {
+    "k": 61,
+    "n": 86,
+    "lo": 0.6060296195175814,
+    "hi": 0.7946756217069737
+   }
+  },
+  {
+   "key": "m3h_ho_A",
+   "set": "heldout100",
+   "ms": "M3h",
+   "model": "Anthropic claude-haiku-5-5, Claude Code harness",
+   "arm": "A base",
+   "cells": {
+    "cid002": {
+     "k": 61,
+     "n": 126,
+     "lo": 0.3986345839535585,
+     "hi": 0.5705586484157286
+    },
+    "cid003": {
+     "k": 87,
+     "n": 123,
+     "lo": 0.6216067635828231,
+     "hi": 0.7804695268455537
+    },
+    "cid004": {
+     "k": 27,
+     "n": 51,
+     "lo": 0.3952307134472659,
+     "hi": 0.6594722857358359
+    }
+   },
+   "labels": {
+    "cid002": {
+     "tests_failed_no_selfcheck": 50,
+     "compile_fail_own": 8,
+     "signal_missing_hidden": 3,
+     "sim_incomplete": 4
+    },
+    "cid003": {
+     "tests_failed_no_selfcheck": 26,
+     "signal_missing_hidden": 4,
+     "compile_fail_own": 3,
+     "sim_incomplete": 3
+    },
+    "cid004": {
+     "tests_failed_no_selfcheck": 18,
+     "signal_missing_hidden": 6
+    }
+   },
+   "all": {
+    "k": 175,
+    "n": 300,
+    "lo": 0.5268345519290606,
+    "hi": 0.6377248764046503
+   }
+  },
+  {
+   "key": "m3h_ho_S1c",
+   "set": "heldout100",
+   "ms": "M3h",
+   "model": "Anthropic claude-haiku-5-5, Claude Code harness",
+   "arm": "S1c skills v1.0 + hint",
+   "cells": {
+    "cid002": {
+     "k": 63,
+     "n": 126,
+     "lo": 0.4139959017945411,
+     "hi": 0.5860040982054588
+    },
+    "cid003": {
+     "k": 87,
+     "n": 123,
+     "lo": 0.6216067635828231,
+     "hi": 0.7804695268455537
+    },
+    "cid004": {
+     "k": 29,
+     "n": 51,
+     "lo": 0.43265061235058067,
+     "hi": 0.694989719076657
+    }
+   },
+   "labels": {
+    "cid002": {
+     "tests_failed_no_selfcheck": 48,
+     "compile_fail_own": 7,
+     "signal_missing_hidden": 3,
+     "sim_incomplete": 4,
+     "stopped_by_cap": 1
+    },
+    "cid003": {
+     "tests_failed_no_selfcheck": 25,
+     "signal_missing_hidden": 5,
+     "compile_fail_own": 3,
+     "sim_incomplete": 3
+    },
+    "cid004": {
+     "tests_failed_no_selfcheck": 16,
+     "signal_missing_hidden": 6
+    }
+   },
+   "all": {
+    "k": 179,
+    "n": 300,
+    "lo": 0.5402701497811767,
+    "hi": 0.6506187870859278
+   }
+  },
+  {
+   "key": "m3h_ho_S2c",
+   "set": "heldout100",
+   "ms": "M3h",
+   "model": "Anthropic claude-haiku-5-5, Claude Code harness",
+   "arm": "S2c skills v2.0 + hint",
+   "cells": {
+    "cid002": {
+     "k": 58,
+     "n": 126,
+     "lo": 0.3757506931925942,
+     "hi": 0.547232387730623
+    },
+    "cid003": {
+     "k": 82,
+     "n": 123,
+     "lo": 0.5794250199734539,
+     "hi": 0.7438127821356333
+    },
+    "cid004": {
+     "k": 29,
+     "n": 51,
+     "lo": 0.43265061235058067,
+     "hi": 0.694989719076657
+    }
+   },
+   "labels": {
+    "cid002": {
+     "tests_failed_no_selfcheck": 53,
+     "compile_fail_own": 7,
+     "signal_missing_hidden": 4,
+     "sim_incomplete": 4
+    },
+    "cid003": {
+     "tests_failed_no_selfcheck": 30,
+     "stopped_by_cap": 1,
+     "signal_missing_hidden": 4,
+     "compile_fail_own": 3,
+     "sim_incomplete": 3
+    },
+    "cid004": {
+     "tests_failed_no_selfcheck": 17,
+     "signal_missing_hidden": 5
+    }
+   },
+   "all": {
+    "k": 169,
+    "n": 300,
+    "lo": 0.5067581755681922,
+    "hi": 0.6183069899654279
+   }
+  },
+  {
+   "key": "m3h_ho_S2",
+   "set": "heldout100",
+   "ms": "M3h",
+   "model": "Anthropic claude-haiku-5-5, Claude Code harness",
+   "arm": "S2 skills v2.0, no hint (1 run)",
+   "cells": {
+    "cid002": {
+     "k": 19,
+     "n": 42,
+     "lo": 0.3122316381863852,
+     "hi": 0.6005113725287732
+    },
+    "cid003": {
+     "k": 29,
+     "n": 41,
+     "lo": 0.5552024292386027,
+     "hi": 0.8239098236694112
+    },
+    "cid004": {
+     "k": 9,
+     "n": 17,
+     "lo": 0.30962897311549487,
+     "hi": 0.738351988039119
+    }
+   },
+   "labels": {
+    "cid002": {
+     "tests_failed_no_selfcheck": 18,
+     "compile_fail_own": 2,
+     "signal_missing_hidden": 1,
+     "sim_incomplete": 2
+    },
+    "cid003": {
+     "tests_failed_no_selfcheck": 9,
+     "signal_missing_hidden": 1,
+     "compile_fail_own": 1,
+     "sim_incomplete": 1
+    },
+    "cid004": {
+     "tests_failed_no_selfcheck": 6,
+     "signal_missing_hidden": 2
+    }
+   },
+   "all": {
+    "k": 57,
+    "n": 100,
+    "lo": 0.4721521169586435,
+    "hi": 0.6626686099947162
+   }
+  },
+  {
+   "key": "m3i_dev_P",
+   "set": "dev86",
+   "ms": "M3i",
+   "model": "Anthropic claude-haiku-5-5, Claude Code harness",
+   "arm": "P plain profile",
+   "cells": {
+    "cid003": {
+     "k": 23,
+     "n": 33,
+     "lo": 0.5266154602526555,
+     "hi": 0.8262465218545277
+    },
+    "cid004": {
+     "k": 14,
+     "n": 24,
+     "lo": 0.3883433764938864,
+     "hi": 0.7553265275346177
+    },
+    "cid005": {
+     "k": 14,
+     "n": 18,
+     "lo": 0.5478497354769452,
+     "hi": 0.90999218086618
+    },
+    "cid016": {
+     "k": 10,
+     "n": 11,
+     "lo": 0.6226353745137962,
+     "hi": 0.9837682477371741
+    }
+   },
+   "labels": {
+    "cid003": {
+     "compile_fail_own": 4,
+     "tests_failed_no_selfcheck": 5,
+     "signal_missing_hidden": 1
+    },
+    "cid004": {
+     "sim_incomplete": 1,
+     "tests_failed_no_selfcheck": 9
+    },
+    "cid005": {
+     "tests_failed_no_selfcheck": 4
+    },
+    "cid016": {
+     "tests_failed_no_selfcheck": 1
+    }
+   },
+   "all": {
+    "k": 61,
+    "n": 86,
+    "lo": 0.6060296195175814,
+    "hi": 0.7946756217069737
+   }
+  },
+  {
+   "key": "m3i_ho_P",
+   "set": "heldout100",
+   "ms": "M3i",
+   "model": "Anthropic claude-haiku-5-5, Claude Code harness",
+   "arm": "P plain profile",
+   "cells": {
+    "cid002": {
+     "k": 58,
+     "n": 126,
+     "lo": 0.3757506931925942,
+     "hi": 0.547232387730623
+    },
+    "cid003": {
+     "k": 88,
+     "n": 123,
+     "lo": 0.6301286003469405,
+     "hi": 0.7877153877452941
+    },
+    "cid004": {
+     "k": 28,
+     "n": 51,
+     "lo": 0.41384471541649237,
+     "hi": 0.6773269498886776
+    }
+   },
+   "labels": {
+    "cid002": {
+     "tests_failed_no_selfcheck": 54,
+     "stopped_by_cap": 1,
+     "compile_fail_own": 6,
+     "signal_missing_hidden": 3,
+     "sim_incomplete": 4
+    },
+    "cid003": {
+     "tests_failed_no_selfcheck": 24,
+     "compile_fail_own": 4,
+     "signal_missing_hidden": 5,
+     "sim_incomplete": 2
+    },
+    "cid004": {
+     "tests_failed_no_selfcheck": 17,
+     "signal_missing_hidden": 6
+    }
+   },
+   "all": {
+    "k": 174,
+    "n": 300,
+    "lo": 0.5234821059002049,
+    "hi": 0.6344949453001573
+   }
+  },
+  {
+   "key": "m3j_dev_B",
+   "set": "dev86",
+   "ms": "M3j",
+   "model": "Anthropic claude-haiku-5-5, Claude Code harness",
+   "arm": "B",
+   "cells": {
+    "cid003": {
+     "k": 21,
+     "n": 33,
+     "lo": 0.46615872621534094,
+     "hi": 0.7781303383204013
+    },
+    "cid004": {
+     "k": 14,
+     "n": 24,
+     "lo": 0.3883433764938864,
+     "hi": 0.7553265275346177
+    },
+    "cid005": {
+     "k": 13,
+     "n": 18,
+     "lo": 0.49126922453805477,
+     "hi": 0.8750043085364452
+    },
+    "cid016": {
+     "k": 9,
+     "n": 11,
+     "lo": 0.5230138624217553,
+     "hi": 0.9486333993289995
+    }
+   },
+   "labels": {
+    "cid003": {
+     "compile_fail_own": 4,
+     "tests_failed_no_selfcheck": 7,
+     "signal_missing_hidden": 1
+    },
+    "cid004": {
+     "tests_failed_no_selfcheck": 9,
+     "sim_incomplete": 1
+    },
+    "cid005": {
+     "tests_failed_no_selfcheck": 4,
+     "signal_missing_hidden": 1
+    },
+    "cid016": {
+     "tests_failed_no_selfcheck": 2
+    }
+   },
+   "all": {
+    "k": 57,
+    "n": 86,
+    "lo": 0.5578236301352326,
+    "hi": 0.7538360019283099
+   }
+  },
+  {
+   "key": "m3j_dev_PA",
+   "set": "dev86",
+   "ms": "M3j",
+   "model": "Anthropic claude-haiku-5-5, Claude Code harness",
+   "arm": "PA",
+   "cells": {
+    "cid003": {
+     "k": 23,
+     "n": 33,
+     "lo": 0.5266154602526555,
+     "hi": 0.8262465218545277
+    },
+    "cid004": {
+     "k": 13,
+     "n": 24,
+     "lo": 0.35074553553106635,
+     "hi": 0.7210894164831857
+    },
+    "cid005": {
+     "k": 13,
+     "n": 18,
+     "lo": 0.49126922453805477,
+     "hi": 0.8750043085364452
+    },
+    "cid016": {
+     "k": 8,
+     "n": 11,
+     "lo": 0.4343497069897537,
+     "hi": 0.9025411942607853
+    }
+   },
+   "labels": {
+    "cid003": {
+     "tests_failed_no_selfcheck": 7,
+     "compile_fail_own": 3
+    },
+    "cid004": {
+     "sim_incomplete": 1,
+     "tests_failed_no_selfcheck": 10
+    },
+    "cid005": {
+     "sim_incomplete": 1,
+     "signal_missing_hidden": 1,
+     "tests_failed_no_selfcheck": 3
+    },
+    "cid016": {
+     "tests_failed_no_selfcheck": 3
+    }
+   },
+   "all": {
+    "k": 57,
+    "n": 86,
+    "lo": 0.5578236301352326,
+    "hi": 0.7538360019283099
+   }
+  },
+  {
+   "key": "m3j_dev_R",
+   "set": "dev86",
+   "ms": "M3j",
+   "model": "Anthropic claude-haiku-5-5, Claude Code harness",
+   "arm": "R (first run plus rerun of not-run problems)",
+   "cells": {
+    "cid003": {
+     "k": 21,
+     "n": 33,
+     "lo": 0.46615872621534094,
+     "hi": 0.7781303383204013
+    },
+    "cid004": {
+     "k": 16,
+     "n": 24,
+     "lo": 0.4670595949408046,
+     "hi": 0.8202802131162036
+    },
+    "cid005": {
+     "k": 12,
+     "n": 18,
+     "lo": 0.4374906934425036,
+     "hi": 0.8372144563633714
+    },
+    "cid016": {
+     "k": 9,
+     "n": 11,
+     "lo": 0.5230138624217553,
+     "hi": 0.9486333993289995
+    }
+   },
+   "labels": {
+    "cid003": {
+     "compile_fail_own": 5,
+     "tests_failed_no_selfcheck": 5,
+     "signal_missing_hidden": 2
+    },
+    "cid004": {
+     "sim_incomplete": 1,
+     "tests_failed_no_selfcheck": 7
+    },
+    "cid005": {
+     "tests_failed_no_selfcheck": 5,
+     "signal_missing_hidden": 1
+    },
+    "cid016": {
+     "tests_failed_no_selfcheck": 2
+    }
+   },
+   "all": {
+    "k": 58,
+    "n": 86,
+    "lo": 0.5697765718056292,
+    "hi": 0.7641444625481665
+   }
+  },
+  {
+   "key": "m3j_ho_B",
+   "set": "heldout100",
+   "ms": "M3j",
+   "model": "Anthropic claude-haiku-5-5, Claude Code harness",
+   "arm": "B",
+   "cells": {
+    "cid002": {
+     "k": 60,
+     "n": 126,
+     "lo": 0.39098550347951744,
+     "hi": 0.5628043450744129
+    },
+    "cid003": {
+     "k": 87,
+     "n": 123,
+     "lo": 0.6216067635828231,
+     "hi": 0.7804695268455537
+    },
+    "cid004": {
+     "k": 28,
+     "n": 51,
+     "lo": 0.41384471541649237,
+     "hi": 0.6773269498886776
+    }
+   },
+   "labels": {
+    "cid002": {
+     "tests_failed_no_selfcheck": 53,
+     "compile_fail_own": 6,
+     "signal_missing_hidden": 3,
+     "sim_incomplete": 4
+    },
+    "cid003": {
+     "tests_failed_no_selfcheck": 22,
+     "signal_missing_hidden": 8,
+     "compile_fail_own": 4,
+     "sim_incomplete": 2
+    },
+    "cid004": {
+     "tests_failed_no_selfcheck": 19,
+     "signal_missing_hidden": 4
+    }
+   },
+   "all": {
+    "k": 175,
+    "n": 300,
+    "lo": 0.5268345519290606,
+    "hi": 0.6377248764046503
+   }
+  },
+  {
+   "key": "m3j_ho_PA",
+   "set": "heldout100",
+   "ms": "M3j",
+   "model": "Anthropic claude-haiku-5-5, Claude Code harness",
+   "arm": "PA",
+   "cells": {
+    "cid002": {
+     "k": 58,
+     "n": 126,
+     "lo": 0.3757506931925942,
+     "hi": 0.547232387730623
+    },
+    "cid003": {
+     "k": 78,
+     "n": 123,
+     "lo": 0.5461600852628291,
+     "hi": 0.7140069261908265
+    },
+    "cid004": {
+     "k": 28,
+     "n": 51,
+     "lo": 0.41384471541649237,
+     "hi": 0.6773269498886776
+    }
+   },
+   "labels": {
+    "cid002": {
+     "tests_failed_no_selfcheck": 52,
+     "stopped_by_cap": 3,
+     "compile_fail_own": 6,
+     "signal_missing_hidden": 3,
+     "sim_incomplete": 4
+    },
+    "cid003": {
+     "tests_failed_no_selfcheck": 30,
+     "signal_missing_hidden": 9,
+     "compile_fail_own": 3,
+     "sim_incomplete": 3
+    },
+    "cid004": {
+     "tests_failed_no_selfcheck": 18,
+     "signal_missing_hidden": 5
+    }
+   },
+   "all": {
+    "k": 164,
+    "n": 300,
+    "lo": 0.49009743799114724,
+    "hi": 0.6020558418757308
+   }
+  },
+  {
+   "key": "m3j_ho_R",
+   "set": "heldout100",
+   "ms": "M3j",
+   "model": "Anthropic claude-haiku-5-5, Claude Code harness",
+   "arm": "R",
+   "cells": {
+    "cid002": {
+     "k": 57,
+     "n": 126,
+     "lo": 0.3681650881010735,
+     "hi": 0.5394146090067873
+    },
+    "cid003": {
+     "k": 80,
+     "n": 123,
+     "lo": 0.5627413223113369,
+     "hi": 0.7289610844700345
+    },
+    "cid004": {
+     "k": 27,
+     "n": 51,
+     "lo": 0.3952307134472659,
+     "hi": 0.6594722857358359
+    }
+   },
+   "labels": {
+    "cid002": {
+     "tests_failed_no_selfcheck": 56,
+     "compile_fail_own": 6,
+     "signal_missing_hidden": 3,
+     "sim_incomplete": 4
+    },
+    "cid003": {
+     "tests_failed_no_selfcheck": 29,
+     "signal_missing_hidden": 8,
+     "compile_fail_own": 5,
+     "sim_incomplete": 1
+    },
+    "cid004": {
+     "tests_failed_no_selfcheck": 19,
+     "signal_missing_hidden": 5
+    }
+   },
+   "all": {
+    "k": 164,
+    "n": 300,
+    "lo": 0.49009743799114724,
+    "hi": 0.6020558418757308
+   }
+  },
+  {
+   "key": "m3k_dev_T",
+   "set": "dev86",
+   "ms": "M3k",
+   "model": "Anthropic claude-haiku-5-5, Claude Code harness",
+   "arm": "T",
+   "cells": {
+    "cid003": {
+     "k": 20,
+     "n": 33,
+     "lo": 0.4368314280651038,
+     "hi": 0.7531711776849179
+    },
+    "cid004": {
+     "k": 14,
+     "n": 24,
+     "lo": 0.3883433764938864,
+     "hi": 0.7553265275346177
+    },
+    "cid005": {
+     "k": 13,
+     "n": 18,
+     "lo": 0.49126922453805477,
+     "hi": 0.8750043085364452
+    },
+    "cid016": {
+     "k": 10,
+     "n": 11,
+     "lo": 0.6226353745137962,
+     "hi": 0.9837682477371741
+    }
+   },
+   "labels": {
+    "cid003": {
+     "tests_failed_no_selfcheck": 7,
+     "compile_fail_own": 4,
+     "signal_missing_hidden": 2
+    },
+    "cid004": {
+     "sim_incomplete": 1,
+     "llm_error": 1,
+     "tests_failed_no_selfcheck": 8
+    },
+    "cid005": {
+     "tests_failed_no_selfcheck": 3,
+     "signal_missing_hidden": 1,
+     "llm_error": 1
+    },
+    "cid016": {
+     "tests_failed_no_selfcheck": 1
+    }
+   },
+   "all": {
+    "k": 57,
+    "n": 86,
+    "lo": 0.5578236301352326,
+    "hi": 0.7538360019283099
+   }
+  },
+  {
+   "key": "m3k_dev_K",
+   "set": "dev86",
+   "ms": "M3k",
+   "model": "Anthropic claude-haiku-5-5, Claude Code harness",
+   "arm": "K",
+   "cells": {
+    "cid003": {
+     "k": 21,
+     "n": 33,
+     "lo": 0.46615872621534094,
+     "hi": 0.7781303383204013
+    },
+    "cid004": {
+     "k": 15,
+     "n": 24,
+     "lo": 0.42709619037907065,
+     "hi": 0.7884086656636855
+    },
+    "cid005": {
+     "k": 14,
+     "n": 18,
+     "lo": 0.5478497354769452,
+     "hi": 0.90999218086618
+    },
+    "cid016": {
+     "k": 9,
+     "n": 11,
+     "lo": 0.5230138624217553,
+     "hi": 0.9486333993289995
+    }
+   },
+   "labels": {
+    "cid003": {
+     "tests_failed_no_selfcheck": 7,
+     "signal_missing_hidden": 2,
+     "compile_fail_own": 3
+    },
+    "cid004": {
+     "sim_incomplete": 1,
+     "tests_failed_no_selfcheck": 8
+    },
+    "cid005": {
+     "tests_failed_no_selfcheck": 2,
+     "signal_missing_hidden": 1,
+     "llm_error": 1
+    },
+    "cid016": {
+     "tests_failed_no_selfcheck": 2
+    }
+   },
+   "all": {
+    "k": 59,
+    "n": 86,
+    "lo": 0.5817939831445498,
+    "hi": 0.7743884534994991
+   }
+  },
+  {
+   "key": "m3k_ho_T",
+   "set": "heldout100",
+   "ms": "M3k",
+   "model": "Anthropic claude-haiku-5-5, Claude Code harness",
+   "arm": "T",
+   "cells": {
+    "cid002": {
+     "k": 52,
+     "n": 126,
+     "lo": 0.3305590263103976,
+     "hi": 0.5000037517206803
+    },
+    "cid003": {
+     "k": 85,
+     "n": 123,
+     "lo": 0.6046504263089375,
+     "hi": 0.7658904687917235
+    },
+    "cid004": {
+     "k": 28,
+     "n": 51,
+     "lo": 0.41384471541649237,
+     "hi": 0.6773269498886776
+    }
+   },
+   "labels": {
+    "cid002": {
+     "tests_failed_no_selfcheck": 61,
+     "compile_fail_own": 6,
+     "signal_missing_hidden": 3,
+     "sim_incomplete": 4
+    },
+    "cid003": {
+     "tests_failed_no_selfcheck": 27,
+     "signal_missing_hidden": 5,
+     "compile_fail_own": 4,
+     "sim_incomplete": 2
+    },
+    "cid004": {
+     "tests_failed_no_selfcheck": 20,
+     "signal_missing_hidden": 3
+    }
+   },
+   "all": {
+    "k": 165,
+    "n": 300,
+    "lo": 0.4934245664818429,
+    "hi": 0.6053110905183835
+   }
+  },
+  {
+   "key": "m3k_ho_K",
+   "set": "heldout100",
+   "ms": "M3k",
+   "model": "Anthropic claude-haiku-5-5, Claude Code harness",
+   "arm": "K",
+   "cells": {
+    "cid002": {
+     "k": 59,
+     "n": 126,
+     "lo": 0.3833575217542421,
+     "hi": 0.5550289429843318
+    },
+    "cid003": {
+     "k": 82,
+     "n": 123,
+     "lo": 0.5794250199734539,
+     "hi": 0.7438127821356333
+    },
+    "cid004": {
+     "k": 27,
+     "n": 51,
+     "lo": 0.3952307134472659,
+     "hi": 0.6594722857358359
+    }
+   },
+   "labels": {
+    "cid002": {
+     "tests_failed_no_selfcheck": 54,
+     "compile_fail_own": 7,
+     "signal_missing_hidden": 3,
+     "sim_incomplete": 3
+    },
+    "cid003": {
+     "tests_failed_no_selfcheck": 27,
+     "signal_missing_hidden": 8,
+     "compile_fail_own": 5,
+     "sim_incomplete": 1
+    },
+    "cid004": {
+     "tests_failed_no_selfcheck": 18,
+     "signal_missing_hidden": 5,
+     "compile_fail_own": 1
+    }
+   },
+   "all": {
+    "k": 168,
+    "n": 300,
+    "lo": 0.503420997979743,
+    "hi": 0.6150617904205289
+   }
+  }
+ ],
+ "never": {
+  "dev86": {
+   "cid003": {
+    "problems": 33,
+    "never": 2,
+    "limited": 1,
+    "never_ids": [
+     "cvdp_agentic_dynamic_equalizer_0001",
+     "cvdp_agentic_sync_serial_communication_0001"
+    ]
+   },
+   "cid004": {
+    "problems": 24,
+    "never": 4,
+    "limited": 3,
+    "never_ids": [
+     "cvdp_agentic_elevator_control_0004",
+     "cvdp_agentic_phase_rotation_0015",
+     "cvdp_agentic_secure_apb_history_shift_register_0001",
+     "cvdp_agentic_traffic_light_controller_0001"
+    ]
+   },
+   "cid005": {
+    "problems": 18,
+    "never": 3,
+    "limited": 1,
+    "never_ids": [
+     "cvdp_agentic_binary_search_tree_algorithms_0014",
+     "cvdp_agentic_dynamic_equalizer_0008",
+     "cvdp_agentic_hdbn_codec_0001"
+    ]
+   },
+   "cid016": {
+    "problems": 11,
+    "never": 0,
+    "limited": 0,
+    "never_ids": []
+   }
+  },
+  "heldout100": {
+   "cid002": {
+    "problems": 42,
+    "never": 13,
+    "limited": 0,
+    "never_ids": []
+   },
+   "cid003": {
+    "problems": 41,
+    "never": 6,
+    "limited": 0,
+    "never_ids": []
+   },
+   "cid004": {
+    "problems": 17,
+    "never": 6,
+    "limited": 0,
+    "never_ids": []
+   }
+  },
+  "m2_92": {
+   "cid003": {
+    "problems": 34,
+    "never": 9,
+    "limited": 2,
+    "never_ids": [
+     "cvdp_agentic_csr_using_apb_interface_0001",
+     "cvdp_agentic_dynamic_equalizer_0001",
+     "cvdp_agentic_phase_rotation_0038",
+     "cvdp_agentic_queue_0001",
+     "cvdp_agentic_rc5_0001",
+     "cvdp_agentic_sigma_delta_audio_0001",
+     "cvdp_agentic_spi_complex_mult_0002",
+     "cvdp_agentic_sync_serial_communication_0001",
+     "cvdp_agentic_ttc_lite_0001"
+    ]
+   },
+   "cid004": {
+    "problems": 25,
+    "never": 7,
+    "limited": 3,
+    "never_ids": [
+     "cvdp_agentic_binary_search_tree_algorithms_0001",
+     "cvdp_agentic_elevator_control_0004",
+     "cvdp_agentic_nmea_gps_0008",
+     "cvdp_agentic_phase_rotation_0031",
+     "cvdp_agentic_secure_apb_history_shift_register_0001",
+     "cvdp_agentic_thermostat_secure_0001",
+     "cvdp_agentic_traffic_light_controller_0001"
+    ]
+   },
+   "cid005": {
+    "problems": 22,
+    "never": 7,
+    "limited": 1,
+    "never_ids": [
+     "cvdp_agentic_binary_search_tree_algorithms_0014",
+     "cvdp_agentic_digital_stopwatch_0001",
+     "cvdp_agentic_dynamic_equalizer_0008",
+     "cvdp_agentic_hdbn_codec_0001",
+     "cvdp_agentic_phase_rotation_0010",
+     "cvdp_agentic_phase_rotation_0028",
+     "cvdp_agentic_poly_decimator_0001"
+    ]
+   },
+   "cid016": {
+    "problems": 11,
+    "never": 1,
+    "limited": 0,
+    "never_ids": [
+     "cvdp_agentic_arithmetic_progression_generator_0001"
+    ]
+   }
+  }
+ }
+}
